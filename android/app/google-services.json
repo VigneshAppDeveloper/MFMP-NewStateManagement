@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "388012489209",
+    "project_id": "myfoodmypricebiryanipalyam",
+    "storage_bucket": "myfoodmypricebiryanipalyam.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:388012489209:android:201d030a77a3c8d6cc6528",
+        "android_client_info": {
+          "package_name": "com.biryanipalayam.myfoodmyprice"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQd9QU4KjsJFEysWGyJGt5OVv2Y6wEWIg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

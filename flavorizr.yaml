@@ -1,0 +1,53 @@
+app:
+  android:
+    flavorDimensions: "flavor-type"
+
+flavors:
+  dev:
+    app:
+      name: "MyFood MPrice Dev"
+    #        icon: "icons/app_logo.jpg"
+    android:
+      applicationId: "com.biryanipalayam.myfoodmyprice.dev"
+    #  icon: "icons/app_logo.jpg"
+    ios:
+      bundleId: "com.biryanipalayam.myfoodmyprice.dev"
+      #icon: "assets/app_icon_white_bg.png"
+    
+  #      plist:
+  #        NSPhotoLibraryUsageDescription: "We need access to your photo library to save files."
+  #        NSDocumentsFolderUsageDescription: "We need access to your documents folder to save files."
+  #        UISupportsDocumentBrowser: true
+  prod:
+    app:
+      name: "MyFood MyPrice"
+    #      icon: "icons/app_logo.jpg"
+
+    android:
+      applicationId: "com.biryanipalayam.myfoodmyprice"
+    #   icon: "icons/app_logo.jpg"
+    ios:
+      bundleId: "com.biryanipalayam.myfoodmyprice"
+      #icon: "assets/app_icon_white_bg.png"
+   
+  #      plist:
+  #        NSPhotoLibraryUsageDescription: "We need access to your photo library to save files."
+  #        NSDocumentsFolderUsageDescription: "We need access to your documents folder to save files."
+  #        UISupportsDocumentBrowser: true
+  demo:
+    app:
+      name: "MyFood MyPrice"
+    #    icon: "icons/app_logo.jpg"
+
+    android:
+      applicationId: "com.biryanipalayam.myfoodmyprice.demo"
+    #  icon: "icons/app_logo.jpg"
+    ios:
+      bundleId: "com.biryanipalayam.myfoodmyprice.demo"
+      #icon: "assets/app_icon_white_bg.png"
+   
+#      plist:
+#        NSPhotoLibraryUsageDescription: "We need access to your photo library to save files."
+#        NSDocumentsFolderUsageDescription: "We need access to your documents folder to save files."
+#        UISupportsDocumentBrowser: true
+ide: idea
