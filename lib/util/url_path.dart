@@ -9,10 +9,10 @@ class LoginUrl {
   final String resendOTP = 'resendOTP';
   final String otpVerify = 'verifyOTP';
   final String createProfile = 'create_user';
-  final String getProfile = 'get_user_details';
+  final String getProfile = 'getUserProfile';
 }
 
 class RestaurantUrl {
   const RestaurantUrl();
-  final String getNearbyFranchise = 'get_franchise';
+  final String getNearbyFranchise = 'getFranchise';
 }

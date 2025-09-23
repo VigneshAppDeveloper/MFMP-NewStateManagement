@@ -26,76 +26,76 @@ class _FlashSalePageState extends State<FlashSalePage> {
   late final TextEditingController searchController;
   bool initialized = false;
 
-  final restaurants = <Restaurant>[
-    Restaurant(
-      name: "biryani palayam",
-      rating: 4.2,
-      area: "Kollampalayam",
-      distanceKm: "6.7 km",
-      cuisines: "Chicken Biryani, Mutton Biryani..",
-      image: "assets/figmaIcons/bpm.png",
-    ),
-    Restaurant(
-      name: "palmshore",
-      rating: 4.5,
-      area: "Porur",
-      distanceKm: "1.8 km",
-      cuisines: "Grill, BBQ, Arabian..",
-      image: "assets/figmaIcons/palmshore.png",
-    ),
-    Restaurant(
-      name: "SS Hydrababad Biryani",
-      rating: 4.5,
-      area: "viyasarbadi",
-      distanceKm: "5.3 km",
-      cuisines: "Biryani, Kebabs..",
-      image: "assets/figmaIcons/hydbiryani.png",
-    ),
-    Restaurant(
-      name: "palmshore",
-      rating: 4.5,
-      area: "Porur",
-      distanceKm: "1.8 km",
-      cuisines: "Grill, BBQ, Arabian..",
-      image: "assets/figmaIcons/palmshore.png",
-    ),
-    Restaurant(
-      name: "ss hydrababad Biryani",
-      rating: 4.5,
-      area: "Viyasarbadi",
-      distanceKm: "5.3 km",
-      cuisines: "Biryani, Kebabs..",
-      image: "assets/figmaIcons/hydbiryani.png",
-    ),
-    Restaurant(
-      name: "Palmshore",
-      rating: 4.5,
-      area: "Porur",
-      distanceKm: "1.8 km",
-      cuisines: "Grill, BBQ, Arabian..",
-      image: "assets/figmaIcons/palmshore.png",
-    ),
-    Restaurant(
-      name: "SS Hydrababad Biryani",
-      rating: 4.5,
-      area: "Viyasarbadi",
-      distanceKm: "5.3 km",
-      cuisines: "Biryani, Kebabs..",
-      image: "assets/figmaIcons/hydbiryani.png",
-    ),
-  ];
+  // final restaurants = <Restaurant>[
+  //   Restaurant(
+  //     name: "biryani palayam",
+  //     rating: 4.2,
+  //     area: "Kollampalayam",
+  //     distanceKm: "6.7 km",
+  //     cuisines: "Chicken Biryani, Mutton Biryani..",
+  //     image: "assets/figmaIcons/bpm.png",
+  //   ),
+  //   Restaurant(
+  //     name: "palmshore",
+  //     rating: 4.5,
+  //     area: "Porur",
+  //     distanceKm: "1.8 km",
+  //     cuisines: "Grill, BBQ, Arabian..",
+  //     image: "assets/figmaIcons/palmshore.png",
+  //   ),
+  //   Restaurant(
+  //     name: "SS Hydrababad Biryani",
+  //     rating: 4.5,
+  //     area: "viyasarbadi",
+  //     distanceKm: "5.3 km",
+  //     cuisines: "Biryani, Kebabs..",
+  //     image: "assets/figmaIcons/hydbiryani.png",
+  //   ),
+  //   Restaurant(
+  //     name: "palmshore",
+  //     rating: 4.5,
+  //     area: "Porur",
+  //     distanceKm: "1.8 km",
+  //     cuisines: "Grill, BBQ, Arabian..",
+  //     image: "assets/figmaIcons/palmshore.png",
+  //   ),
+  //   Restaurant(
+  //     name: "ss hydrababad Biryani",
+  //     rating: 4.5,
+  //     area: "Viyasarbadi",
+  //     distanceKm: "5.3 km",
+  //     cuisines: "Biryani, Kebabs..",
+  //     image: "assets/figmaIcons/hydbiryani.png",
+  //   ),
+  //   Restaurant(
+  //     name: "Palmshore",
+  //     rating: 4.5,
+  //     area: "Porur",
+  //     distanceKm: "1.8 km",
+  //     cuisines: "Grill, BBQ, Arabian..",
+  //     image: "assets/figmaIcons/palmshore.png",
+  //   ),
+  //   Restaurant(
+  //     name: "SS Hydrababad Biryani",
+  //     rating: 4.5,
+  //     area: "Viyasarbadi",
+  //     distanceKm: "5.3 km",
+  //     cuisines: "Biryani, Kebabs..",
+  //     image: "assets/figmaIcons/hydbiryani.png",
+  //   ),
+  // ];
 
   @override
   void initState() {
     super.initState();
     scrollController = ScrollController();
     searchController = TextEditingController();
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   if (!initialized) {
-    //     getFlashRestaurants();
-    //     initialized = true;
-    //   }
-    // });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!initialized) {
+        getFlashRestaurants();
+        initialized = true;
+      }
+    });
   }
 
   Future<void> getFlashRestaurants() async {
@@ -174,29 +174,29 @@ class _FlashSalePageState extends State<FlashSalePage> {
             ),
             SliverToBoxAdapter(child: SizedBox(height: size.height * 0.01)),
 
-            SliverList(
-              delegate: SliverChildBuilderDelegate((context, index) {
-                final restaurant = restaurants[index];
+            // SliverList(
+            //   delegate: SliverChildBuilderDelegate((context, index) {
+            //     final restaurant = restaurants[index];
 
-                return Padding(
-                  padding: EdgeInsets.symmetric(
-                    vertical: MediaQuery.of(context).size.height * 0.012,
-                  ),
-                  child: GestureDetector(
-                    onTap: () {
-                      AppRouteName.menuPage.push(
-                        context,
-                        args: {
-                          'restaurant': restaurants[index],
-                          'showPriceTabs': false, // 👈
-                        },
-                      );
-                    },
-                    child: RestaurantCard(data: restaurant),
-                  ),
-                );
-              }, childCount: restaurants.length),
-            ),
+            //     return Padding(
+            //       padding: EdgeInsets.symmetric(
+            //         vertical: MediaQuery.of(context).size.height * 0.012,
+            //       ),
+            //       child: GestureDetector(
+            //         onTap: () {
+            //           AppRouteName.menuPage.push(
+            //             context,
+            //             args: {
+            //               'restaurant': restaurants[index],
+            //               'showPriceTabs': false, // 👈
+            //             },
+            //           );
+            //         },
+            //         child: RestaurantCard(data: restaurant),
+            //       ),
+            //     );
+            //   }, childCount: restaurants.length),
+            // ),
 
             // Consumer<RestaurantProvider>(
             //   builder: (context, provider, _) {

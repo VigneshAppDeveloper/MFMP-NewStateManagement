@@ -16,7 +16,7 @@ class RestaurantProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    final url = "${UrlPath.restaurantUrl.getNearbyFranchise}/$lat/$lng";
+   final url = "${UrlPath.restaurantUrl.getNearbyFranchise}/$lat/$lng";
 
    try {
   final resp = await APIService.get(url, auth: true);
@@ -25,7 +25,7 @@ class RestaurantProvider extends ChangeNotifier {
 
 if (resp.status) {
   final List<dynamic> data = resp.data; // ✅ already a List
-//  _restaurants = data.map((e) => Restaurant.fromJson(e)).toList();
+    _restaurants = data.map((e) => Restaurant.fromJson(e)).toList();
   error = null;
 } else {
   error = resp.message ?? "Something went wrong.";

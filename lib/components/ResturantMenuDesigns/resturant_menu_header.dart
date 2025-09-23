@@ -33,7 +33,7 @@ class ResturantMenuHeader extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                "${restaurant.area}, ${restaurant.distanceKm}",
+                "${restaurant.address}, ${restaurant.distanceKm}",
                 style: Styles.textSmall(context, color: Colors.black54),
                 textScaler: const TextScaler.linear(1.0),
               ),
@@ -44,11 +44,11 @@ class ResturantMenuHeader extends StatelessWidget {
           children: [
             const Icon(Icons.star, color: Colors.green, size: 16),
             const SizedBox(width: 4),
-            Text(
-              restaurant.rating.toString(),
-              style: Styles.textSmall(context),
-              textScaler: const TextScaler.linear(1.0),
-            ),
+            // Text(
+            //   restaurant.rating.toString(),
+            //   style: Styles.textSmall(context),
+            //   textScaler: const TextScaler.linear(1.0),
+            // ),
           ],
         ),
       ],

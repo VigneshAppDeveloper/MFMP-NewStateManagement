@@ -6,15 +6,13 @@ import 'package:my_food_my_price/components/HomePageDesigns/home_app_bar.dart';
 import 'package:my_food_my_price/components/HomePageDesigns/home_search_bar.dart';
 import 'package:my_food_my_price/components/HomePageDesigns/restaurant_wiget.dart';
 import 'package:my_food_my_price/models/FoodModels/food_model.dart';
-import 'package:my_food_my_price/route_generator.dart';
 import 'package:my_food_my_price/util/color_constant.dart';
 import 'package:my_food_my_price/util/styles.dart';
-import 'package:my_food_my_price/widgets/full_shimmer_loader.dart';
 import 'package:provider/provider.dart';
 
-import '../models/Resturant Model/resturant.dart';
 import '../services/secure_storage.dart';
 import '../util/app_contant.dart';
+import '../widgets/full_shimmer_loader.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -29,64 +27,64 @@ class _HomePageState extends State<HomePage> {
 
   bool initalizedResturant = false;
 
-  final restaurants = <Restaurant>[
-    Restaurant(
-      name: "biryani palayam",
-      rating: 4.2,
-      area: "Kollampalayam",
-      distanceKm: "6.7 km",
-      cuisines: "Chicken Biryani, Mutton Biryani..",
-      image: "assets/figmaIcons/bpm.png",
-    ),
-    Restaurant(
-      name: "palmshore",
-      rating: 4.5,
-      area: "Porur",
-      distanceKm: "1.8 km",
-      cuisines: "Grill, BBQ, Arabian..",
-      image: "assets/figmaIcons/palmshore.png",
-    ),
-    Restaurant(
-      name: "SS Hydrababad Biryani",
-      rating: 4.5,
-      area: "viyasarbadi",
-      distanceKm: "5.3 km",
-      cuisines: "Biryani, Kebabs..",
-      image: "assets/figmaIcons/hydbiryani.png",
-    ),
-      Restaurant(
-      name: "palmshore",
-      rating: 4.5,
-      area: "Porur",
-      distanceKm: "1.8 km",
-      cuisines: "Grill, BBQ, Arabian..",
-      image: "assets/figmaIcons/palmshore.png",
-    ),
-    Restaurant(
-      name: "ss hydrababad Biryani",
-      rating: 4.5,
-      area: "Viyasarbadi",
-      distanceKm: "5.3 km",
-      cuisines: "Biryani, Kebabs..",
-      image: "assets/figmaIcons/hydbiryani.png",
-    ),
-      Restaurant(
-      name: "Palmshore",
-      rating: 4.5,
-      area: "Porur",
-      distanceKm: "1.8 km",
-      cuisines: "Grill, BBQ, Arabian..",
-      image: "assets/figmaIcons/palmshore.png",
-    ),
-    Restaurant(
-      name: "SS Hydrababad Biryani",
-      rating: 4.5,
-      area: "Viyasarbadi",
-      distanceKm: "5.3 km",
-      cuisines: "Biryani, Kebabs..",
-      image: "assets/figmaIcons/hydbiryani.png",
-    ),
-  ];
+  // final restaurants = <Restaurant>[
+  //   Restaurant(
+  //     name: "biryani palayam",
+  //     rating: 4.2,
+  //     area: "Kollampalayam",
+  //     distanceKm: "6.7 km",
+  //     cuisines: "Chicken Biryani, Mutton Biryani..",
+  //     image: "assets/figmaIcons/bpm.png",
+  //   ),
+  //   Restaurant(
+  //     name: "palmshore",
+  //     rating: 4.5,
+  //     area: "Porur",
+  //     distanceKm: "1.8 km",
+  //     cuisines: "Grill, BBQ, Arabian..",
+  //     image: "assets/figmaIcons/palmshore.png",
+  //   ),
+  //   Restaurant(
+  //     name: "SS Hydrababad Biryani",
+  //     rating: 4.5,
+  //     area: "viyasarbadi",
+  //     distanceKm: "5.3 km",
+  //     cuisines: "Biryani, Kebabs..",
+  //     image: "assets/figmaIcons/hydbiryani.png",
+  //   ),
+  //     Restaurant(
+  //     name: "palmshore",
+  //     rating: 4.5,
+  //     area: "Porur",
+  //     distanceKm: "1.8 km",
+  //     cuisines: "Grill, BBQ, Arabian..",
+  //     image: "assets/figmaIcons/palmshore.png",
+  //   ),
+  //   Restaurant(
+  //     name: "ss hydrababad Biryani",
+  //     rating: 4.5,
+  //     area: "Viyasarbadi",
+  //     distanceKm: "5.3 km",
+  //     cuisines: "Biryani, Kebabs..",
+  //     image: "assets/figmaIcons/hydbiryani.png",
+  //   ),
+  //     Restaurant(
+  //     name: "Palmshore",
+  //     rating: 4.5,
+  //     area: "Porur",
+  //     distanceKm: "1.8 km",
+  //     cuisines: "Grill, BBQ, Arabian..",
+  //     image: "assets/figmaIcons/palmshore.png",
+  //   ),
+  //   Restaurant(
+  //     name: "SS Hydrababad Biryani",
+  //     rating: 4.5,
+  //     area: "Viyasarbadi",
+  //     distanceKm: "5.3 km",
+  //     cuisines: "Biryani, Kebabs..",
+  //     image: "assets/figmaIcons/hydbiryani.png",
+  //   ),
+  // ];
 
 
   @override
@@ -94,12 +92,12 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _scrollController = ScrollController();
     _searchController = TextEditingController();
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   if (!initalizedResturant) {
-    //   getRestaurantsList();
-    //     initalizedResturant = true;
-    //   }
-    // });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!initalizedResturant) {
+      getRestaurantsList();
+        initalizedResturant = true;
+      }
+    });
   }
 
   Future<void> getRestaurantsList() async {
@@ -218,68 +216,68 @@ class _HomePageState extends State<HomePage> {
                 // Static sample list (swap with Provider later)
                 SliverToBoxAdapter(child: SizedBox(height: size.height * 0.01)),
 
-                 SliverList(
-              delegate: SliverChildBuilderDelegate((context, index) {
-                final restaurant = restaurants[index];
+            //      SliverList(
+            //   delegate: SliverChildBuilderDelegate((context, index) {
+            //     final restaurant = restaurants[index];
 
-                return Padding(
-                  padding: EdgeInsets.symmetric(
-                    vertical: MediaQuery.of(context).size.height * 0.012,
-                  ),
-                  child: GestureDetector(
-                    onTap: () {
-                      AppRouteName.menuPage.push(
-                        context,
-                        args: {
-                          'restaurant': restaurants[index],
-                          'showPriceTabs': true, // 👈
-                        },
-                      );
-                    },
-                    child: RestaurantCard(data: restaurant),
-                  ),
-                );
-              }, childCount: restaurants.length),
-            ),
+            //     return Padding(
+            //       padding: EdgeInsets.symmetric(
+            //         vertical: MediaQuery.of(context).size.height * 0.012,
+            //       ),
+            //       child: GestureDetector(
+            //         onTap: () {
+            //           AppRouteName.menuPage.push(
+            //             context,
+            //             args: {
+            //               'restaurant': restaurants[index],
+            //               'showPriceTabs': true, // 👈
+            //             },
+            //           );
+            //         },
+            //         child: RestaurantCard(data: restaurant),
+            //       ),
+            //     );
+            //   }, childCount: restaurants.length),
+            // ),
                 // 🔻 Sliver list of cards
-                // Consumer<RestaurantProvider>(
-                //   builder: (context, provider, _) {
-                //     if (provider.isLoading) {
-                //       return SliverToBoxAdapter(
-                //         child: SizedBox(
-                //           height: MediaQuery.of(context).size.height,
-                //           child: const FullScreenShimmer(),
-                //         ),
-                //       );
-                //     }
+                Consumer<RestaurantProvider>(
+                  builder: (context, provider, _) {
+                    if (provider.isLoading) {
+                      return SliverToBoxAdapter(
+                        child: SizedBox(
+                          height: MediaQuery.of(context).size.height,
+                          child: const FullScreenShimmer(),
+                        ),
+                      );
+                    }
 
-                //     if (provider.restaurants.isEmpty) {
-                //       return SliverToBoxAdapter(
-                //         child: Text(
-                //           "No restaurants nearby",
-                //           style: Styles.textStyleMedium(
-                //             context,
-                //           ).copyWith(fontWeight: FontWeight.w700),
+                    if (provider.restaurants.isEmpty) {
+                      return SliverToBoxAdapter(
+                        child: Text(
+                          "No restaurants nearby",
+                          style: Styles.textStyleMedium(
+                            context,
+                          ).copyWith(fontWeight: FontWeight.w700),
 
-                //           textScaler: const TextScaler.linear(1.0),
-                //           textAlign: TextAlign.center,
-                //         ),
-                //       );
-                //     }
+                          textScaler: const TextScaler.linear(1.0),
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    }
 
-                //     return SliverList(
-                //       delegate: SliverChildBuilderDelegate(
-                //         (context, index) => Padding(
-                //           padding: EdgeInsets.symmetric(vertical: 12),
-                //           child: RestaurantCard(
-                //             data: provider.restaurants[index],
-                //           ),
-                //         ),
-                //         childCount: provider.restaurants.length,
-                //       ),
-                //     );
-                //   },
-                // ),
+                    return SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: RestaurantCard(
+                            data: provider.restaurants[index],
+                          ),
+                        ),
+                        childCount: provider.restaurants.length,
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ),

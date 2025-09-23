@@ -26,9 +26,9 @@ class RestaurantCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Image
-        ClipRRect(
+          ClipRRect(
             borderRadius: BorderRadius.circular(14),
-            child: Image.asset(
+            child: Image.network(
               data.image,
               width: imageSide,
               height: imageSide,
@@ -61,7 +61,7 @@ class RestaurantCard extends StatelessWidget {
                   _iconLine(
                     context,
                     Icons.star_rate_rounded,
-                    "${data.rating} Ratings",
+                    "${data.franchiseRating} Ratings",
                     leadingColor: Colors.green,
                   ),
                   SizedBox(height: size.height * 0.004),
@@ -70,18 +70,17 @@ class RestaurantCard extends StatelessWidget {
                   _iconLine(
                     context,
                     Icons.location_on_outlined,
-                  
-                    " ${data.distanceKm}",
-                    //${data.address},
+
+                    " ${data.distanceKm} ${data.address}",
                   ),
-                  // SizedBox(height: size.height * 0.004),
+                  SizedBox(height: size.height * 0.004),
 
                   // // Cuisines
                   _iconLine(
                     context,
                     Icons.ramen_dining_outlined,
-                    data.cuisines.titleCase,
-                    //data.description,
+                    //data.cuisines.titleCase,
+                    data.description.titleCase,
                     maxLines: 1,
                   ),
                 ],
@@ -111,7 +110,7 @@ class RestaurantCard extends StatelessWidget {
           child: ExpandableText(
             text.titleCase,
             style: Styles.textSmall(context, color: Colors.black87),
-            
+
             textScaler: const TextScaler.linear(1.0),
           ),
         ),

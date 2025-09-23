@@ -161,7 +161,7 @@ class LocationService {
       ),
     );
 
-    return LatLng(pos.latitude, pos.longitude);
+    return LatLng(pos.latitude, pos.longitude); 
   }
 
   static Future<Map<String, String>?> getAddressFromLatLng(
@@ -192,12 +192,13 @@ class LocationService {
         for (var comp in components) {
           final types = comp['types'];
           if (types.contains('sublocality_level_2')) {
+
             areaName = comp['long_name'];
             break;
           }
         }
       }
-
+ 
       // If still null, try sublocality_level_1
       if (areaName == null) {
         for (var comp in components) {
@@ -266,7 +267,7 @@ class LocationService {
           if (types.contains('sublocality_level_2')) {
             areaName = comp['long_name'];
             break;
-          }
+          } 
         }
       }
 
