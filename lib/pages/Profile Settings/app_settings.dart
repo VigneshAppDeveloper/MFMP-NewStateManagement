@@ -132,7 +132,7 @@ class _AppSettingsState extends State<AppSettings> {
                         icon: Icons.list_alt,
                         title: "Fixed Orders",
                         onTap: () {
-                          // AppRouteName.myOrdersPage.push(context);
+                           AppRouteName.orderHistoryPage.push(context);
                         },
                       ),
                       DrawerListTile(

@@ -80,12 +80,19 @@ class _LocationSearchPageState extends State<LocationSearchPage> {
       final lng = location['lng'];
 
       if (context.mounted) {
-        Navigator.push(
+        final confirmedLatLng = await Navigator.push<LatLng>(
           context,
           MaterialPageRoute(
             builder: (_) => ConfirmLocationMapPage(latLng: LatLng(lat, lng)),
           ),
         );
+
+        if (confirmedLatLng != null && mounted) {
+          Navigator.pop(
+            context,
+            confirmedLatLng,
+          ); // 👈 send LatLng back to HomePage
+        }
       }
     }
   }
@@ -181,12 +188,15 @@ class _LocationSearchPageState extends State<LocationSearchPage> {
             onTap: () async {
               final userLatLng = await LocationService.getCurrentLatLng();
               if (userLatLng != null && context.mounted) {
-                Navigator.push(
+                final confirmedLatLng = await Navigator.push<LatLng>(
                   context,
                   MaterialPageRoute(
                     builder: (_) => ConfirmLocationMapPage(latLng: userLatLng),
                   ),
                 );
+                if (confirmedLatLng != null) {
+                  Navigator.pop(context, confirmedLatLng);
+                }
               }
             },
           ),

@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:my_food_my_price/config/firebase/firebase_config.dart';
 import 'package:my_food_my_price/config/firebase/firebase_notification.dart';
 
+import '../services/secure_storage.dart';
+
 class AppInitialize {
   static Future<void> start() async {
     if (kDebugMode) {
@@ -15,10 +17,8 @@ class AppInitialize {
     await FirebaseConfig.initialize();
     await FirebaseNotification.initialize();
 
-    SystemChrome.setEnabledSystemUIMode(
-      SystemUiMode.manual,
-      overlays: SystemUiOverlay.values,
-    );
+   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
       DeviceOrientation.portraitDown,
@@ -31,6 +31,9 @@ class AppInitialize {
         systemNavigationBarColor: Colors.white, // White bottom bar
         systemNavigationBarIconBrightness: Brightness.light, // Dark icons
       ),
+    );
+     await SecureStorageService.saveGoogleApiKey(
+      "AIzaSyC1q5b6YQz6m_uBeE8r8R3jsK0gAdlePz0", // replace with your actual key
     );
   }
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:my_food_my_price/Providers/register_provider.dart';
 import 'package:my_food_my_price/pages/Map/location_search_page.dart';
+import 'package:my_food_my_price/pages/OrdersHistory/order_history.dart';
 import 'package:my_food_my_price/pages/Profile%20Settings/about_page.dart';
 import 'package:my_food_my_price/pages/Profile%20Settings/app_settings.dart';
 import 'package:my_food_my_price/pages/Profile%20Settings/delete_account.dart';
@@ -43,6 +45,7 @@ enum AppRouteName {
   deleteAccount('/delete_account'),
   rewards('/rewards'),
   menuPage('/menu_page'),
+  orderHistoryPage('/order_history'),
   appSettingsPage('/app_settings');
 
   /// args: TaskViewScreenArgs
@@ -111,7 +114,10 @@ class RouteGenerator {
       case AppRouteName.appPage:
         return MaterialPageRoute(builder: (_) => AppPages());
       case AppRouteName.serachLocation:
-        return MaterialPageRoute(builder: (_) => LocationSearchPage());
+  return MaterialPageRoute<LatLng>(
+    builder: (_) => const LocationSearchPage(),
+  );
+
       case AppRouteName.appSettingsPage:
         return MaterialPageRoute(builder: (_) => AppSettings());
       case AppRouteName.editProfilePage:
@@ -134,6 +140,8 @@ class RouteGenerator {
         return MaterialPageRoute(builder: (_) => DeleteAccount());
       case AppRouteName.rewards:
         return MaterialPageRoute(builder: (_) => Rewards());
+      case AppRouteName.orderHistoryPage:
+        return MaterialPageRoute(builder: (_) => OrderHistory());
       case AppRouteName.menuPage:
         if (args is Map<String, dynamic>) {
           final restaurant = args['restaurant'] as Restaurant;

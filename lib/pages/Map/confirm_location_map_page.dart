@@ -4,6 +4,9 @@ import 'package:my_food_my_price/route_generator.dart';
 import 'package:my_food_my_price/services/location_service.dart';
 import 'package:my_food_my_price/util/color_constant.dart';
 import 'package:my_food_my_price/util/styles.dart';
+import 'package:provider/provider.dart';
+
+import '../../Providers/location_provider.dart';
 
 class ConfirmLocationMapPage extends StatefulWidget {
   final LatLng latLng;
@@ -56,127 +59,144 @@ class _ConfirmLocationMapPageState extends State<ConfirmLocationMapPage> {
       currentLatLng,
     );
     if (success && context.mounted) {
-      AppRouteName.appPage.pushAndRemoveUntil(context, (route) => false);
+      final saved = await LocationService.getSavedLocation();
+      if (saved != null) {
+        // ✅ Session override only
+        context.read<LocationProvider>().updateSessionLocation(saved);
+      }
+      Navigator.pop(context, currentLatLng);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          GoogleMap(
-            initialCameraPosition: CameraPosition(
-              target: widget.latLng,
-              zoom: 17,
+      body: SafeArea(
+        bottom: true,
+        child: Stack(
+          children: [
+            GoogleMap(
+              initialCameraPosition: CameraPosition(
+                target: widget.latLng,
+                zoom: 17,
+              ),
+              onMapCreated: (controller) => _mapController = controller,
+              onCameraIdle: _onCameraIdle,
+              onCameraMove: (pos) => currentLatLng = pos.target,
+              myLocationEnabled: true,
+              myLocationButtonEnabled: false,
+              zoomControlsEnabled: false,
             ),
-            onMapCreated: (controller) => _mapController = controller,
-            onCameraIdle: _onCameraIdle,
-            onCameraMove: (pos) => currentLatLng = pos.target,
-            myLocationEnabled: true,
-            myLocationButtonEnabled: false,
-            zoomControlsEnabled: false,
-          ),
-          const Center(
-            child: Icon(Icons.location_pin, size: 40, color: Colors.red),
-          ),
-          Positioned(
-            top: 50,
-            left: 16,
-            right: 16,
-            child: Material(
-              borderRadius: BorderRadius.circular(12),
-              elevation: 4,
-              child: TextField(
-                readOnly: true,
-                onTap: () {
-                  Navigator.pop(context); 
-                },
-                decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.search),
-                  hintText: 'Search an area or address',
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+            const Center(
+              child: Icon(Icons.location_pin, size: 40, color: Colors.red),
+            ),
+            Positioned(
+              top: 10,
+              left: 16,
+              right: 16,
+              child: Material(
+                borderRadius: BorderRadius.circular(12),
+                elevation: 4,
+                child: TextField(
+                  readOnly: true,
+                  onTap: () {
+                    Navigator.pop(context);
+                  },
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search),
+                    hintText: 'Search an area or address',
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
                 ),
               ),
             ),
-          ),
 
-          Positioned(
-            bottom: 30,
-            left: 20,
-            right: 20,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(blurRadius: 10, color: Colors.black.withAlpha(12)),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Order will be delivered here",
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on,
+            Positioned(
+              bottom: 30,
+              left: 20,
+              right: 20,
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      blurRadius: 10,
+                      color: Colors.black.withAlpha(12),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Order will be delivered here",
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on,
+                          color: Colors.black,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            isLoading
+                                ? "Fetching..."
+                                : shortName.isNotEmpty
+                                ? shortName
+                                : fullAddress.split(',').first,
+                            style: Styles.textStyleMedium(
+                              context,
+                              color: Colors.black,
+                            ).copyWith(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                            textScaler: TextScaler.linear(1.0),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      fullAddress.isNotEmpty ? fullAddress : "Please wait...",
+                      style: Styles.textExtraSmall(
+                        context,
                         color: Colors.black,
-                        size: 20,
                       ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          isLoading
-                              ? "Fetching..."
-                              : shortName.isNotEmpty
-                              ? shortName
-                              : fullAddress.split(',').first,
-                          style: Styles.textStyleMedium(
-                            context,
-                            color: Colors.black,
-                          ).copyWith(fontWeight: FontWeight.bold, fontSize: 16),
-                          textScaler: TextScaler.linear(1.0),
-                          overflow: TextOverflow.ellipsis,
+                      textScaler: TextScaler.linear(1.0),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: _confirmLocation,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColor.blackColor,
+                        minimumSize: const Size.fromHeight(40),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    fullAddress.isNotEmpty ? fullAddress : "Please wait...",
-                    style: Styles.textExtraSmall(context, color: Colors.black),
-                    textScaler: TextScaler.linear(1.0),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 12),
-                  ElevatedButton(
-                    onPressed: _confirmLocation,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColor.blackColor,
-                      minimumSize: const Size.fromHeight(40),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                      child: Text(
+                        "Confirm & proceed",
+                        style: Styles.textSmall(context, color: Colors.white),
+                        textScaler: TextScaler.linear(1.0),
                       ),
                     ),
-                    child: Text(
-                      "Confirm & proceed",
-                      style: Styles.textSmall(context, color: Colors.white),
-                      textScaler: TextScaler.linear(1.0),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

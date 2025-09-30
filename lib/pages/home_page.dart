@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:my_food_my_price/Providers/location_provider.dart';
 import 'package:my_food_my_price/Providers/restaurant_provider.dart';
 import 'package:my_food_my_price/components/HomePageDesigns/banner.dart';
 import 'package:my_food_my_price/components/HomePageDesigns/food_category_header.dart';
@@ -88,32 +89,31 @@ class _HomePageState extends State<HomePage> {
 
 
   @override
-  void initState() {
+ void initState() {
     super.initState();
     _scrollController = ScrollController();
     _searchController = TextEditingController();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!initalizedResturant) {
-      getRestaurantsList();
+        getRestaurantsList();
         initalizedResturant = true;
       }
     });
   }
 
-  Future<void> getRestaurantsList() async {
+ Future<void> getRestaurantsList() async {
     try {
-      final lat = await SecureStorageService.read(AppConstants.latitude);
-      final lng = await SecureStorageService.read(AppConstants.longitude);
+      final location = context.read<LocationProvider>().currentLocation;
 
-      if (lat != null && lng != null) {
-        final provider = context.read<RestaurantProvider>(); // 👈 declare here
+      if (location != null) {
+        final provider = context.read<RestaurantProvider>();
         await provider.getRestaurants(
-          // 👈 await this
-          lat: double.parse(lat),
-          lng: double.parse(lng),
+          lat: location.latitude,
+          lng: location.longitude,
         );
       } else {
-        debugPrint("⚠️ No lat/lng found in secure storage");
+        debugPrint("⚠️ No location found in LocationProvider");
       }
     } catch (e) {
       debugPrint("❌ Error fetching restaurants: $e");

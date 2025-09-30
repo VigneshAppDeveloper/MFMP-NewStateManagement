@@ -16,6 +16,19 @@ class AppConfig {
         return 'https://myfoodmyprice.com/Applications/public/api/';
     }
   }
+
+
+   String get storageBaseUrl {
+    switch (F.appFlavor) {
+      case Flavor.prod:
+      case Flavor.dev:
+        return 'https://mfmpdev.tsitcloud.com/tsit_biriyani_palayam-dev/storage/app/';
+      case Flavor.demo:
+        return 'https://tabsquareinfotech.com/App/Clients/biriyani_palayam/storage/app/';
+      default:
+        return 'https://myfoodmyprice.com/Applications/storage/app/';
+    }
+  }
  
   // Always use the production package name for PhonePe gateway
   String get gatewayPackageName => "com.biryanipalayam.myfoodmyprice";

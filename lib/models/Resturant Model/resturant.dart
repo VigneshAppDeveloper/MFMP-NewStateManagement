@@ -1,3 +1,6 @@
+import '../../config/app_config.dart';
+import '../PickUpPointModel/pickup_point.dart';
+
 class Restaurant {
   final String franchiseId;
   final String name;
@@ -6,11 +9,12 @@ class Restaurant {
   final String ownerName;
   final String mobile;
   final String image;
-  final double latitude;
-  final double longitude;
+  final double franchiseLatitude;
+  final double franchiseLongitude;
   final double distanceKm;
-  final double franchiseRating; // ✅ new
-  final int totalRating;        // ✅ new
+  final double franchiseRating;
+  final int totalRating;
+  final List<PickpointModel> pickupPoints;
 
   Restaurant({
     required this.franchiseId,
@@ -20,11 +24,12 @@ class Restaurant {
     required this.ownerName,
     required this.mobile,
     required this.image,
-    required this.latitude,
-    required this.longitude,
     required this.distanceKm,
+    required this.franchiseLatitude,
+    required this.franchiseLongitude,
     required this.franchiseRating,
     required this.totalRating,
+    required this.pickupPoints,
   });
 
   factory Restaurant.fromJson(Map<String, dynamic> json) {
@@ -43,6 +48,13 @@ class Restaurant {
       return 0;
     }
 
+    // ✅ Fix image path
+    String rawImage = json['franchise_image']?.toString() ?? '';
+    String fullImage =
+        rawImage.isNotEmpty && !rawImage.startsWith('http')
+            ? AppConfig.instance.storageBaseUrl + rawImage
+            : rawImage;
+
     return Restaurant(
       franchiseId: json['franchise_id']?.toString() ?? '',
       name: json['franchise']?.toString() ?? '',
@@ -50,16 +62,19 @@ class Restaurant {
       address: json['address']?.toString() ?? '',
       ownerName: json['owner_name']?.toString() ?? '',
       mobile: json['mobile']?.toString() ?? '',
-      image: json['franchise_image']?.toString() ?? '',
-      latitude: toDouble(json['latitude']),
-      longitude: toDouble(json['longitude']),
+      image: fullImage,
+      franchiseLatitude: toDouble(json['latitude']),
+      franchiseLongitude: toDouble(json['longitude']),
       distanceKm: toDouble(json['distance_km']),
-      franchiseRating: toDouble(json['franchise_rating']), // ✅ safe parse
-      totalRating: toInt(json['total_rating']),            // ✅ safe parse
+      franchiseRating: toDouble(json['franchise_rating']),
+      totalRating: toInt(json['total_rating']),
+      pickupPoints:
+          (json['pickup_points'] as List<dynamic>? ?? [])
+              .map((e) => PickpointModel.fromJson(e))
+              .toList(),
     );
   }
 }
-
 
 // class Restaurant {
 //   final String name;

@@ -12,19 +12,22 @@ import '../../models/Resturant Model/resturant.dart';
 import '../../services/location_service.dart';
 
 class MapPage extends StatefulWidget {
-  const MapPage({super.key}); 
+  const MapPage({super.key});
 
   @override
   State<MapPage> createState() => _MapPageState();
 }
 
 class _MapPageState extends State<MapPage> {
-  late GoogleMapController mapController;
+  GoogleMapController? _mapController;
   LatLng? userLatLng;
 
   Restaurant? selectedRestaurant;
   final Set<Marker> _markers = {};
   final Map<String, BitmapDescriptor> markerIconCache = {};
+
+  // ✅ Cache last camera position
+  CameraPosition? _lastCameraPosition;
 
   @override
   void initState() {
@@ -49,7 +52,7 @@ class _MapPageState extends State<MapPage> {
     return icon;
   }
 
-  Future<void> prepareMarkers(List<Restaurant> restaurants) async {
+  Future<void> _updateMarkers(List<Restaurant> restaurants) async {
     final Set<Marker> updatedMarkers = {};
 
     for (var r in restaurants) {
@@ -61,7 +64,7 @@ class _MapPageState extends State<MapPage> {
       updatedMarkers.add(
         Marker(
           markerId: MarkerId(r.franchiseId),
-          position: LatLng(r.latitude, r.longitude),
+          position: LatLng(r.franchiseLatitude, r.franchiseLongitude),
           icon: markerIcon,
           onTap: () {
             if (selectedRestaurant?.franchiseId != r.franchiseId) {
@@ -81,25 +84,34 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  bool _isWithinRadius(LatLng user, LatLng point, double km) {
-    const earthRadius = 6371;
-    final dLat = (point.latitude - user.latitude) * (pi / 180);
-    final dLng = (point.longitude - user.longitude) * (pi / 180);
+  void _fitCamera(LatLng user, List<Restaurant> restaurants) {
+    if (_mapController == null || restaurants.isEmpty) return;
 
-    final a =
-        sin(dLat / 2) * sin(dLat / 2) +
-        cos(user.latitude * pi / 180) *
-            cos(point.latitude * pi / 180) *
-            sin(dLng / 2) *
-            sin(dLng / 2);
-    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    return (earthRadius * c) <= km;
+    final bounds = restaurants.fold<LatLngBounds>(
+      LatLngBounds(southwest: user, northeast: user),
+      (bounds, r) {
+        final point = LatLng(r.franchiseLatitude, r.franchiseLongitude);
+        return LatLngBounds(
+          southwest: LatLng(
+            min(bounds.southwest.latitude, point.latitude),
+            min(bounds.southwest.longitude, point.longitude),
+          ),
+          northeast: LatLng(
+            max(bounds.northeast.latitude, point.latitude),
+            max(bounds.northeast.longitude, point.longitude),
+          ),
+        );
+      },
+    );
+
+    _mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 70));
   }
 
-  // 🔧 Helper: Re-center map to user location
   void _centerToUserLocation() {
-    if (userLatLng != null) {
-      mapController.animateCamera(CameraUpdate.newLatLngZoom(userLatLng!, 15));
+    if (_mapController != null && userLatLng != null) {
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLngZoom(userLatLng!, 15),
+      );
     }
   }
 
@@ -107,59 +119,33 @@ class _MapPageState extends State<MapPage> {
   Widget build(BuildContext context) {
     return Consumer<RestaurantProvider>(
       builder: (context, provider, _) {
-        if (userLatLng != null) {
-          // ✅ schedule markers update AFTER this frame
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              prepareMarkers(provider.restaurants);
-            }
-          });
+        if (userLatLng != null && provider.restaurants.isNotEmpty) {
+          _updateMarkers(provider.restaurants);
+          // ✅ Only fit if no previous camera is cached
+          if (_lastCameraPosition == null) {
+            _fitCamera(userLatLng!, provider.restaurants);
+          }
         }
 
         return Stack(
           children: [
             if (userLatLng != null)
               GoogleMap(
-                initialCameraPosition: CameraPosition(
-                  target: userLatLng!,
-                  zoom: 15,
-                ),
+                initialCameraPosition: _lastCameraPosition ??
+                    CameraPosition(target: userLatLng!, zoom: 14),
                 myLocationEnabled: true,
-                onMapCreated: (controller) {
-                  mapController = controller;
-                  mapController.animateCamera(
-                    CameraUpdate.newLatLng(userLatLng!),
-                  );
-                },
-                onCameraIdle: () async {
-                  final center = await mapController.getLatLng(
-                    ScreenCoordinate(
-                      x: (MediaQuery.of(context).size.width ~/ 2),
-                      y: (MediaQuery.of(context).size.height ~/ 2),
-                    ),
-                  );
-
-                  if (!_isWithinRadius(userLatLng!, center, 10)) {
-                    mapController.animateCamera(
-                      CameraUpdate.newLatLng(userLatLng!),
-                    );
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            "You can only view restaurants within 10 km.",
-                          ),
-                        ),
-                      );
-                    }
-                  }
-                },
                 markers: _markers,
+                onMapCreated: (controller) {
+                  _mapController = controller;
+                },
+                // ✅ Save last camera position whenever it moves
+                onCameraMove: (position) {
+                  _lastCameraPosition = position;
+                },
               )
             else
               const SizedBox.shrink(),
 
-            // ✅ Restaurant card (when marker tapped)
             if (selectedRestaurant != null && userLatLng != null)
               Positioned(
                 bottom: 20,
@@ -168,7 +154,6 @@ class _MapPageState extends State<MapPage> {
                 child: buildRestaurantCard(context, selectedRestaurant!),
               ),
 
-            // ✅ Loader
             if (userLatLng == null || provider.isLoading)
               const FullScreenLoader(
                 size: 35,
@@ -176,7 +161,6 @@ class _MapPageState extends State<MapPage> {
                 backgroundColor: Color(0x80000000),
               ),
 
-            // ✅ Empty state overlay (no restaurants)
             if (provider.restaurants.isEmpty && !provider.isLoading)
               Positioned(
                 bottom: MediaQuery.of(context).size.height * 0.03,
@@ -197,17 +181,12 @@ class _MapPageState extends State<MapPage> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.restaurant_menu,
-                        size: 40,
-                        color: Colors.grey,
-                      ),
+                      const Icon(Icons.restaurant_menu, size: 40, color: Colors.grey),
                       const SizedBox(height: 12),
                       Text(
                         "No Restaurants Found Nearby",
-                        style: Styles.textStyleMedium(
-                          context,
-                        ).copyWith(fontWeight: FontWeight.w700),
+                        style: Styles.textStyleMedium(context)
+                            .copyWith(fontWeight: FontWeight.w700),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 8),
@@ -220,7 +199,7 @@ class _MapPageState extends State<MapPage> {
                   ),
                 ),
               ),
-            // ✅ Floating re-center button
+
             if (userLatLng != null && provider.restaurants.isNotEmpty)
               Positioned(
                 bottom: MediaQuery.of(context).size.height * 0.1,

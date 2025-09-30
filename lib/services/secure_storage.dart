@@ -60,4 +60,19 @@ class SecureStorageService {
     // if needed
     // Clear any other AppConstants here
   }
+
+
+   static const _googleApiKeyKey = 'AIzaSyC1q5b6YQz6m_uBeE8r8R3jsK0gAdlePz0';
+
+  static Future<void> saveGoogleApiKey(String apiKey) async {
+    await write(_googleApiKeyKey, apiKey);
+  }
+
+  static Future<String?> readGoogleApiKey() async {
+    return await read(_googleApiKeyKey);
+  }
+
+  static Future<void> deleteGoogleApiKey() async {
+    await delete(_googleApiKeyKey);
+  }
 }
