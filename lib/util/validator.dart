@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
 
 class Validator {
   static String? validateMobile(String? value, String phoneCode) {
@@ -23,6 +24,8 @@ class Validator {
 
     return null;
   }
+
+ 
 
   static String? validateEmail(String? value) {
     if (value!.isEmpty) {
@@ -137,4 +140,7 @@ class Validator {
       return null;
     }
   }
+
+  
+
 }

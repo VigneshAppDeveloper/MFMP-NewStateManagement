@@ -1,15 +1,16 @@
 class PaymentStatusResponse {
-  final String? status;
+  final String? paymentStatus;
 
-  PaymentStatusResponse({this.status});
+  PaymentStatusResponse({this.paymentStatus});
 
   factory PaymentStatusResponse.fromJson(Map<String, dynamic> json) {
+    final data = json['data'];
     return PaymentStatusResponse(
-      status: json['result']?['payment_status']?.toString(),
+      paymentStatus: data != null ? data['payment_status']?.toString() : null,
     );
   }
 
-  bool get isSuccess => status?.toLowerCase() == 'success';
-  bool get isFailed => status?.toLowerCase() == 'failed';
-  bool get isPending => status == null || status!.isEmpty;
+  bool get isSuccess => paymentStatus?.toLowerCase() == 'success';
+  bool get isFailed => paymentStatus?.toLowerCase() == 'failed';
+  bool get isPending => paymentStatus == null || paymentStatus!.isEmpty;
 }

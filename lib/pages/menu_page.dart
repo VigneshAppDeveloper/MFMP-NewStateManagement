@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:my_food_my_price/util/app_contant.dart';
 import 'package:my_food_my_price/util/styles.dart';
 import 'package:provider/provider.dart';
 
 import '../Providers/add_bidder_provider.dart';
+import '../Providers/cart_provider.dart';
 import '../Providers/menu_provider.dart';
 import '../components/HomePageDesigns/home_search_bar.dart';
 import '../components/ResturantMenuDesigns/pickup_date_pickup_point.dart';
@@ -35,15 +37,18 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
   late final TextEditingController searchController;
   String selectedTab = "Fixed Discount Price"; // default tab
   late MenuProvider provider;
+  late final CartProvider _cartProvider;
+
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     searchController = TextEditingController();
+    _cartProvider = context.read<CartProvider>();
 
     provider = context.read<MenuProvider>(); // 👈 capture once here
-
+    provider.setActive(true);
     Future.microtask(() async {
       provider.getRestaurantMenu(
         widget.restaurant.franchiseId,
@@ -51,30 +56,35 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
       );
       provider.resumeAutoUpdaters(widget.restaurant.franchiseId);
       if (provider.timeSlots.isNotEmpty) {
-      await provider.refreshTimeSlot(widget.restaurant.franchiseId);
-    }
+        await provider.refreshTimeSlot(widget.restaurant.franchiseId);
+      }
     });
   }
 
   /// 🧩 Lifecycle handler (pause/resume app)
-@override
-Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
+  @override
+  Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
+    if (!mounted) return;
 
-  if (state == AppLifecycleState.paused) {
-    provider.stopAutoUpdaters();
-  } else if (state == AppLifecycleState.resumed) {
-    provider.resumeAutoUpdaters(widget.restaurant.franchiseId);
-    await provider.refreshTimeSlot(widget.restaurant.franchiseId);
-    // ✅ new line
+    // ✅ Only resume if MenuPage is the visible screen
+    final isVisible = ModalRoute.of(context)?.isCurrent ?? false;
+    if (!isVisible) return;
+
+    if (state == AppLifecycleState.paused) {
+      provider.stopAutoUpdaters();
+    } else if (state == AppLifecycleState.resumed && provider.isActivePage) {
+      provider.resumeAutoUpdaters(widget.restaurant.franchiseId);
+      await provider.refreshTimeSlot(widget.restaurant.franchiseId);
+    }
   }
-}
-
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    provider.setActive(false);
     provider.stopAutoUpdaters();
     provider.clearPickupSelections(); // 👈 safe — no context used
+  _cartProvider.clearCart(); 
     searchController.dispose();
     super.dispose();
   }
@@ -82,6 +92,10 @@ Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final cart = context.watch<CartProvider>();
+    final provider = context.watch<MenuProvider>();
+    final selectedPickupDate = provider.selectedPickupDate;
+    final selectedPickupPoint = provider.selectedPickupPoint;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -268,7 +282,10 @@ Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
                       return SliverList(
                         delegate: SliverChildBuilderDelegate((context, index) {
                           final menu = filteredMenus[index];
-                          return RestaurantMenuCard(menu: menu);
+                          return RestaurantMenuCard(
+                            menu: menu,
+                            restaurant: widget.restaurant,
+                          );
                         }, childCount: filteredMenus.length),
                       );
                     }
@@ -329,7 +346,6 @@ Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
                                 );
                                 return;
                               }
-
 
                               // ✅ Skip if already joined
                               if (bidderProvider.joinedTimerIds.contains(
@@ -402,8 +418,50 @@ Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
           ),
         ),
       ),
+      floatingActionButton:
+          cart.hasItems
+              ? SizedBox(
+                width: size.width * 0.9,
+                height: size.height * 0.07,
+                child: FloatingActionButton.extended(
+                  backgroundColor: Colors.black,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  label: Text(
+                    "VIEW CART  >",
+                    style: Styles.textStyleMediumBold(
+                      context,
+                      color: Colors.white,
+                    ),
+                  ),
+                  onPressed: () {
+                    if (selectedPickupDate == null ||
+                        selectedPickupPoint == null) {
+                      AppDialogue.toast(
+                        "Please select pickup date & point first",
+                      );
+                      return;
+                    }
+
+                    AppRouteName.fixedPricePayment.push(
+                      context,
+                      args: {
+                        "menus": cart.items.keys.toList(),
+                        "pickup_date": DateFormat(
+                          'yyyy-MM-dd',
+                        ).format(selectedPickupDate),
+                        "pickup_point":
+                            selectedPickupPoint
+                                .pickupLocation, // ✅ only string field
+                        "restaurant": widget.restaurant,
+                      },
+                    );
+                  },
+                ),
+              )
+              : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
-
- 
 }

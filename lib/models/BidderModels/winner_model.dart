@@ -1,4 +1,3 @@
-
 import 'package:my_food_my_price/config/app_config.dart';
 
 class WinnerModel {
@@ -35,9 +34,10 @@ class WinnerModel {
   factory WinnerModel.fromJson(Map<String, dynamic> json) {
     // ✅ Ensure proper image path (like RestaurantMenuModel)
     String rawImage = json['menu_image']?.toString() ?? '';
-    String fullImage = rawImage.isNotEmpty && !rawImage.startsWith('http')
-        ? AppConfig.instance.storageBaseUrl + rawImage
-        : rawImage;
+    String fullImage =
+        rawImage.isNotEmpty && !rawImage.startsWith('http')
+            ? AppConfig.instance.storageBaseUrl + rawImage
+            : rawImage;
 
     return WinnerModel(
       status: json['status']?.toString() ?? '',
@@ -55,17 +55,30 @@ class WinnerModel {
       menuImage: fullImage, // ✅ Use processed full URL here
     );
   }
+  Map<String, dynamic> toJson() {
+    return {
+      'status': status,
+      'date': date,
+      'description': description,
+      'timer_id': timerId,
+      'time_slot': timeSlot,
+      'franchise_id': franchiseId,
+      'menu_name': menuName,
+      'final_price': finalPrice,
+      'name': name,
+      'menu_id': menuId,
+      'user_id': userId,
+      'created_at': createdAt,
+      'menu_image': menuImage,
+    };
+  }
 }
-
 
 class LoserData {
   final String userId;
   final String menuId;
 
-  LoserData({
-    required this.userId,
-    required this.menuId,
-  });
+  LoserData({required this.userId, required this.menuId});
 
   factory LoserData.fromJson(Map<String, dynamic> json) {
     return LoserData(

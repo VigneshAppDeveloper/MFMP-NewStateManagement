@@ -49,25 +49,32 @@ class MenuProvider extends ChangeNotifier {
   DateTime? get selectedPickupDate => _selectedPickupDate;
   PickpointModel? get selectedPickupPoint => _selectedPickupPoint;
 
+  bool _isActivePage = false;
+  bool get isActivePage => _isActivePage;
 
+  void setActive(bool val) {
+    _isActivePage = val;
+    if (!val) stopAutoUpdaters();
+  }
 
   void setPickupDate(DateTime date) {
-  _selectedPickupDate = date;
-  notifyListeners();
-}
+    _selectedPickupDate = date;
+    notifyListeners();
+  }
 
-void setPickupPoint(PickpointModel point) {
+  void setPickupPoint(PickpointModel point) {
   _selectedPickupPoint = point;
-  // reset selected date when pickup point changes
-  _selectedPickupDate = null;
+  debugPrint("📍 Pickup point set: ${point.pickupLocation}");
+  debugPrint("📅 Current selected date: $_selectedPickupDate");
   notifyListeners();
 }
 
-void clearPickupSelections() {
-  _selectedPickupDate = null;
-  _selectedPickupPoint = null;
-  // notifyListeners();
-}
+
+  void clearPickupSelections() {
+    _selectedPickupDate = null;
+    _selectedPickupPoint = null;
+    // notifyListeners();
+  }
 
   /// ✅ Fetch menu for a restaurant
   Future<void> getRestaurantMenu(
@@ -307,8 +314,7 @@ void clearPickupSelections() {
 
     for (var slot in _timeSlots) {
       final start = slot.startTime;
-final end = slot.endTime;
-
+      final end = slot.endTime;
 
       final wasActive = slot.isActive;
       final wasUpcoming = slot.isUpcoming;

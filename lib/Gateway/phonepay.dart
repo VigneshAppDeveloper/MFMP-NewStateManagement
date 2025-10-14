@@ -67,45 +67,65 @@ class PhonePeGateway {
     return checksum;
   }
 
-  static Future<Map<String, dynamic>?> startPayment({
-    required double amount,
-    required String transactionId,
-    required String userId,
-  }) async {
-    try {
-      await init();
+ static Future<Map<String, dynamic>?> startPayment({
+  required double amount,
+  required String transactionId,
+  required String userId,
+}) async {
+  try {
+    await init();
 
-      final String base64Body = _createTransactionBody(
-        amount: amount,
-        merchantTransactionId: transactionId,
-        merchantUserId: userId,
-      );
+    final String base64Body = _createTransactionBody(
+      amount: amount,
+      merchantTransactionId: transactionId,
+      merchantUserId: userId,
+    );
 
-      final String checksum = _generateChecksum(base64Body);
+    final String checksum = _generateChecksum(base64Body);
 
-      // ✅ 4 parameters: (body, callbackUrl, checksum, packageName)
-      final response = await PhonePePaymentSdk.startTransaction(
-        base64Body,
-        _callbackUrl,
-        checksum,
-        _packageName,
-      );
+    // (body, callbackUrl, checksum, packageName)
+    final response = await PhonePePaymentSdk.startTransaction(
+      base64Body,
+      _callbackUrl,
+      checksum,
+      _packageName,
+    );
 
-      debugPrint("📡 Payment Response: $response");
+    debugPrint("📡 Raw PhonePe SDK Response: $response");
 
-      if (response != null && response is Map<String, dynamic>) {
-        return {
-          "status": response["status"]?.toString() ?? "UNKNOWN",
-          "error": response["error"]?.toString(),
-        };
-      } else {
-        return {"status": "FAILED", "error": "Invalid response"};
-      }
-    } catch (e, s) {
-      debugPrint("❌ startPayment error: $e\n$s");
-      return {"status": "FAILED", "error": e.toString()};
+    // ✅ Normalize result
+    String statusCode = "";
+    if (response is Map) {
+      statusCode = (response["statusCode"] ??
+              response["status"] ??
+              response["state"] ??
+              "")
+          .toString()
+          .trim()
+          .toLowerCase();
     }
+
+    String normalized;
+    if (statusCode == "completed" || statusCode == "success") {
+      normalized = "success";
+    } else if (statusCode == "pending") {
+      normalized = "pending";
+    } else {
+      normalized = "failed";
+    }
+
+    debugPrint("📡 Normalized Payment Status: $normalized");
+
+    return {
+      "status": normalized,
+      "raw": response?.toString(),
+    };
+  } catch (e, s) {
+    debugPrint("❌ startPayment error: $e\n$s");
+    return {"status": "failed", "error": e.toString()};
   }
+}
+
 }
 // class PhonePeGateway {
 //   static const String _merchantId = "BIRYANIPALAYAMONLINE";

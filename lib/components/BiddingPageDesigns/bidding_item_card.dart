@@ -233,7 +233,7 @@ class _RestaurantBiddingCardState extends State<RestaurantBiddingCard> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children:
-                  [10, 20, 30].map((v) {
+                  [1, 20, 30].map((v) {
                     final newBid = widget.currentBid + v;
                     return ElevatedButton(
                       onPressed:

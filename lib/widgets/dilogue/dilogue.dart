@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:ui';
+
 
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -8,7 +8,7 @@ import 'package:my_food_my_price/custom/dual_type.dart';
 import 'package:my_food_my_price/util/color_constant.dart';
 import 'package:my_food_my_price/util/extension.dart';
 import 'package:my_food_my_price/util/styles.dart';
-import 'package:my_food_my_price/widgets/init_state_widget.dart';
+
 
 class AppDialogue {
   static snackBar(

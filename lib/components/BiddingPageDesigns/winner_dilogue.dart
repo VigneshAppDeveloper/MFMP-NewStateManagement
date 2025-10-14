@@ -88,6 +88,7 @@ class WinnerLooserDialog {
                       }
 
                       final menuProvider = context.read<MenuProvider>();
+                      menuProvider.stopAutoUpdaters();
                       final selectedDate = menuProvider.selectedPickupDate!;
                       final selectedPoint = menuProvider.selectedPickupPoint!;
 

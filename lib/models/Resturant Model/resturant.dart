@@ -76,20 +76,3 @@ class Restaurant {
   }
 }
 
-// class Restaurant {
-//   final String name;
-//   final double rating;
-//   final String area;
-//   final String distanceKm; // "6.7 km"
-//   final String cuisines; // "Chicken Biryani, Mutton Biryani.."
-//   final String image; // asset or network
-
-//   Restaurant({
-//     required this.name,
-//     required this.rating,
-//     required this.area,
-//     required this.distanceKm,
-//     required this.cuisines,
-//     required this.image,
-//   });
-// }

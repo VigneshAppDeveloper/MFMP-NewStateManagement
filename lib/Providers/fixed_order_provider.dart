@@ -5,8 +5,7 @@ import '../models/OrderModels/order_bidding_reponse.dart';
 import '../models/OrderModels/paymnet_reponse.dart';
 import '../models/PickUptModels/pickup_time_model.dart';
 import '../services/api_service.dart';
-
-class BiddingOrderProvider extends ChangeNotifier {
+class FixedOrderProvider extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
@@ -31,8 +30,8 @@ class BiddingOrderProvider extends ChangeNotifier {
   bool _isPickupTimeLoading = false;
   bool get isPickupTimeLoading => _isPickupTimeLoading;
 
-  /// ✅ Place Bidding Order
-  Future<bool> placeBiddingOrder({
+  /// ✅ Place Fixed Order (same as bidding but no timer_id)
+  Future<bool> placeFixedOrder({
     required String franchiseId,
     required String userId,
     required List<String> menuIds,
@@ -49,7 +48,6 @@ class BiddingOrderProvider extends ChangeNotifier {
     required String gst,
     required String pickupDate,
     required int contactCustomer,
-    required String timerId,
   }) async {
     _isLoading = true;
     notifyListeners();
@@ -71,12 +69,11 @@ class BiddingOrderProvider extends ChangeNotifier {
       "gst": gst,
       "pickup_date": pickupDate,
       "contact_customer": contactCustomer,
-      "timer_id": timerId,
     };
 
     try {
       final resp = await APIService.post(
-        UrlPath.biddingUrl.addBiddingOrderDetails,
+        UrlPath.biddingUrl.addFixedOrderDetails,
         data: data,
         auth: true,
         shownoInternet: true,
@@ -84,10 +81,9 @@ class BiddingOrderProvider extends ChangeNotifier {
         timeout: const Duration(seconds: 30),
       );
 
-      debugPrint("📡 [BIDDING ORDER] RESPONSE BODY: ${resp.fullBody}");
+      debugPrint("📡 [FIXED ORDER] RESPONSE: ${resp.fullBody}");
 
       if (resp.status) {
-        // ✅ Success - parse into model
         final model = OrderBiddingResponse.fromJson(resp.fullBody);
         _lastResponse = model;
         errorMessage = null;
@@ -95,15 +91,13 @@ class BiddingOrderProvider extends ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        // ❌ API returned failure
         errorMessage = resp.message ?? "Failed to place order";
         _isLoading = false;
         notifyListeners();
         return false;
       }
     } catch (e) {
-      // ❌ Exception handling
-      debugPrint("❌ Error in placeBiddingOrder: $e");
+      debugPrint("❌ Error in placeFixedOrder: $e");
       errorMessage = e.toString();
       _isLoading = false;
       notifyListeners();
@@ -111,6 +105,7 @@ class BiddingOrderProvider extends ChangeNotifier {
     }
   }
 
+  /// ✅ Reuse wallet update function
   Future<bool> updateWallet({required String wallet}) async {
     _isLoading = true;
     notifyListeners();
@@ -119,7 +114,7 @@ class BiddingOrderProvider extends ChangeNotifier {
       final Map<String, dynamic> data = {"wallet": wallet};
 
       final resp = await APIService.post(
-        UrlPath.loginUrl.userWalletUpdate, // 🔹 endpoint from UrlPath
+        UrlPath.loginUrl.userWalletUpdate,
         data: data,
         auth: true,
         shownoInternet: true,
@@ -130,13 +125,11 @@ class BiddingOrderProvider extends ChangeNotifier {
       debugPrint("📡 [UPDATE WALLET] RESPONSE BODY: ${resp.fullBody}");
 
       if (resp.status) {
-        debugPrint("✅ Wallet updated successfully: ${resp.message}");
         errorMessage = null;
         _isLoading = false;
         notifyListeners();
         return true;
       } else {
-        debugPrint("⚠️ Wallet update failed: ${resp.message}");
         errorMessage = resp.message ?? "Wallet update failed";
         _isLoading = false;
         notifyListeners();
@@ -151,58 +144,53 @@ class BiddingOrderProvider extends ChangeNotifier {
     }
   }
 
- Future<String> fetchPaymentStatus({
-  required String merchantTransactionId,
-}) async {
-  _isLoading = true;
-  notifyListeners();
+  /// ✅ Fetch Payment Status (reuse)
+  Future<String> fetchPaymentStatus({
+    required String merchantTransactionId,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
 
-  try {
-    final url =
-        "${UrlPath.biddingUrl.getPhonePeResponse}/$merchantTransactionId";
-    debugPrint("🌍 [FETCH PAYMENT STATUS] URL: $url");
+    try {
+      final url =
+          "${UrlPath.biddingUrl.getPhonePeResponse}/$merchantTransactionId";
+      debugPrint("🌍 [FETCH PAYMENT STATUS] URL: $url");
 
-    final resp = await APIService.get(
-      url,
-      auth: true,
-      shownoInternet: true,
-      console: true,
-      timeout: const Duration(seconds: 25),
-    );
+      final resp = await APIService.get(
+        url,
+        auth: true,
+        shownoInternet: true,
+        console: true,
+        timeout: const Duration(seconds: 25),
+      );
 
-    debugPrint("📡 [PAYMENT STATUS] RESPONSE: ${resp.fullBody}");
+      debugPrint("📡 [PAYMENT STATUS] RESPONSE: ${resp.fullBody}");
 
-    if (resp.status && resp.fullBody['data'] != null) {
-      final model = PaymentStatusResponse.fromJson(resp.fullBody);
-      _paymentStatus = model;
-      errorMessage = null;
-      debugPrint("✅ Payment status fetched: ${model.paymentStatus}");
-
-      _isLoading = false;
-      notifyListeners();
-      return model.paymentStatus ?? "failed";
-    } else {
+      if (resp.status && resp.fullBody['data'] != null) {
+        final model = PaymentStatusResponse.fromJson(resp.fullBody);
+        _paymentStatus = model;
+        errorMessage = null;
+        _isLoading = false;
+        notifyListeners();
+        return model.paymentStatus ?? "failed";
+      } else {
+        _paymentStatus = null;
+        errorMessage = resp.message ?? "Failed to fetch payment status";
+        _isLoading = false;
+        notifyListeners();
+        return "failed";
+      }
+    } catch (e) {
+      debugPrint("❌ Exception in fetchPaymentStatus: $e");
+      errorMessage = e.toString();
       _paymentStatus = null;
-      errorMessage = resp.message ?? "Failed to fetch payment status";
-      debugPrint("⚠️ Payment status fetch failed: ${resp.message}");
-
       _isLoading = false;
       notifyListeners();
       return "failed";
     }
-  } catch (e) {
-    debugPrint("❌ Exception in fetchPaymentStatus: $e");
-    errorMessage = e.toString();
-    _paymentStatus = null;
-
-    _isLoading = false;
-    notifyListeners();
-    return "failed";
   }
-}
 
-
-  /// 🔁 VERIFY PAYMENT & UPDATE WALLET (only if wallet used)
+  /// ✅ Verify Payment and Update Wallet
   Future<bool> verifyAndUpdateWallet({
   required String merchantTransactionId,
   required String walletUsed,
@@ -235,8 +223,7 @@ class BiddingOrderProvider extends ChangeNotifier {
   }
 }
 
-
-
+  /// ✅ Pickup Time functions (reuse)
   Future<void> getPickupTime({
   required String franchiseId,
   required String pickupDate,
@@ -281,9 +268,10 @@ class BiddingOrderProvider extends ChangeNotifier {
     notifyListeners();
   }
 }
-/// 🔁 Reload pickup times when date changes
-Future<void> reloadPickupTime(String franchiseId, String newDate) async {
-  debugPrint("🔁 Reloading pickup times for $newDate");
-  await getPickupTime(franchiseId: franchiseId, pickupDate: newDate);
-}
+
+
+  Future<void> reloadPickupTime(String franchiseId, String newDate) async {
+    debugPrint("🔁 Reloading pickup times for $newDate");
+    await getPickupTime(franchiseId: franchiseId, pickupDate: newDate);
+  }
 }

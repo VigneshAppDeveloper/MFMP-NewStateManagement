@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../Providers/menu_provider.dart';
 import '../../models/PickUptModels/pickup_point.dart';
 import '../../models/Resturant Model/resturant.dart';
+import '../../services/ntp_service.dart';
 import '../../util/styles.dart';
 
 class PickupDatePickupPoint extends StatefulWidget {
@@ -91,16 +92,17 @@ class _PickupDatePickupPointState extends State<PickupDatePickupPoint> {
                   style: Styles.textSmall(context).copyWith(color: Colors.grey),
                   overflow: TextOverflow.ellipsis,
                 ),
-                items: widget.restaurant.pickupPoints.map((point) {
-                  return DropdownMenuItem<PickpointModel>(
-                    value: point,
-                    child: Text(
-                      point.pickupLocation,
-                      style: Styles.textSmall(context),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  );
-                }).toList(),
+                items:
+                    widget.restaurant.pickupPoints.map((point) {
+                      return DropdownMenuItem<PickpointModel>(
+                        value: point,
+                        child: Text(
+                          point.pickupLocation,
+                          style: Styles.textSmall(context),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    }).toList(),
                 onChanged: (value) {
                   setState(() {
                     _selectedPickup = value;
@@ -123,22 +125,47 @@ class _PickupDatePickupPointState extends State<PickupDatePickupPoint> {
   }
 
   void _showCalendar(BuildContext context) async {
-    // ✅ Now works even if pickup point not selected
-    // since they are independent
-
-    // If any pickup point is selected, show its blocked dates;
-    // otherwise, show empty list (no restriction)
+   debugPrint("🗓 Opening calendar for restaurant: ${widget.restaurant.franchiseId}");
+  debugPrint("🔹 Selected Pickup: ${_selectedPickup?.pickupLocation ?? 'none'}");
     final blockedDates = _selectedPickup?.blockoutDates ?? [];
+    debugPrint("🔹 Blocked Dates Count: ${blockedDates.length}");
+    if (blockedDates.isEmpty) {
+    debugPrint("⚪ No blocked dates found. Showing clean calendar.");
+  }
     final Map<String, String> blockedReasons = {
       for (var b in blockedDates)
         DateFormat('dd-MM-yyyy').format(DateTime.parse(b.date)): b.reason,
     };
 
-    DateTime now = DateTime.now();
-    DateTime firstDate = DateTime(now.year, now.month, now.day);
-    DateTime lastDate = firstDate.add(const Duration(days: 30));
-    List<DateTime> blockedDateList =
-        blockedDates.map((b) => DateTime.parse(b.date)).toList();
+    final ntpService = NtpService();
+    final DateTime ntpTime = await ntpService.getCurrentIST();
+
+    // ✅ Business rule: if current time >= 2 PM, skip today
+    final DateTime firstDate =
+        ntpTime.hour < 14
+            ? DateTime(ntpTime.year, ntpTime.month, ntpTime.day)
+            : DateTime(ntpTime.year, ntpTime.month, ntpTime.day + 1);
+
+    // ✅ Allow selection up to 30 days from firstDate
+    final DateTime lastDate = firstDate.add(const Duration(days: 30));
+
+    final List<DateTime> blockedDateList = blockedDates.isEmpty
+      ? []
+      : blockedDates
+          .where((b) {
+            try {
+              final parsed = DateTime.parse(b.date);
+              return parsed.isAfter(DateTime(2000)); // sanity
+            } catch (_) {
+              debugPrint("⚠️ Invalid date format in block date: ${b.date}");
+              return false;
+            }
+          })
+          .map((b) => DateTime.parse(b.date))
+          .toList();
+
+  debugPrint("📆 Final Blocked Dates: ${blockedDateList.map((e) => e.toIso8601String()).toList()}");
+
 
     showDialog(
       context: context,
@@ -152,15 +179,15 @@ class _PickupDatePickupPointState extends State<PickupDatePickupPoint> {
             width: MediaQuery.of(context).size.width * 0.9,
             height: MediaQuery.of(context).size.height * 0.6,
             child: MediaQuery(
-              data: MediaQuery.of(context).copyWith(
-                textScaler: const TextScaler.linear(1.0),
-              ),
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(1.0)),
               child: CalendarCarousel(
                 onDayPressed: (date, events) async {
-                  String formattedISO =
-                      DateFormat('yyyy-MM-dd').format(date);
-                  String formattedDisplay =
-                      DateFormat('dd-MM-yyyy').format(date);
+                  String formattedISO = DateFormat('yyyy-MM-dd').format(date);
+                  String formattedDisplay = DateFormat(
+                    'dd-MM-yyyy',
+                  ).format(date);
 
                   if (date.isBefore(firstDate) || date.isAfter(lastDate)) {
                     return;
@@ -183,11 +210,14 @@ class _PickupDatePickupPointState extends State<PickupDatePickupPoint> {
                     Navigator.of(context).pop();
                   }
                 },
-                todayTextStyle:
-                    Styles.textStyleMediumBold(context, color: Colors.white),
+                todayTextStyle: Styles.textStyleMediumBold(
+                  context,
+                  color: Colors.white,
+                ),
                 headerTextStyle: Styles.textStyleMediumBold(context),
-                weekdayTextStyle: Styles.textSmall(context)
-                    .copyWith(fontWeight: FontWeight.bold),
+                weekdayTextStyle: Styles.textSmall(
+                  context,
+                ).copyWith(fontWeight: FontWeight.bold),
                 todayButtonColor: Colors.black,
                 selectedDayButtonColor: Colors.black,
                 selectedDayTextStyle: const TextStyle(color: Colors.white),

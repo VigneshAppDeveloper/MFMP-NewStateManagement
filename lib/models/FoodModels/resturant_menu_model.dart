@@ -1,5 +1,5 @@
+import 'package:flutter/material.dart';
 import 'package:my_food_my_price/config/app_config.dart';
-
 
 class RestaurantMenuModel {
   final int id;
@@ -12,12 +12,22 @@ class RestaurantMenuModel {
   final String description;
   final double basePrice;
   final double currentPrice;
-  final String? menuStock;
+  final int menuStock;
+  final int soldStocks;
+  final int avaliableStocks;
+  final bool isFlash;
+  final double? flashPrice;
+  final DateTime? flashStart;
+  final DateTime? flashEnd;
   final String menuImage;
   final String? scrollingText;
   final String status;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final List<MenuTag> tags;
+  final List<MenuRating> ratings;
+  final int ratingsCount;
+  final double? avgStarRating;
 
   RestaurantMenuModel({
     required this.id,
@@ -30,39 +40,185 @@ class RestaurantMenuModel {
     required this.description,
     required this.basePrice,
     required this.currentPrice,
-    this.menuStock,
+    required this.menuStock,
+    required this.soldStocks,
+    required this.avaliableStocks,
+    required this.isFlash,
+    this.flashPrice,
+    this.flashStart,
+    this.flashEnd,
     required this.menuImage,
     this.scrollingText,
     required this.status,
     required this.createdAt,
     required this.updatedAt,
+    required this.tags,
+    required this.ratings,
+    required this.ratingsCount,
+    this.avgStarRating,
   });
 
+  // ---------------- SAFE PARSERS ----------------
+  static int _safeInt(dynamic val, String field) {
+    try {
+      return int.tryParse(val?.toString() ?? '0') ?? 0;
+    } catch (e) {
+      debugPrint("⚠️ Failed to parse int for $field: $val");
+      return 0;
+    }
+  }
+
+  static double _safeDouble(dynamic val, String field) {
+    try {
+      return double.tryParse(val?.toString() ?? '0') ?? 0.0;
+    } catch (e) {
+      debugPrint("⚠️ Failed to parse double for $field: $val");
+      return 0.0;
+    }
+  }
+
+  static DateTime? _safeDate(dynamic val, String field) {
+    if (val == null) return null;
+    try {
+      return DateTime.parse(val.toString());
+    } catch (e) {
+      debugPrint("⚠️ Failed to parse date for $field: $val");
+      return null;
+    }
+  }
+
+  // ---------------- FROM JSON ----------------
   factory RestaurantMenuModel.fromJson(Map<String, dynamic> json) {
     String rawImage = json['menu_image']?.toString() ?? '';
     String fullImage = rawImage.isNotEmpty && !rawImage.startsWith('http')
         ? AppConfig.instance.storageBaseUrl + rawImage
         : rawImage;
 
+    final List<MenuTag> tags = (json['tag'] as List?)
+            ?.map((e) => MenuTag.fromJson(e))
+            .toList() ??
+        [];
+
+    final List<MenuRating> ratings = (json['ratings'] as List?)
+            ?.map((e) => MenuRating.fromJson(e))
+            .toList() ??
+        [];
+
     return RestaurantMenuModel(
-      id: json['id'] ?? 0,
+      id: _safeInt(json['id'], 'id'),
       franchiseId: json['franchise_id']?.toString() ?? '',
-      menuType: json['menu_type'] ?? '',
+      menuType: json['menu_type']?.toString() ?? '',
       menuCategoryId: json['menu_category_id']?.toString(),
-      menuName: json['menu_name'] ?? '',
-      dietType: json['diet_type'] ?? '',
-      halal: json['halal'] ?? '',
-      description: json['description'] ?? '',
-      basePrice: double.tryParse(json['base_price']?.toString() ?? '0') ?? 0,
-      currentPrice: double.tryParse(json['current_price']?.toString() ?? '0') ?? 0,
-      menuStock: json['menu_stock']?.toString(),
+      menuName: json['menu_name']?.toString() ?? '',
+      dietType: json['diet_type']?.toString() ?? '',
+      halal: json['halal']?.toString() ?? '',
+      description: json['description']?.toString() ?? '',
+      basePrice: _safeDouble(json['base_price'], 'base_price'),
+      currentPrice: _safeDouble(json['current_price'], 'current_price'),
+      menuStock: _safeInt(json['menu_stock'], 'menu_stock'),
+      soldStocks: _safeInt(json['sold_stocks'], 'sold_stocks'),
+      avaliableStocks: _safeInt(json['avaliable_stocks'], 'avaliable_stocks'),
+      isFlash: json['is_flash'].toString() == '1',
+      flashPrice: json['flash_price'] == null
+          ? null
+          : _safeDouble(json['flash_price'], 'flash_price'),
+      flashStart: _safeDate(json['flash_start'], 'flash_start'),
+      flashEnd: _safeDate(json['flash_end'], 'flash_end'),
       menuImage: fullImage,
       scrollingText: json['scrolling_text']?.toString(),
-      status: json['status'] ?? '',
-      createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
-      updatedAt: DateTime.tryParse(json['updated_at'] ?? '') ?? DateTime.now(),
+      status: json['status']?.toString() ?? '',
+      createdAt:
+          _safeDate(json['created_at'], 'created_at') ?? DateTime.now(),
+      updatedAt:
+          _safeDate(json['updated_at'], 'updated_at') ?? DateTime.now(),
+      tags: tags,
+      ratings: ratings,
+      ratingsCount: _safeInt(json['ratings_count'], 'ratings_count'),
+      avgStarRating: json['ratings_avg_star_rating'] == null
+          ? null
+          : _safeDouble(
+              json['ratings_avg_star_rating'], 'ratings_avg_star_rating'),
     );
   }
 }
 
 
+class MenuTag {
+  final int id;
+  final String name;
+  final String slug;
+  final String kind;
+  final String tagImage;
+
+  MenuTag({
+    required this.id,
+    required this.name,
+    required this.slug,
+    required this.kind,
+    required this.tagImage,
+  });
+
+  factory MenuTag.fromJson(Map<String, dynamic> json) {
+    String rawImage = json['tag_image']?.toString() ?? '';
+    String fullImage = rawImage.isNotEmpty && !rawImage.startsWith('http')
+        ? AppConfig.instance.storageBaseUrl + rawImage
+        : rawImage;
+
+    return MenuTag(
+      id: json['id'] ?? 0,
+      name: json['name']?.toString() ?? '',
+      slug: json['slug']?.toString() ?? '',
+      kind: json['kind']?.toString() ?? '',
+      tagImage: fullImage,
+    );
+  }
+}
+
+class MenuRating {
+  final int id;
+  final String userId;
+  final String menuId;
+  final double starRating;
+  final String? feedback;
+  final DateTime createdAt;
+  final RatingUser? user;
+
+  MenuRating({
+    required this.id,
+    required this.userId,
+    required this.menuId,
+    required this.starRating,
+    this.feedback,
+    required this.createdAt,
+    this.user,
+  });
+
+  factory MenuRating.fromJson(Map<String, dynamic> json) {
+    return MenuRating(
+      id: json['id'] ?? 0,
+      userId: json['user_id']?.toString() ?? '',
+      menuId: json['menu_id']?.toString() ?? '',
+      starRating: double.tryParse(json['star_rating']?.toString() ?? '0') ?? 0,
+      feedback: json['feed_back']?.toString(),
+      createdAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
+      user: json['user'] != null ? RatingUser.fromJson(json['user']) : null,
+    );
+  }
+}
+
+class RatingUser {
+  final int id;
+  final String name;
+
+  RatingUser({
+    required this.id,
+    required this.name,
+  });
+
+  factory RatingUser.fromJson(Map<String, dynamic> json) {
+    return RatingUser(
+      id: json['id'] ?? 0,
+      name: json['name']?.toString() ?? '',
+    );
+  }
+}

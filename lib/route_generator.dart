@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:my_food_my_price/Providers/bidding_provider.dart';
 import 'package:my_food_my_price/Providers/register_provider.dart';
+import 'package:my_food_my_price/pages/FixedPayment/Widgets/Screens/fixed_failure.dart';
+import 'package:my_food_my_price/pages/FixedPayment/Widgets/Screens/fixed_sucess.dart';
 import 'package:my_food_my_price/pages/Map/location_search_page.dart';
 import 'package:my_food_my_price/pages/OrdersHistory/order_history.dart';
 import 'package:my_food_my_price/pages/Profile%20Settings/about_page.dart';
@@ -13,6 +15,7 @@ import 'package:my_food_my_price/pages/Profile%20Settings/settings_page.dart';
 import 'package:my_food_my_price/pages/app_guide.dart';
 import 'package:my_food_my_price/pages/app_pages.dart';
 import 'package:my_food_my_price/pages/bidding_page.dart';
+import 'package:my_food_my_price/pages/FixedPayment/fixed_price_payment_page.dart';
 import 'package:my_food_my_price/pages/intro_page.dart';
 import 'package:my_food_my_price/pages/login.dart';
 import 'package:my_food_my_price/pages/menu_page.dart';
@@ -26,8 +29,12 @@ import 'package:my_food_my_price/util/extension.dart';
 import 'package:provider/provider.dart';
 
 import 'Providers/bidding_order_provider.dart';
+import 'Providers/fixed_order_provider.dart';
 import 'models/BidderModels/winner_model.dart';
+import 'models/FoodModels/resturant_menu_model.dart';
 import 'models/Resturant Model/resturant.dart';
+import 'pages/BiddinPayment/Screens/bid_failure.dart';
+import 'pages/BiddinPayment/Screens/bid_success.dart';
 import 'pages/BiddinPayment/bidding_payment_page.dart';
 
 enum AppRouteName {
@@ -51,8 +58,13 @@ enum AppRouteName {
   rewards('/rewards'),
   menuPage('/menu_page'),
   orderHistoryPage('/order_history'),
+  fixedPricePayment('/fixed_price_payment_page'),
   biddingPage('/bidding_page'),
   biddingPaymentPage('/bidding_payment_page'),
+  biddingPaymentSuccessPage('/bid_success'),
+  biddingPaymentFailedPage('/bid_failure'),
+  fixedPricePaymentSuccessPage('/fixed_success'),
+  fixedPricePaymentFailedPage('/fixed_failure'),
   appSettingsPage('/app_settings');
 
   /// args: TaskViewScreenArgs
@@ -199,34 +211,60 @@ class RouteGenerator {
               ),
         );
       case AppRouteName.biddingPaymentPage:
-  if (args is Map<String, dynamic>) {
-    final winners = args['winners'] as List<WinnerModel>;
-    final pickupDate = args['pickup_date'] as String;
-    final pickupPoint = args['pickup_point'] as String;
-    final restaurant = args['restaurant'] as Restaurant; // ✅ add this
+        if (args is Map<String, dynamic>) {
+          final winners = args['winners'] as List<WinnerModel>;
+          final pickupDate = args['pickup_date'] as String;
+          final pickupPoint = args['pickup_point'] as String;
+          final restaurant = args['restaurant'] as Restaurant; // ✅ add this
 
-    return MaterialPageRoute(
-      builder: (_) => ChangeNotifierProvider(
-        create: (_) => BiddingOrderProvider(),
-        child: BiddingPaymentPage(
-          winners: winners,
-          pickupDate: pickupDate,
-          pickupPoint: pickupPoint,
-          restaurant: restaurant, // ✅ pass it here
-        ),
-      ),
-    );
-  }
+          return MaterialPageRoute(
+            builder:
+                (_) => ChangeNotifierProvider(
+                  create: (_) => BiddingOrderProvider(),
+                  child: BiddingPaymentPage(
+                    winners: winners,
+                    pickupDate: pickupDate,
+                    pickupPoint: pickupPoint,
+                    restaurant: restaurant, // ✅ pass it here
+                  ),
+                ),
+          );
+        }
 
-  return MaterialPageRoute(
-    builder: (_) => const SafeArea(
-      child: Scaffold(
-        body: Center(child: Text("Invalid Bidding Payment arguments")),
-      ),
-    ),
-  );
+        return MaterialPageRoute(
+          builder:
+              (_) => const SafeArea(
+                child: Scaffold(
+                  body: Center(
+                    child: Text("Invalid Bidding Payment arguments"),
+                  ),
+                ),
+              ),
+        );
 
-
+      case AppRouteName.fixedPricePayment:
+        if (args is Map<String, dynamic>) {
+          return MaterialPageRoute(
+            builder:
+                (_) => ChangeNotifierProvider(
+                  create: (_) => FixedOrderProvider(),
+                  child: FixedPricePaymentPage(
+                    menus: args["menus"],
+                    pickupDate: args["pickup_date"],
+                    pickupPoint: args["pickup_point"],
+                    restaurant: args["restaurant"],
+                  ),
+                ),
+          );
+        }
+        return MaterialPageRoute(
+          builder:
+              (_) => const SafeArea(
+                child: Scaffold(
+                  body: Center(child: Text("Invalid Fixed Payment arguments")),
+                ),
+              ),
+        );
 
       case AppRouteName.menuPage:
         if (args is Map<String, dynamic>) {
@@ -249,7 +287,22 @@ class RouteGenerator {
                 child: Scaffold(body: Text("Invalid MenuPage arguments")),
               ),
         );
-
+      case AppRouteName.biddingPaymentSuccessPage:
+        return MaterialPageRoute(builder: (_) => const BidSuccessScreen());
+      case AppRouteName.biddingPaymentFailedPage:
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(
+          builder:
+              (_) => BidFailureScreen(
+                winners: args['winners'],
+                franchiseId: args['franchiseId'],
+                timerId: args['timerId'],
+              ),
+        );
+      case AppRouteName.fixedPricePaymentSuccessPage:
+        return MaterialPageRoute(builder: (_) => const FixedSuccessScreen());
+      case AppRouteName.fixedPricePaymentFailedPage:
+        return MaterialPageRoute(builder: (_) => const FixedFailureScreen());
       case AppRouteName.registerPage:
         return MaterialPageRoute(
           builder:

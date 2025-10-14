@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_calendar_carousel/flutter_calendar_carousel.dart';
 import 'package:intl/intl.dart';
+import 'package:my_food_my_price/Providers/fixed_order_provider.dart';
 import 'package:my_food_my_price/Providers/menu_provider.dart';
 import 'package:provider/provider.dart';
 
@@ -8,6 +9,7 @@ import '../../../Providers/bidding_order_provider.dart';
 import '../../../models/PickUptModels/pickup_point.dart';
 import '../../../models/PickUptModels/pickup_time_model.dart';
 import '../../../models/Resturant Model/resturant.dart';
+import '../../../services/ntp_service.dart';
 import '../../../util/color_constant.dart';
 import '../../../util/styles.dart';
 
@@ -16,6 +18,9 @@ class PickupDetailsSection extends StatefulWidget {
   final String pickupPoint;
   final String franchiseId;
   final Restaurant restaurant;
+  final bool isFixedOrder; // ✅ new flag
+  final ValueChanged<String>? onDateChange;
+final ValueChanged<String>? onPickupPointChange;
 
   const PickupDetailsSection({
     super.key,
@@ -23,6 +28,9 @@ class PickupDetailsSection extends StatefulWidget {
     required this.pickupPoint,
     required this.franchiseId,
     required this.restaurant,
+    this.isFixedOrder = false, // default = bidding
+    this.onDateChange,
+  this.onPickupPointChange,
   });
 
   @override
@@ -34,128 +42,190 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
   PickpointModel? selectedPickupPoint;
   PickupTimeModel? selectedPickupTime;
 
+  String formatTime(String time24h) {
+    try {
+      final parts = time24h.split(':');
+      if (parts.length < 2) return time24h;
+      final hour = int.parse(parts[0]);
+      final minute = int.parse(parts[1]);
+      final dt = DateTime(0, 1, 1, hour, minute);
+      return DateFormat('h:mm a').format(dt); // e.g., 10:00 AM
+    } catch (_) {
+      return time24h;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
-    selectedDate = DateFormat('dd-MM-yyyy').parse(widget.pickupDate);
+    try {
+      // Handles both ISO strings and dd-MM-yyyy
+      if (widget.pickupDate.contains('-') && widget.pickupDate.length > 8) {
+        selectedDate = DateTime.parse(widget.pickupDate); // e.g. 2025-10-16
+        debugPrint("Parsed ISO date: $selectedDate");
+      } else {
+        selectedDate = DateFormat('dd-MM-yyyy').parse(widget.pickupDate);
+      }
+    } catch (_) {
+      selectedDate = DateTime.now(); // fallback to today
+    }
+
     selectedPickupPoint = context.read<MenuProvider>().selectedPickupPoint;
   }
 
   // ✅ Same logic as MenuPage (blocked calendar)
   void _showCalendar(BuildContext context) async {
+    final parentContext = context; // keep outer context for provider access
     final blockedDates = selectedPickupPoint?.blockoutDates ?? [];
+
     final Map<String, String> blockedReasons = {
       for (var b in blockedDates)
         DateFormat('dd-MM-yyyy').format(DateTime.parse(b.date)): b.reason,
     };
 
-    DateTime now = DateTime.now();
-    DateTime firstDate = DateTime(now.year, now.month, now.day);
-    DateTime lastDate = firstDate.add(const Duration(days: 30));
-    List<DateTime> blockedDateList =
+    // ✅ Get accurate current IST time using global NtpService
+    final ntpService = NtpService();
+    final DateTime ntpTime = await ntpService.getCurrentIST();
+
+    // ✅ Business rule: if current time >= 2 PM, skip today
+    final DateTime firstDate =
+        ntpTime.hour < 14
+            ? DateTime(ntpTime.year, ntpTime.month, ntpTime.day)
+            : DateTime(ntpTime.year, ntpTime.month, ntpTime.day + 1);
+
+    // ✅ Allow selection up to 30 days from firstDate
+    final DateTime lastDate = firstDate.add(const Duration(days: 30));
+
+    final List<DateTime> blockedDateList =
         blockedDates.map((b) => DateTime.parse(b.date)).toList();
 
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           contentPadding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          content: SizedBox(
-            width: MediaQuery.of(context).size.width * 0.9,
-            height: MediaQuery.of(context).size.height * 0.6,
-            child: MediaQuery(
-              data: MediaQuery.of(context).copyWith(
-                textScaler: const TextScaler.linear(1.0),
-              ),
-              child: CalendarCarousel(
-                onDayPressed: (date, events) async {
-                  String formattedDisplay =
-                      DateFormat('dd-MM-yyyy').format(date);
+          content: Builder(
+            builder: (innerContext) {
+              return SizedBox(
+                width: MediaQuery.of(innerContext).size.width * 0.9,
+                height: MediaQuery.of(innerContext).size.height * 0.6,
+                child: MediaQuery(
+                  data: MediaQuery.of(
+                    innerContext,
+                  ).copyWith(textScaler: const TextScaler.linear(1.0)),
+                  child: CalendarCarousel(
+                    onDayPressed: (date, events) async {
+                      String formattedDisplay = DateFormat(
+                        'dd-MM-yyyy',
+                      ).format(date);
 
-                  if (date.isBefore(firstDate) || date.isAfter(lastDate)) {
-                    return;
-                  } else if (blockedDateList.any(
-                    (d) =>
-                        d.year == date.year &&
-                        d.month == date.month &&
-                        d.day == date.day,
-                  )) {
-                    _showBlockedDateReasonDialog(
-                        context, formattedDisplay, blockedReasons);
-                  } else {
-                    setState(() {
-                      selectedDate = date;
-                    });
-                    final formatted =
-                        DateFormat('dd-MM-yyyy').format(selectedDate);
-                    await context
-                        .read<BiddingOrderProvider>()
-                        .reloadPickupTime(widget.franchiseId, formatted);
-                    Navigator.of(context).pop();
-                  }
-                },
-                todayTextStyle:
-                    Styles.textStyleMediumBold(context, color: Colors.white),
-                headerTextStyle: Styles.textStyleMediumBold(context),
-                weekdayTextStyle: Styles.textSmall(context)
-                    .copyWith(fontWeight: FontWeight.bold),
-                todayButtonColor: Colors.black,
-                selectedDayButtonColor: Colors.black,
-                selectedDayTextStyle: const TextStyle(color: Colors.white),
-                weekendTextStyle: const TextStyle(color: Colors.black),
-                todayBorderColor: Colors.transparent,
-                daysHaveCircularBorder: true,
-                customDayBuilder: (
-                  bool isSelectable,
-                  int index,
-                  bool isSelectedDay,
-                  bool isToday,
-                  bool isPrevMonthDay,
-                  TextStyle textStyle,
-                  bool isNextMonthDay,
-                  bool isThisMonthDay,
-                  DateTime date,
-                ) {
-                  if (date.isBefore(firstDate) || date.isAfter(lastDate)) {
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: Colors.grey[300],
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text('${date.day}',
-                            style: const TextStyle(color: Colors.grey)),
-                      ),
-                    );
-                  }
+                      if (date.isBefore(firstDate) || date.isAfter(lastDate)) {
+                        return;
+                      } else if (blockedDateList.any(
+                        (d) =>
+                            d.year == date.year &&
+                            d.month == date.month &&
+                            d.day == date.day,
+                      )) {
+                        _showBlockedDateReasonDialog(
+                          innerContext,
+                          formattedDisplay,
+                          blockedReasons,
+                        );
+                      } else {
+                        setState(() {
+                          selectedDate = date;
+                        });
+                        final formatted = DateFormat(
+                          'dd-MM-yyyy',
+                        ).format(selectedDate);
+                        widget.onDateChange?.call(formatted);
 
-                  bool isBlocked = blockedDateList.any(
-                    (d) =>
-                        d.year == date.year &&
-                        d.month == date.month &&
-                        d.day == date.day,
-                  );
+                        // ✅ use parentContext here — it has BiddingOrderProvider
+                        if (widget.isFixedOrder) {
+                          await parentContext
+                              .read<FixedOrderProvider>()
+                              .reloadPickupTime(widget.franchiseId, formatted);
+                        } else {
+                          await parentContext
+                              .read<BiddingOrderProvider>()
+                              .reloadPickupTime(widget.franchiseId, formatted);
+                        }
 
-                  if (isBlocked) {
-                    return Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.red,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text('${date.day}',
-                            style: const TextStyle(color: Colors.white)),
-                      ),
-                    );
-                  }
+                        Navigator.of(innerContext).pop();
+                      }
+                    },
+                    todayTextStyle: Styles.textStyleMediumBold(
+                      context,
+                      color: Colors.white,
+                    ),
+                    headerTextStyle: Styles.textStyleMediumBold(context),
+                    weekdayTextStyle: Styles.textSmall(
+                      context,
+                    ).copyWith(fontWeight: FontWeight.bold),
+                    todayButtonColor: Colors.black,
+                    selectedDayButtonColor: Colors.black,
+                    selectedDayTextStyle: const TextStyle(color: Colors.white),
+                    weekendTextStyle: const TextStyle(color: Colors.black),
+                    todayBorderColor: Colors.transparent,
+                    daysHaveCircularBorder: true,
+                    customDayBuilder: (
+                      bool isSelectable,
+                      int index,
+                      bool isSelectedDay,
+                      bool isToday,
+                      bool isPrevMonthDay,
+                      TextStyle textStyle,
+                      bool isNextMonthDay,
+                      bool isThisMonthDay,
+                      DateTime date,
+                    ) {
+                      if (date.isBefore(firstDate) || date.isAfter(lastDate)) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Colors.grey[300],
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${date.day}',
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                        );
+                      }
 
-                  return null;
-                },
-              ),
-            ),
+                      bool isBlocked = blockedDateList.any(
+                        (d) =>
+                            d.year == date.year &&
+                            d.month == date.month &&
+                            d.day == date.day,
+                      );
+
+                      if (isBlocked) {
+                        return Container(
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${date.day}',
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
+                        );
+                      }
+
+                      return null;
+                    },
+                  ),
+                ),
+              );
+            },
           ),
         );
       },
@@ -163,22 +233,35 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
   }
 
   void _showBlockedDateReasonDialog(
-      BuildContext context, String date, Map<String, String> blockedReasons) {
+    BuildContext context,
+    String date,
+    Map<String, String> blockedReasons,
+  ) {
     final reason = blockedReasons[date] ?? 'Unavailable';
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text("Blocked Date",
-              style: Styles.textStyleMediumBold(context,
-                  color: AppColor.maincolor)),
-          content: Text("Reason: $reason",
-              style: Styles.textStyleMedium(context)),
+          title: Text(
+            "Blocked Date",
+            style: Styles.textStyleMediumBold(
+              context,
+              color: AppColor.maincolor,
+            ),
+          ),
+          content: Text(
+            "Reason: $reason",
+            style: Styles.textStyleMedium(context),
+          ),
           actions: [
             TextButton(
-              child: Text("OK",
-                  style: Styles.textStyleMediumBold(context,
-                      color: AppColor.maincolor)),
+              child: Text(
+                "OK",
+                style: Styles.textStyleMediumBold(
+                  context,
+                  color: AppColor.maincolor,
+                ),
+              ),
               onPressed: () => Navigator.of(context).pop(),
             ),
           ],
@@ -190,7 +273,11 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final biddingProvider = context.watch<BiddingOrderProvider>();
+    final isFixed = widget.isFixedOrder; // added flag earlier
+    final biddingProvider =
+        isFixed
+            ? context.watch<FixedOrderProvider>() as dynamic
+            : context.watch<BiddingOrderProvider>() as dynamic;
     final pickupPoints = widget.restaurant.pickupPoints;
 
     return Card(
@@ -224,20 +311,26 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
               context,
               icon: Icons.access_time,
               value: selectedPickupTime?.time,
-              hint: biddingProvider.isLoading
-                  ? "Loading..."
-                  : (biddingProvider.pickupTimes.isEmpty
-                      ? "No pickup times"
-                      : "Select Pickup Time"),
-              items: biddingProvider.pickupTimes.map((e) => e.time).toList(),
-              onChanged: (val) {
-                final match = biddingProvider.pickupTimes.firstWhere(
-                  (t) => t.time == val,
-                  orElse: () => PickupTimeModel(id: 0, time: val ?? ""),
-                );
-                setState(() => selectedPickupTime = match);
-                biddingProvider.selectedPickupTime = match;
-              },
+              hint:
+                  biddingProvider.isLoading
+                      ? "Loading..."
+                      : (biddingProvider.pickupTimes.isEmpty
+                          ? "No pickup times"
+                          : "Select Pickup Time"),
+              items: List<String>.from(
+                biddingProvider.pickupTimes.map((e) => formatTime(e.time)),
+              ),
+
+               onChanged: biddingProvider.pickupTimes.isEmpty
+      ? null // ✅ disable dropdown when no data
+      : (val) {
+          final match = biddingProvider.pickupTimes.firstWhere(
+            (t) => t.time == val,
+            orElse: () => PickupTimeModel(id: 0, time: val ?? ""),
+          );
+          setState(() => selectedPickupTime = match);
+          biddingProvider.selectedPickupTime = match;
+        },
             ),
           ],
         ),
@@ -246,7 +339,9 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
   }
 
   Widget _pickupPointDropdown(
-      BuildContext context, List<PickpointModel> points) {
+    BuildContext context,
+    List<PickpointModel> points,
+  ) {
     final size = MediaQuery.of(context).size;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
@@ -259,33 +354,45 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
         child: DropdownButton<PickpointModel>(
           isExpanded: true,
           value: selectedPickupPoint,
-          hint: Text("Select Pickup Point",
-              style: Styles.textStyleMedium(context, color: Colors.grey)),
-          items: points.map((point) {
-            return DropdownMenuItem<PickpointModel>(
-              value: point,
-              child: Row(
-                children: [
-                  Icon(Icons.location_on_outlined,
-                      color: AppColor.maincolor, size: 20),
-                  SizedBox(width: size.width * 0.03),
-                  Expanded(
-                    child: Text(point.pickupLocation,
-                        style: Styles.textStyleMedium(context),
-                        overflow: TextOverflow.ellipsis),
+          hint: Text(
+            "Select Pickup Point",
+            style: Styles.textStyleMedium(context, color: Colors.grey),
+          ),
+          items:
+              points.map((point) {
+                return DropdownMenuItem<PickpointModel>(
+                  value: point,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.location_on_outlined,
+                        color: AppColor.maincolor,
+                        size: 20,
+                      ),
+                      SizedBox(width: size.width * 0.03),
+                      Expanded(
+                        child: Text(
+                          point.pickupLocation,
+                          style: Styles.textStyleMedium(context),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            );
-          }).toList(),
+                );
+              }).toList(),
           onChanged: (value) {
             setState(() => selectedPickupPoint = value);
             if (value != null) {
               context.read<MenuProvider>().setPickupPoint(value);
+              widget.onPickupPointChange?.call(value.pickupLocation);
             }
           },
-          icon: const Icon(Icons.keyboard_arrow_down,
-              color: Colors.black, size: 20),
+          icon: const Icon(
+            Icons.keyboard_arrow_down,
+            color: Colors.black,
+            size: 20,
+          ),
         ),
       ),
     );
@@ -297,7 +404,7 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
     required String? value,
     required String hint,
     required List<String> items,
-    required ValueChanged<String?> onChanged,
+    ValueChanged<String?>? onChanged,
   }) {
     final size = MediaQuery.of(context).size;
     return Container(
@@ -311,27 +418,35 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
         child: DropdownButton<String>(
           isExpanded: true,
           value: value,
-          hint: Text(hint,
-              style: Styles.textStyleMedium(context, color: Colors.grey)),
-          items: items.map((e) {
-            return DropdownMenuItem<String>(
-              value: e,
-              child: Row(
-                children: [
-                  Icon(icon, color: AppColor.maincolor, size: 20),
-                  SizedBox(width: size.width * 0.03),
-                  Expanded(
-                    child: Text(e,
-                        style: Styles.textStyleMedium(context),
-                        overflow: TextOverflow.ellipsis),
+          hint: Text(
+            hint,
+            style: Styles.textStyleMedium(context, color: Colors.grey),
+          ),
+          items:
+              items.map((e) {
+                return DropdownMenuItem<String>(
+                  value: e,
+                  child: Row(
+                    children: [
+                      Icon(icon, color: AppColor.maincolor, size: 20),
+                      SizedBox(width: size.width * 0.03),
+                      Expanded(
+                        child: Text(
+                          e,
+                          style: Styles.textStyleMedium(context),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            );
-          }).toList(),
+                );
+              }).toList(),
           onChanged: onChanged,
-          icon: const Icon(Icons.keyboard_arrow_down,
-              color: Colors.black, size: 20),
+          icon: const Icon(
+            Icons.keyboard_arrow_down,
+            color: Colors.black,
+            size: 20,
+          ),
         ),
       ),
     );
@@ -361,9 +476,7 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
           children: [
             Icon(icon, color: AppColor.maincolor, size: 20),
             SizedBox(width: size.width * 0.03),
-            Expanded(
-              child: Text(date, style: Styles.textStyleMedium(context)),
-            ),
+            Expanded(child: Text(date, style: Styles.textStyleMedium(context))),
             const Icon(Icons.edit, size: 18, color: Colors.grey),
           ],
         ),

@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:my_food_my_price/models/LoginModels/profile_mode.dart';
-import 'package:my_food_my_price/models/api_validation_model.dart';
 import 'package:my_food_my_price/models/app_state_model.dart';
 import 'package:my_food_my_price/util/app_contant.dart';
 

@@ -32,5 +32,6 @@ class BiddingUrl {
     final String getPickupTime = 'get_pickup_time';
 
   final String addBiddingOrderDetails = 'add_order_and_payment_details';
+  final String addFixedOrderDetails = 'add_fixed_order_details';
   final String getPhonePeResponse = 'get_phonepe_response';
 }

@@ -3,6 +3,7 @@ import 'package:device_preview/device_preview.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:my_food_my_price/Providers/add_bidder_provider.dart';
+import 'package:my_food_my_price/Providers/cart_provider.dart';
 import 'package:my_food_my_price/Providers/location_provider.dart';
 import 'package:my_food_my_price/Providers/login_provider.dart';
 import 'package:my_food_my_price/Providers/menu_provider.dart';
@@ -81,7 +82,7 @@ class _MyAppState extends State<MyApp> {
                   ChangeNotifierProvider(create: (_) => RestaurantProvider()),
                   ChangeNotifierProvider(create: (_) => MenuProvider()),
                   ChangeNotifierProvider(create: (_) => BidderProvider()),
-                //  ChangeNotifierProvider(create: (_) => BidderProvider()),
+                  ChangeNotifierProvider(create: (_) => CartProvider()),
                 ],
                 child: MaterialApp(
                   localizationsDelegates: const [],
