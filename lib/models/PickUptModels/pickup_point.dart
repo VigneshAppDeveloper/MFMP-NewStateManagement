@@ -1,3 +1,5 @@
+import 'block_out_date_model.dart';
+
 class PickpointModel {
   final int pickupId;
   final String ownerName;
@@ -7,6 +9,7 @@ class PickpointModel {
   final double longitude;
   final String googleMapLink;
   final double ppDistance;
+  final List<BlockoutDateModel> blockoutDates; // ✅ added
 
   PickpointModel({
     required this.pickupId,
@@ -17,6 +20,7 @@ class PickpointModel {
     required this.longitude,
     required this.googleMapLink,
     required this.ppDistance,
+    required this.blockoutDates,
   });
 
   factory PickpointModel.fromJson(Map<String, dynamic> json) {
@@ -36,6 +40,9 @@ class PickpointModel {
       longitude: toDouble(json['longitude']),
       googleMapLink: json['googlemap_link']?.toString() ?? '',
       ppDistance: toDouble(json['pp_distance']),
+      blockoutDates: (json['blockout_dates'] as List<dynamic>? ?? [])
+          .map((e) => BlockoutDateModel.fromJson(e))
+          .toList(),
     );
   }
 }

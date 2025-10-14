@@ -16,7 +16,9 @@ import 'package:my_food_my_price/util/styles.dart';
 import 'package:new_version_plus/new_version_plus.dart';
 import 'package:provider/provider.dart';
 
+import '../Providers/add_bidder_provider.dart';
 import '../Providers/location_provider.dart';
+import '../services/ntp_service.dart';
 
 class Splash extends StatefulWidget {
   const Splash({super.key});
@@ -47,7 +49,7 @@ class _SplashState extends State<Splash> {
 
   Future _getData() async {
     await context.read<LoginProvider>().initialFetch();
-    await context.read<LocationProvider>().loadGpsLocation(); 
+    await context.read<LocationProvider>().loadGpsLocation();
   }
 
   void _proceedToNextScreen() async {
@@ -57,9 +59,9 @@ class _SplashState extends State<Splash> {
 
       if (appState.isLoggedIn) {
         try {
-          await context
-              .read<LoginProvider>()
-              .getProfile(); // ✅ Load profile once
+          await context.read<LoginProvider>().getProfile();
+          // final bidderProvider = context.read<BidderProvider>();
+          // await bidderProvider.loadJoinedTimers(); // ✅ Load profile once
         } catch (e) {
           debugPrint("❌ Error loading profile: $e");
         }

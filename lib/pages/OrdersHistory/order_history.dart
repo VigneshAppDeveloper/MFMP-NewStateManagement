@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../models/OrderModels/order_model.dart';
 import '../../widgets/app_bar.dart';
-import '../../widgets/full_shimmer_loader.dart';
+import '../../widgets/app_shimmer.dart';
 import '../../widgets/order_history_card.dart';
 
 

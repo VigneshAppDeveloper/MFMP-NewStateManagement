@@ -1,5 +1,5 @@
 import '../../config/app_config.dart';
-import '../PickUpPointModel/pickup_point.dart';
+import '../PickUptModels/pickup_point.dart';
 
 class Restaurant {
   final String franchiseId;

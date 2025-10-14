@@ -581,12 +581,21 @@ class APIResp {
     if (rawStatus is bool) {
       parsedStatus = rawStatus;
     } else if (rawStatus is int) {
-      parsedStatus = rawStatus == 1;
+       parsedStatus = rawStatus == 1 || rawStatus == 200;
     } else if (rawStatus is String) {
       parsedStatus =
           rawStatus.toLowerCase() == 'success' || rawStatus == 'true';
     } else {
       parsedStatus = false;
+    }
+      dynamic parsedData;
+    if (json.containsKey('data') && json['data'] != null) {
+      parsedData = json['data'];
+    } else if (json.containsKey('results') && json['results'] != null) {
+      parsedData = json['results'];
+      parsedStatus = true; // treat as valid even if no 'status' key
+    } else if (json.containsKey('message')) {
+      parsedData = json['message'];
     }
     debugPrint("✅ Parsed Status: $parsedStatus"); // 👈 add this
     debugPrint("✅ Data: ${json['data']} | Message: ${json['message']}");

@@ -1,8 +1,10 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../models/FoodModels/resturant_menu_model.dart';
 import '../../util/name_formatter.dart';
 import '../../util/styles.dart';
+import '../../widgets/app_loader.dart';
 import '../../widgets/expandable_text.dart';
 
 class RestaurantMenuCard extends StatefulWidget {
@@ -16,15 +18,18 @@ class RestaurantMenuCard extends StatefulWidget {
 class _RestaurantMenuCardState extends State<RestaurantMenuCard> {
   int quantity = 0;
 
-  String _foodTypeAsset(FoodType type) {
-    switch (type) {
-      case FoodType.veg:
-        return "assets/figmaIcons/veg.png";
-      case FoodType.nonVeg:
-        return "assets/figmaIcons/non-veg.png";
-      case FoodType.halal:
-        return "assets/figmaIcons/halal.png";
+  String _foodTypeAsset() {
+    final type = widget.menu.dietType.toLowerCase();
+    final halal = widget.menu.halal.toLowerCase();
+
+    if (type.contains('non-veg')) {
+      return "assets/figmaIcons/non-veg.png";
+    } else if (type.contains('veg')) {
+      return "assets/figmaIcons/veg.png";
+    } else if (halal == 'yes') {
+      return "assets/figmaIcons/halal.png";
     }
+    return "assets/figmaIcons/veg.png"; // fallback
   }
 
   @override
@@ -39,8 +44,7 @@ class _RestaurantMenuCardState extends State<RestaurantMenuCard> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withAlpha(13), // 5% opacity
-
+            color: Colors.black.withAlpha(13),
             blurRadius: 5,
             offset: const Offset(0, 2),
           ),
@@ -49,20 +53,31 @@ class _RestaurantMenuCardState extends State<RestaurantMenuCard> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 📝 Left section: text
+          // 🔹 Left section — details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Title
-                Text(
-                  NameFormatter.titleCase(widget.menu.title),
-                  style: Styles.textSmall(
-                    context,
-                  ).copyWith(fontWeight: FontWeight.bold),
-                  textScaler: const TextScaler.linear(1.0),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
+                // Name
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        NameFormatter.titleCase(widget.menu.menuName),
+                        style: Styles.textSmall(
+                          context,
+                        ).copyWith(fontWeight: FontWeight.bold),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Image.asset(
+                      "assets/figmaIcons/halal.png",
+                      height: size.height * 0.025,
+                    ),
+                    const SizedBox(width: 2),
+                    Image.asset(_foodTypeAsset(), height: size.height * 0.022),
+                  ],
                 ),
                 SizedBox(height: size.height * 0.005),
 
@@ -70,67 +85,47 @@ class _RestaurantMenuCardState extends State<RestaurantMenuCard> {
                 Row(
                   children: [
                     Text(
-                      "₹${widget.menu.price.toStringAsFixed(1)}",
+                      "₹${widget.menu.currentPrice.toStringAsFixed(1)}",
                       style: Styles.textSmall(context).copyWith(
                         color: Colors.red,
                         fontWeight: FontWeight.bold,
                       ),
-                      textScaler: const TextScaler.linear(1.0),
                     ),
-                    if (widget.menu.oldPrice != null) ...[
-                      const SizedBox(width: 6),
-                      Text(
-                        "₹${widget.menu.oldPrice!.toStringAsFixed(1)}",
-                        style: Styles.textSmall(context).copyWith(
-                          color: Colors.black54,
-                          decoration: TextDecoration.lineThrough,
-                        ),
-                        textScaler: const TextScaler.linear(1.0),
+                    const SizedBox(width: 6),
+                    Text(
+                      "₹${widget.menu.basePrice.toStringAsFixed(1)}",
+                      style: Styles.textSmall(context).copyWith(
+                        color: Colors.black54,
+                        decoration: TextDecoration.lineThrough,
                       ),
-                      const SizedBox(width: 8),
-                      // ✅ Food type icons
-                      ...widget.menu.foodTypes.map(
-                        (type) => Padding(
-                          padding: const EdgeInsets.only(left: 4),
-                          child: Image.asset(
-                            _foodTypeAsset(type),
-                            height: MediaQuery.of(context).size.height * 0.025,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ],
                 ),
                 SizedBox(height: size.height * 0.005),
 
-                // Rating + Qty
+                // Rating + Available qty placeholder
                 Row(
                   children: [
                     const Icon(Icons.star, color: Colors.green, size: 14),
                     const SizedBox(width: 4),
                     Text(
-                      widget.menu.rating.toString(),
+                      "3.5 Ratings", // static for now (can add from backend)
                       style: Styles.textExtraSmall(context),
-                      textScaler: const TextScaler.linear(1.0),
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      "Available Qty : ${widget.menu.availableQty}",
-                      style: Styles.textExtraSmall(
-                        context,
-                        color: Colors.black,
-                      ),
-                      textScaler: const TextScaler.linear(1.0),
+                      "Available Qty : ${widget.menu.menuStock ?? '—'}",
+                      style: Styles.textExtraSmall(context),
                     ),
                   ],
                 ),
                 SizedBox(height: size.height * 0.005),
 
-                // Description with expandable text
+                // Description
                 ExpandableText(
                   widget.menu.description,
                   trimLines: 1,
+
                   style: Styles.textExtraSmall(context, color: Colors.black87),
                 ),
               ],
@@ -139,68 +134,75 @@ class _RestaurantMenuCardState extends State<RestaurantMenuCard> {
 
           const SizedBox(width: 10),
 
-          // 🍕 Right section: image + button
+          // 🔹 Right section — image & button
           Stack(
             alignment: Alignment.bottomCenter,
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  widget.menu.image,
+                child: CachedNetworkImage(
+                  imageUrl: widget.menu.menuImage,
                   height: size.height * 0.13,
                   width: size.width * 0.25,
                   fit: BoxFit.cover,
+                  placeholder:
+                      (_, __) => const Center(child: FullScreenLoader()),
+                  errorWidget:
+                      (_, __, ___) => Image.asset("assets/icons/product-1.jpg"),
                 ),
+                // Image.network(
+                //   widget.menu.menuImage,
+                //   height: size.height * 0.13,
+                //   width: size.width * 0.25,
+                //   fit: BoxFit.cover,
+                //   errorBuilder: (_, __, ___) => const Icon(Icons.image_not_supported, size: 50),
+                // ),
               ),
-
-              // Button state
               Positioned(
                 bottom: 5,
-                child:
-                    quantity == 0
-                        ? GestureDetector(
-                          onTap: () {
-                            setState(() => quantity = 1);
-                          },
-                          child: Container(
-                            width: size.width * 0.24,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFF0000),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              "ADD",
-                              style: Styles.textSmall(context).copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 250),
+                  child:
+                      quantity == 0
+                          ? GestureDetector(
+                            key: const ValueKey('addButton'),
+                            onTap: () => setState(() => quantity = 1),
+                            child: Container(
+                              width: size.width * 0.24,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              alignment: Alignment.center,
+                              child: Text(
+                                "ADD",
+                                style: Styles.textSmall(context).copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ),
-                          ),
-                        )
-                        : Container(
-                          height: size.height * (35 / 812), // responsive height
-                          padding: EdgeInsets.symmetric(
-                            horizontal: size.width * 0.02,
-                          ), // flexible space
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF12B400),
-                            borderRadius: BorderRadius.circular(1000),
-                          ),
-                          child: IntrinsicWidth(
-                            // makes width depend on children
+                          )
+                          : Container(
+                            key: const ValueKey('qtySelector'),
+                            height: 42,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF12B400),
+                              borderRadius: BorderRadius.circular(100),
+                            ),
                             child: Row(
-                              mainAxisSize:
-                                  MainAxisSize.min, // shrink to fit children
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 _qtyButton("-", () {
-                                  if (quantity > 1) {
-                                    setState(() => quantity--);
-                                  } else {
-                                    setState(() => quantity = 0);
-                                  }
+                                  setState(() {
+                                    if (quantity > 1) {
+                                      quantity--;
+                                    } else {
+                                      quantity = 0;
+                                    }
+                                  });
                                 }),
                                 Padding(
                                   padding: const EdgeInsets.symmetric(
@@ -219,7 +221,7 @@ class _RestaurantMenuCardState extends State<RestaurantMenuCard> {
                               ],
                             ),
                           ),
-                        ),
+                ),
               ),
             ],
           ),

@@ -23,7 +23,7 @@ class HomeSearchBar extends StatelessWidget {
         const SizedBox(width: 10),
 
         // ✅ Filter Button with proper callback
-        buildFilterButton(context, onFilterTap),
+        //buildFilterButton(context, onFilterTap),
       ],
     );
   }
@@ -57,8 +57,8 @@ class HomeSearchBar extends StatelessWidget {
                     height: size.height * 0.035,
                     color: Colors.grey.shade300,
                   ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.mic_none_rounded, size: 20, color: Colors.black),
+                  // const SizedBox(width: 8),
+                  // const Icon(Icons.mic_none_rounded, size: 20, color: Colors.black),
                 ],
               ),
             ),

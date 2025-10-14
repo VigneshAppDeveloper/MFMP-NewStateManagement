@@ -1,4 +1,5 @@
 class ProfileModel {
+    final String id;
   final String userId;
   final String name;
   final String email;
@@ -9,6 +10,7 @@ class ProfileModel {
   final String imageUrl;
 
   ProfileModel({
+    required this.id,
     required this.userId,
     required this.name,
     required this.email,
@@ -21,6 +23,7 @@ class ProfileModel {
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) {
     return ProfileModel(
+      id: json['id']?.toString() ?? '',
       userId: json['user_id']?.toString() ?? '',
       name: json['name']?.toString() ?? '',
       email: json['email']?.toString() ?? '',
@@ -34,6 +37,7 @@ class ProfileModel {
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'user_id': userId,
       'name': name,
       'email': email,

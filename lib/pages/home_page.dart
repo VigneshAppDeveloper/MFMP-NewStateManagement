@@ -11,9 +11,9 @@ import 'package:my_food_my_price/util/color_constant.dart';
 import 'package:my_food_my_price/util/styles.dart';
 import 'package:provider/provider.dart';
 
-import '../services/secure_storage.dart';
-import '../util/app_contant.dart';
-import '../widgets/full_shimmer_loader.dart';
+import '../route_generator.dart';
+import '../widgets/app_shimmer.dart';
+import '../widgets/shimmer_type.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -28,81 +28,22 @@ class _HomePageState extends State<HomePage> {
 
   bool initalizedResturant = false;
 
-  // final restaurants = <Restaurant>[
-  //   Restaurant(
-  //     name: "biryani palayam",
-  //     rating: 4.2,
-  //     area: "Kollampalayam",
-  //     distanceKm: "6.7 km",
-  //     cuisines: "Chicken Biryani, Mutton Biryani..",
-  //     image: "assets/figmaIcons/bpm.png",
-  //   ),
-  //   Restaurant(
-  //     name: "palmshore",
-  //     rating: 4.5,
-  //     area: "Porur",
-  //     distanceKm: "1.8 km",
-  //     cuisines: "Grill, BBQ, Arabian..",
-  //     image: "assets/figmaIcons/palmshore.png",
-  //   ),
-  //   Restaurant(
-  //     name: "SS Hydrababad Biryani",
-  //     rating: 4.5,
-  //     area: "viyasarbadi",
-  //     distanceKm: "5.3 km",
-  //     cuisines: "Biryani, Kebabs..",
-  //     image: "assets/figmaIcons/hydbiryani.png",
-  //   ),
-  //     Restaurant(
-  //     name: "palmshore",
-  //     rating: 4.5,
-  //     area: "Porur",
-  //     distanceKm: "1.8 km",
-  //     cuisines: "Grill, BBQ, Arabian..",
-  //     image: "assets/figmaIcons/palmshore.png",
-  //   ),
-  //   Restaurant(
-  //     name: "ss hydrababad Biryani",
-  //     rating: 4.5,
-  //     area: "Viyasarbadi",
-  //     distanceKm: "5.3 km",
-  //     cuisines: "Biryani, Kebabs..",
-  //     image: "assets/figmaIcons/hydbiryani.png",
-  //   ),
-  //     Restaurant(
-  //     name: "Palmshore",
-  //     rating: 4.5,
-  //     area: "Porur",
-  //     distanceKm: "1.8 km",
-  //     cuisines: "Grill, BBQ, Arabian..",
-  //     image: "assets/figmaIcons/palmshore.png",
-  //   ),
-  //   Restaurant(
-  //     name: "SS Hydrababad Biryani",
-  //     rating: 4.5,
-  //     area: "Viyasarbadi",
-  //     distanceKm: "5.3 km",
-  //     cuisines: "Biryani, Kebabs..",
-  //     image: "assets/figmaIcons/hydbiryani.png",
-  //   ),
-  // ];
-
-
   @override
- void initState() {
+  void initState() {
     super.initState();
     _scrollController = ScrollController();
     _searchController = TextEditingController();
-
+    final provider = context.read<RestaurantProvider>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!initalizedResturant) {
         getRestaurantsList();
+        provider.getFoodCategory();
         initalizedResturant = true;
       }
     });
   }
 
- Future<void> getRestaurantsList() async {
+  Future<void> getRestaurantsList() async {
     try {
       final location = context.read<LocationProvider>().currentLocation;
 
@@ -157,32 +98,36 @@ class _HomePageState extends State<HomePage> {
                 SliverToBoxAdapter(child: HomeBanner()),
                 SliverToBoxAdapter(child: SizedBox(height: size.height * 0.02)),
 
-                SliverPersistentHeader(
-                  pinned: true,
-                  delegate: _FoodCategoryHeader([
-                    FoodCategory(
-                      name: "Biryani",
-                      image: "assets/figmaIcons/briyani.png",
-                    ),
-                    FoodCategory(
-                      name: "South Indian",
-                      image: "assets/figmaIcons/southindian.png",
-                    ),
-                    FoodCategory(
-                      name: "Chinese",
-                      image: "assets/figmaIcons/chinese.png",
-                    ),
-                    FoodCategory(
-                      name: "North Indian",
-                      image: "assets/figmaIcons/northindian.png",
-                    ),
-                    FoodCategory(
-                      name: "Noodles",
-                      image: "assets/figmaIcons/noodles.png",
-                    ),
-                  ]),
+                Consumer<RestaurantProvider>(
+                  builder: (context, provider, _) {
+                    if (provider.isLoading && provider.categories.isEmpty) {
+                      return SliverToBoxAdapter(
+                        child: AppShimmer(
+                          type: ShimmerType.category,
+                          itemCount: 6,
+                        ),
+                      );
+                    }
+
+                    if (provider.categories.isEmpty) {
+                      return SliverToBoxAdapter(
+                        child: Text(
+                          "No categories available",
+                          textAlign: TextAlign.center,
+                          style: Styles.textStyleMedium(context),
+                          textScaler: const TextScaler.linear(1.0),
+                        ),
+                      );
+                    }
+
+                    return SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _FoodCategoryHeader(provider.categories),
+                    );
+                  },
                 ),
-                SliverToBoxAdapter(child: SizedBox(height: size.height * 0.01)),
+
+                SliverToBoxAdapter(child: SizedBox(height: size.height * 0.02)),
                 SliverToBoxAdapter(
                   child: Row(
                     children: [
@@ -216,29 +161,29 @@ class _HomePageState extends State<HomePage> {
                 // Static sample list (swap with Provider later)
                 SliverToBoxAdapter(child: SizedBox(height: size.height * 0.01)),
 
-            //      SliverList(
-            //   delegate: SliverChildBuilderDelegate((context, index) {
-            //     final restaurant = restaurants[index];
+                //      SliverList(
+                //   delegate: SliverChildBuilderDelegate((context, index) {
+                //     final restaurant = restaurants[index];
 
-            //     return Padding(
-            //       padding: EdgeInsets.symmetric(
-            //         vertical: MediaQuery.of(context).size.height * 0.012,
-            //       ),
-            //       child: GestureDetector(
-            //         onTap: () {
-            //           AppRouteName.menuPage.push(
-            //             context,
-            //             args: {
-            //               'restaurant': restaurants[index],
-            //               'showPriceTabs': true, // 👈
-            //             },
-            //           );
-            //         },
-            //         child: RestaurantCard(data: restaurant),
-            //       ),
-            //     );
-            //   }, childCount: restaurants.length),
-            // ),
+                //     return Padding(
+                //       padding: EdgeInsets.symmetric(
+                //         vertical: MediaQuery.of(context).size.height * 0.012,
+                //       ),
+                //       child: GestureDetector(
+                //         onTap: () {
+                //           AppRouteName.menuPage.push(
+                //             context,
+                //             args: {
+                //               'restaurant': restaurants[index],
+                //               'showPriceTabs': true, // 👈
+                //             },
+                //           );
+                //         },
+                //         child: RestaurantCard(data: restaurant),
+                //       ),
+                //     );
+                //   }, childCount: restaurants.length),
+                // ),
                 // 🔻 Sliver list of cards
                 Consumer<RestaurantProvider>(
                   builder: (context, provider, _) {
@@ -246,7 +191,7 @@ class _HomePageState extends State<HomePage> {
                       return SliverToBoxAdapter(
                         child: SizedBox(
                           height: MediaQuery.of(context).size.height,
-                          child: const FullScreenShimmer(),
+                          child: const AppShimmer(type: ShimmerType.restaurant),
                         ),
                       );
                     }
@@ -269,8 +214,19 @@ class _HomePageState extends State<HomePage> {
                       delegate: SliverChildBuilderDelegate(
                         (context, index) => Padding(
                           padding: EdgeInsets.symmetric(vertical: 12),
-                          child: RestaurantCard(
-                            data: provider.restaurants[index],
+                          child: GestureDetector(
+                            onTap: () {
+                              AppRouteName.menuPage.push(
+                                context,
+                                args: {
+                                  'restaurant': provider.restaurants[index],
+                                  'showPriceTabs': true,
+                                },
+                              );
+                            },
+                            child: RestaurantCard(
+                              data: provider.restaurants[index],
+                            ),
                           ),
                         ),
                         childCount: provider.restaurants.length,
@@ -289,8 +245,13 @@ class _HomePageState extends State<HomePage> {
 
 class _FoodCategoryHeader extends SliverPersistentHeaderDelegate {
   final List<FoodCategory> categories;
-
   _FoodCategoryHeader(this.categories);
+
+  // heights
+  double get _headerHeight => 48.0; // title row height
+  double get _spacing => 8.0; // gap below title
+  double get _listHeight => 120.0; // horizontal list height
+  double get _totalHeight => _headerHeight + _spacing + _listHeight;
 
   @override
   Widget build(
@@ -300,80 +261,76 @@ class _FoodCategoryHeader extends SliverPersistentHeaderDelegate {
   ) {
     final size = MediaQuery.of(context).size;
 
-    return Container(
-      color: Colors.white,
-      padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 👇 Removed extra vertical padding (already in FoodCategoryHeader)
-          const FoodCategoryHeader(),
-
-          SizedBox(height: size.height * 0.01),
-
-          Expanded(
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: categories.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (context, index) {
-                final category = categories[index];
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.grey.shade100,
-                        border: Border.all(
-                          color: Colors.grey.shade300,
-                          width: 1,
+    return SizedBox(
+      height: _totalHeight,
+      child: Container(
+        color: Colors.white,
+        padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(height: _headerHeight, child: const FoodCategoryHeader()),
+            SizedBox(height: _spacing),
+            SizedBox(
+              height: _listHeight,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: categories.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (context, index) {
+                  final c = categories[index];
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.grey.shade100,
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: 1,
+                          ),
+                        ),
+                        padding: const EdgeInsets.all(10),
+                        child: Image.network(
+                          c.image,
+                          height: size.height * 0.06,
+                          width: size.height * 0.06,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => Icon(Icons.fastfood),
                         ),
                       ),
-                      padding: const EdgeInsets.all(10),
-                      child: Image.asset(
-                        category.image,
-                        height: size.height * 0.06,
-                        width: size.height * 0.06,
-                        fit: BoxFit.contain,
+                      const SizedBox(height: 6),
+                      // ✅ Flexible prevents tiny overflow
+                      Flexible(
+                        child: Text(
+                          c.name,
+                          style: Styles.textSmall(
+                            context,
+                          ).copyWith(fontWeight: FontWeight.w400),
+                          textAlign: TextAlign.center,
+                          textScaler: const TextScaler.linear(1.0),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      category.name,
-                      style: Styles.textSmall(
-                        context,
-                      ).copyWith(fontWeight: FontWeight.w400),
-                      textAlign: TextAlign.center,
-                      textScaler: const TextScaler.linear(1.0),
-                    ),
-                  ],
-                );
-              },
+                      //  const SizedBox(height: 6),
+                    ],
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   @override
-  double get maxExtent {
-    final screenHeight =
-        WidgetsBinding.instance.window.physicalSize.height /
-        WidgetsBinding.instance.window.devicePixelRatio;
-
-    final double padding = 0; // 👉 No vertical padding outside
-    final double headerHeight =
-        screenHeight * 0.015 * 2; // from FoodCategoryHeader
-    final double spacing = screenHeight * 0.01;
-    final double gridHeight = screenHeight * 0.11;
-
-    return headerHeight + spacing + gridHeight;
-  }
+  double get maxExtent => _totalHeight;
 
   @override
-  double get minExtent => maxExtent;
+  double get minExtent => _totalHeight;
 
   @override
   bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>

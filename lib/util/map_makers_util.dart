@@ -4,65 +4,74 @@ import 'dart:ui'as ui;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-Future<BitmapDescriptor> createCustomMarker(String text, {bool isSelected = false}) async {
-  const double width = 100; // increased width
-  const double height = 60; // increased height for better spacing
+Future<BitmapDescriptor> createCustomMarker(
+  String text, {
+  bool isSelected = false,
+}) async {
+  const double width = 140;
+  const double height = 80; // enough for bubble + pin
 
   final ui.PictureRecorder recorder = ui.PictureRecorder();
   final Canvas canvas = Canvas(recorder);
 
-  final Color bgColor = isSelected ? Colors.white : Colors.black ;
-  final Color borderColor = isSelected ? Colors.grey : Colors.transparent;
-  final Color textColor = isSelected ? Colors.black : Colors.white;
+  // Colors
+  final Color bgColor = isSelected ? Colors.black : Colors.red;
+  final Color borderColor = isSelected ? Colors.black : Colors.red;
+  final Color textColor = isSelected ? Colors.white   : Colors.white;
 
-  // Background with border
-  final Paint paint = Paint()..color = bgColor;
-  final Paint borderPaint = Paint()
-    ..color = borderColor
-    ..style = PaintingStyle.stroke
-    ..strokeWidth = 10;
-
+  // 🔹 Bubble (rounded rectangle above pin)
   final RRect bubble = RRect.fromLTRBR(
     0,
     0,
     width,
-    height - 10,
-    const Radius.circular(10),
+    height - 25,
+    const Radius.circular(12),
   );
 
-  canvas.drawRRect(bubble, paint);
+  final Paint fillPaint = Paint()..color = bgColor;
+  final Paint borderPaint = Paint()
+    ..color = borderColor
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 3;
+
+  canvas.drawRRect(bubble, fillPaint);
   canvas.drawRRect(bubble, borderPaint);
 
-  // Triangle pointer
+  // 🔹 Pin triangle pointer
   final Path triangle = Path()
-    ..moveTo(width / 2 - 10, height - 10)
-    ..lineTo(width / 2 + 10, height - 10)
+    ..moveTo(width / 2 - 12, height - 25)
+    ..lineTo(width / 2 + 12, height - 25)
     ..lineTo(width / 2, height)
     ..close();
-  canvas.drawPath(triangle, paint);
+
+  canvas.drawPath(triangle, fillPaint);
   canvas.drawPath(triangle, borderPaint);
 
-  // Draw centered text
+  // 🔹 Centered text inside bubble
   final TextPainter textPainter = TextPainter(
     text: TextSpan(
       text: text,
       style: TextStyle(
         color: textColor,
-        fontSize: 12,
-        fontWeight: FontWeight.bold,
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
       ),
     ),
-    textScaler: TextScaler.linear(1.0),
     textAlign: TextAlign.center,
     textDirection: TextDirection.ltr,
   );
   textPainter.layout(maxWidth: width - 20);
-  final offsetX = (width - textPainter.width) / 2;
-  final offsetY = (height - 10 - textPainter.height) / 2;
+
+  final double offsetX = (width - textPainter.width) / 2;
+  final double offsetY = ((height - 25) - textPainter.height) / 2;
+
   textPainter.paint(canvas, Offset(offsetX, offsetY));
 
-  final ui.Image img = await recorder.endRecording().toImage(width.toInt(), height.toInt());
-  final ByteData? byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+  // ✅ Convert to image
+  final ui.Image img =
+      await recorder.endRecording().toImage(width.toInt(), height.toInt());
+  final ByteData? byteData =
+      await img.toByteData(format: ui.ImageByteFormat.png);
   final Uint8List bytes = byteData!.buffer.asUint8List();
 
   return BitmapDescriptor.bytes(bytes);

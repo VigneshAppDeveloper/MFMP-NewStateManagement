@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:my_food_my_price/Providers/bidding_provider.dart';
 import 'package:my_food_my_price/Providers/register_provider.dart';
 import 'package:my_food_my_price/pages/Map/location_search_page.dart';
 import 'package:my_food_my_price/pages/OrdersHistory/order_history.dart';
@@ -11,6 +12,7 @@ import 'package:my_food_my_price/pages/Profile%20Settings/rewards.dart';
 import 'package:my_food_my_price/pages/Profile%20Settings/settings_page.dart';
 import 'package:my_food_my_price/pages/app_guide.dart';
 import 'package:my_food_my_price/pages/app_pages.dart';
+import 'package:my_food_my_price/pages/bidding_page.dart';
 import 'package:my_food_my_price/pages/intro_page.dart';
 import 'package:my_food_my_price/pages/login.dart';
 import 'package:my_food_my_price/pages/menu_page.dart';
@@ -23,7 +25,10 @@ import 'package:my_food_my_price/pages/register.dart';
 import 'package:my_food_my_price/util/extension.dart';
 import 'package:provider/provider.dart';
 
+import 'Providers/bidding_order_provider.dart';
+import 'models/BidderModels/winner_model.dart';
 import 'models/Resturant Model/resturant.dart';
+import 'pages/BiddinPayment/bidding_payment_page.dart';
 
 enum AppRouteName {
   splashPage('/splash_page'),
@@ -46,6 +51,8 @@ enum AppRouteName {
   rewards('/rewards'),
   menuPage('/menu_page'),
   orderHistoryPage('/order_history'),
+  biddingPage('/bidding_page'),
+  biddingPaymentPage('/bidding_payment_page'),
   appSettingsPage('/app_settings');
 
   /// args: TaskViewScreenArgs
@@ -114,9 +121,9 @@ class RouteGenerator {
       case AppRouteName.appPage:
         return MaterialPageRoute(builder: (_) => AppPages());
       case AppRouteName.serachLocation:
-  return MaterialPageRoute<LatLng>(
-    builder: (_) => const LocationSearchPage(),
-  );
+        return MaterialPageRoute<LatLng>(
+          builder: (_) => const LocationSearchPage(),
+        );
 
       case AppRouteName.appSettingsPage:
         return MaterialPageRoute(builder: (_) => AppSettings());
@@ -142,6 +149,85 @@ class RouteGenerator {
         return MaterialPageRoute(builder: (_) => Rewards());
       case AppRouteName.orderHistoryPage:
         return MaterialPageRoute(builder: (_) => OrderHistory());
+      case AppRouteName.biddingPage:
+        if (args is Map<String, dynamic>) {
+          final restaurant = args['restaurant'] as Restaurant;
+          final timerId = args['timer_id'] as String;
+
+          // 🧩 Safely handle both String and DateTime inputs
+          final rawStart = args['slot_start'];
+          final rawEnd = args['slot_end'];
+
+          DateTime _safeParse(dynamic value) {
+            if (value is DateTime) return value;
+            if (value is String && value.contains(':')) {
+              try {
+                final parts = value.split(':');
+                final now = DateTime.now();
+                final h = int.parse(parts[0]);
+                final m = int.parse(parts[1]);
+                final s = parts.length > 2 ? int.parse(parts[2]) : 0;
+                return DateTime(now.year, now.month, now.day, h, m, s);
+              } catch (_) {}
+            }
+            return DateTime.now();
+          }
+
+          final slotStart = _safeParse(rawStart);
+          final slotEnd = _safeParse(rawEnd);
+
+          return MaterialPageRoute(
+            builder:
+                (_) => ChangeNotifierProvider(
+                  create: (_) => BiddingProvider(),
+                  child: BiddingPage(
+                    restaurant: restaurant,
+                    timerId: timerId,
+                    slotStart: slotStart,
+                    slotEnd: slotEnd,
+                  ),
+                ),
+          );
+        }
+
+        return MaterialPageRoute(
+          builder:
+              (_) => const SafeArea(
+                child: Scaffold(
+                  body: Center(child: Text("Invalid BiddingPage arguments")),
+                ),
+              ),
+        );
+      case AppRouteName.biddingPaymentPage:
+  if (args is Map<String, dynamic>) {
+    final winners = args['winners'] as List<WinnerModel>;
+    final pickupDate = args['pickup_date'] as String;
+    final pickupPoint = args['pickup_point'] as String;
+    final restaurant = args['restaurant'] as Restaurant; // ✅ add this
+
+    return MaterialPageRoute(
+      builder: (_) => ChangeNotifierProvider(
+        create: (_) => BiddingOrderProvider(),
+        child: BiddingPaymentPage(
+          winners: winners,
+          pickupDate: pickupDate,
+          pickupPoint: pickupPoint,
+          restaurant: restaurant, // ✅ pass it here
+        ),
+      ),
+    );
+  }
+
+  return MaterialPageRoute(
+    builder: (_) => const SafeArea(
+      child: Scaffold(
+        body: Center(child: Text("Invalid Bidding Payment arguments")),
+      ),
+    ),
+  );
+
+
+
       case AppRouteName.menuPage:
         if (args is Map<String, dynamic>) {
           final restaurant = args['restaurant'] as Restaurant;
@@ -155,6 +241,7 @@ class RouteGenerator {
                 ),
           );
         }
+
         // fallback in case args are missing
         return MaterialPageRoute(
           builder:

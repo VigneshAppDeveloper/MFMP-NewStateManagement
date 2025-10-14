@@ -42,13 +42,15 @@ class ResturantMenuHeader extends StatelessWidget {
         ),
         Row(
           children: [
+            
             const Icon(Icons.star, color: Colors.green, size: 16),
+            
             const SizedBox(width: 4),
-            // Text(
-            //   restaurant.rating.toString(),
-            //   style: Styles.textSmall(context),
-            //   textScaler: const TextScaler.linear(1.0),
-            // ),
+            Text(
+              restaurant.franchiseRating.toString(),
+              style: Styles.textSmall(context),
+              textScaler: const TextScaler.linear(1.0),
+            ),
           ],
         ),
       ],

@@ -26,7 +26,7 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
             children: [
               if (showBack)
                 IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.black),
+                  icon: const Icon(Icons.arrow_back_ios, color: Colors.black),
                   onPressed: onBack ?? () => Navigator.pop(context),
                 ),
               const SizedBox(width: 4),

@@ -12,7 +12,7 @@ import '../models/FoodModels/food_model.dart';
 import '../models/Resturant Model/resturant.dart';
 import '../services/secure_storage.dart';
 import '../util/app_contant.dart';
-import '../widgets/full_shimmer_loader.dart';
+import '../widgets/app_shimmer.dart';
 
 class FlashSalePage extends StatefulWidget {
   const FlashSalePage({super.key});
@@ -26,64 +26,7 @@ class _FlashSalePageState extends State<FlashSalePage> {
   late final TextEditingController searchController;
   bool initialized = false;
 
-  // final restaurants = <Restaurant>[
-  //   Restaurant(
-  //     name: "biryani palayam",
-  //     rating: 4.2,
-  //     area: "Kollampalayam",
-  //     distanceKm: "6.7 km",
-  //     cuisines: "Chicken Biryani, Mutton Biryani..",
-  //     image: "assets/figmaIcons/bpm.png",
-  //   ),
-  //   Restaurant(
-  //     name: "palmshore",
-  //     rating: 4.5,
-  //     area: "Porur",
-  //     distanceKm: "1.8 km",
-  //     cuisines: "Grill, BBQ, Arabian..",
-  //     image: "assets/figmaIcons/palmshore.png",
-  //   ),
-  //   Restaurant(
-  //     name: "SS Hydrababad Biryani",
-  //     rating: 4.5,
-  //     area: "viyasarbadi",
-  //     distanceKm: "5.3 km",
-  //     cuisines: "Biryani, Kebabs..",
-  //     image: "assets/figmaIcons/hydbiryani.png",
-  //   ),
-  //   Restaurant(
-  //     name: "palmshore",
-  //     rating: 4.5,
-  //     area: "Porur",
-  //     distanceKm: "1.8 km",
-  //     cuisines: "Grill, BBQ, Arabian..",
-  //     image: "assets/figmaIcons/palmshore.png",
-  //   ),
-  //   Restaurant(
-  //     name: "ss hydrababad Biryani",
-  //     rating: 4.5,
-  //     area: "Viyasarbadi",
-  //     distanceKm: "5.3 km",
-  //     cuisines: "Biryani, Kebabs..",
-  //     image: "assets/figmaIcons/hydbiryani.png",
-  //   ),
-  //   Restaurant(
-  //     name: "Palmshore",
-  //     rating: 4.5,
-  //     area: "Porur",
-  //     distanceKm: "1.8 km",
-  //     cuisines: "Grill, BBQ, Arabian..",
-  //     image: "assets/figmaIcons/palmshore.png",
-  //   ),
-  //   Restaurant(
-  //     name: "SS Hydrababad Biryani",
-  //     rating: 4.5,
-  //     area: "Viyasarbadi",
-  //     distanceKm: "5.3 km",
-  //     cuisines: "Biryani, Kebabs..",
-  //     image: "assets/figmaIcons/hydbiryani.png",
-  //   ),
-  // ];
+ 
 
   @override
   void initState() {
@@ -147,31 +90,31 @@ class _FlashSalePageState extends State<FlashSalePage> {
               ),
             ),
             SliverToBoxAdapter(child: SizedBox(height: size.height * 0.02)),
-            SliverPersistentHeader(
-              pinned: true,
-              delegate: _FoodCategoryHeader([
-                FoodCategory(
-                  name: "Biryani",
-                  image: "assets/figmaIcons/briyani.png",
-                ),
-                FoodCategory(
-                  name: "South Indian",
-                  image: "assets/figmaIcons/southindian.png",
-                ),
-                FoodCategory(
-                  name: "Chinese",
-                  image: "assets/figmaIcons/chinese.png",
-                ),
-                FoodCategory(
-                  name: "North Indian",
-                  image: "assets/figmaIcons/northindian.png",
-                ),
-                FoodCategory(
-                  name: "Noodles",
-                  image: "assets/figmaIcons/noodles.png",
-                ),
-              ]),
-            ),
+            // SliverPersistentHeader(
+            //   pinned: true,
+            //   delegate: _FoodCategoryHeader([
+            //     FoodCategory(
+            //       name: "Biryani",
+            //       image: "assets/figmaIcons/briyani.png",
+            //     ),
+            //     FoodCategory(
+            //       name: "South Indian",
+            //       image: "assets/figmaIcons/southindian.png",
+            //     ),
+            //     FoodCategory(
+            //       name: "Chinese",
+            //       image: "assets/figmaIcons/chinese.png",
+            //     ),
+            //     FoodCategory(
+            //       name: "North Indian",
+            //       image: "assets/figmaIcons/northindian.png",
+            //     ),
+            //     FoodCategory(
+            //       name: "Noodles",
+            //       image: "assets/figmaIcons/noodles.png",
+            //     ),
+            //   ]),
+            // ),
             SliverToBoxAdapter(child: SizedBox(height: size.height * 0.01)),
 
             // SliverList(

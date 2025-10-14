@@ -7,7 +7,9 @@ import 'package:my_food_my_price/util/map_makers_util.dart';
 import 'package:my_food_my_price/util/styles.dart';
 import 'package:my_food_my_price/widgets/app_loader.dart';
 import 'package:provider/provider.dart';
+import '../../Providers/location_provider.dart';
 import '../../Providers/restaurant_provider.dart';
+import '../../components/HomePageDesigns/restaurant_wiget.dart';
 import '../../models/Resturant Model/resturant.dart';
 import '../../services/location_service.dart';
 
@@ -26,18 +28,29 @@ class _MapPageState extends State<MapPage> {
   final Set<Marker> _markers = {};
   final Map<String, BitmapDescriptor> markerIconCache = {};
 
-  // ✅ Cache last camera position
   CameraPosition? _lastCameraPosition;
 
   @override
   void initState() {
     super.initState();
-    fetchUserLocation();
+    _loadInitialLocation();
   }
 
-  Future<void> fetchUserLocation() async {
-    final loc = await LocationService.getCurrentLatLng();
-    if (mounted) setState(() => userLatLng = loc);
+  Future<void> _loadInitialLocation() async {
+    // 🔑 Use session location first (user-chosen)
+    final sessionLocation = context.read<LocationProvider>().currentLocation;
+    if (sessionLocation != null) {
+      setState(() {
+        userLatLng = LatLng(
+          sessionLocation.latitude,
+          sessionLocation.longitude,
+        );
+      });
+    } else {
+      // fallback to GPS if no session location saved
+      final gpsLoc = await LocationService.getCurrentLatLng();
+      if (mounted) setState(() => userLatLng = gpsLoc);
+    }
   }
 
   Future<BitmapDescriptor> getCachedMarkerIcon(
@@ -84,11 +97,11 @@ class _MapPageState extends State<MapPage> {
     }
   }
 
-  void _fitCamera(LatLng user, List<Restaurant> restaurants) {
+  void _fitCamera(LatLng center, List<Restaurant> restaurants) {
     if (_mapController == null || restaurants.isEmpty) return;
 
     final bounds = restaurants.fold<LatLngBounds>(
-      LatLngBounds(southwest: user, northeast: user),
+      LatLngBounds(southwest: center, northeast: center),
       (bounds, r) {
         final point = LatLng(r.franchiseLatitude, r.franchiseLongitude);
         return LatLngBounds(
@@ -107,23 +120,30 @@ class _MapPageState extends State<MapPage> {
     _mapController!.animateCamera(CameraUpdate.newLatLngBounds(bounds, 70));
   }
 
-  void _centerToUserLocation() {
-    if (_mapController != null && userLatLng != null) {
+  void _centerToSessionLocation() {
+    final loc = context.read<LocationProvider>().currentLocation;
+    if (_mapController != null && loc != null) {
       _mapController!.animateCamera(
-        CameraUpdate.newLatLngZoom(userLatLng!, 15),
+        CameraUpdate.newLatLngZoom(LatLng(loc.latitude, loc.longitude), 15),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<RestaurantProvider>(
-      builder: (context, provider, _) {
-        if (userLatLng != null && provider.restaurants.isNotEmpty) {
-          _updateMarkers(provider.restaurants);
-          // ✅ Only fit if no previous camera is cached
+    return Consumer2<LocationProvider, RestaurantProvider>(
+      builder: (context, locationProvider, restaurantProvider, _) {
+        final sessionLoc = locationProvider.currentLocation;
+        if (sessionLoc != null) {
+          userLatLng = LatLng(sessionLoc.latitude, sessionLoc.longitude);
+        }
+
+        if (userLatLng != null && restaurantProvider.restaurants.isNotEmpty) {
+          _updateMarkers(restaurantProvider.restaurants);
+
+          // ✅ Only fit to session location on first load
           if (_lastCameraPosition == null) {
-            _fitCamera(userLatLng!, provider.restaurants);
+            _fitCamera(userLatLng!, restaurantProvider.restaurants);
           }
         }
 
@@ -131,83 +151,68 @@ class _MapPageState extends State<MapPage> {
           children: [
             if (userLatLng != null)
               GoogleMap(
-                initialCameraPosition: _lastCameraPosition ??
+                initialCameraPosition:
+                    _lastCameraPosition ??
                     CameraPosition(target: userLatLng!, zoom: 14),
                 myLocationEnabled: true,
                 markers: _markers,
                 onMapCreated: (controller) {
                   _mapController = controller;
                 },
-                // ✅ Save last camera position whenever it moves
-                onCameraMove: (position) {
-                  _lastCameraPosition = position;
+                onCameraMove: (pos) {
+                  _lastCameraPosition = pos;
                 },
-              )
-            else
-              const SizedBox.shrink(),
-
+              ),
             if (selectedRestaurant != null && userLatLng != null)
               Positioned(
                 bottom: 20,
                 left: 16,
                 right: 16,
-                child: buildRestaurantCard(context, selectedRestaurant!),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (_) => PickupPointsPage(
+                              restaurant:
+                                  selectedRestaurant!, // ✅ pass full model
+                            ),
+                      ),
+                    );
+                  },
+                  child: RestaurantCard(
+                    data: selectedRestaurant!,
+                  ), // 👈 existing UI reused
+                ),
               ),
 
-            if (userLatLng == null || provider.isLoading)
+            if (userLatLng == null || restaurantProvider.isLoading)
               const FullScreenLoader(
                 size: 35,
                 strokeWidth: 3,
                 backgroundColor: Color(0x80000000),
               ),
 
-            if (provider.restaurants.isEmpty && !provider.isLoading)
-              Positioned(
-                bottom: MediaQuery.of(context).size.height * 0.03,
-                left: MediaQuery.of(context).size.width * 0.05,
-                right: MediaQuery.of(context).size.width * 0.05,
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withAlpha(30),
-                        blurRadius: 8,
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.restaurant_menu, size: 40, color: Colors.grey),
-                      const SizedBox(height: 12),
-                      Text(
-                        "No Restaurants Found Nearby",
-                        style: Styles.textStyleMedium(context)
-                            .copyWith(fontWeight: FontWeight.w700),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        "Expand your search area or try again later.",
-                        style: Styles.textSmall(context, color: Colors.black54),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
+            if (restaurantProvider.restaurants.isEmpty &&
+                !restaurantProvider.isLoading)
+              Center(
+                child: Text(
+                  "No Restaurants Found Nearby",
+                  style: Styles.textStyleMedium(
+                    context,
+                  ).copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
 
-            if (userLatLng != null && provider.restaurants.isNotEmpty)
+            if (userLatLng != null && restaurantProvider.restaurants.isNotEmpty)
               Positioned(
                 bottom: MediaQuery.of(context).size.height * 0.1,
                 right: MediaQuery.of(context).size.width * 0.04,
                 child: FloatingActionButton(
                   backgroundColor: Colors.white,
                   foregroundColor: Colors.black,
-                  onPressed: _centerToUserLocation,
+                  onPressed: _centerToSessionLocation,
                   child: const Icon(Icons.my_location),
                 ),
               ),

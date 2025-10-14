@@ -3,9 +3,11 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:my_food_my_price/Gateway/phonepay.dart';
 import 'package:my_food_my_price/config/firebase/firebase_config.dart';
 import 'package:my_food_my_price/config/firebase/firebase_notification.dart';
 
+import '../services/ntp_service.dart';
 import '../services/secure_storage.dart';
 
 class AppInitialize {
@@ -16,8 +18,9 @@ class AppInitialize {
     WidgetsFlutterBinding.ensureInitialized();
     await FirebaseConfig.initialize();
     await FirebaseNotification.initialize();
+    await PhonePeGateway.init();
 
-   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
     SystemChrome.setPreferredOrientations([
       DeviceOrientation.portraitUp,
@@ -32,9 +35,14 @@ class AppInitialize {
         systemNavigationBarIconBrightness: Brightness.light, // Dark icons
       ),
     );
-     await SecureStorageService.saveGoogleApiKey(
+    await SecureStorageService.saveGoogleApiKey(
       "AIzaSyC1q5b6YQz6m_uBeE8r8R3jsK0gAdlePz0", // replace with your actual key
     );
+    final ntp = NtpService();
+    await ntp.initialize();
+
+    // Optionally fetch once at startup for warm cache
+    await ntp.getCurrentIST(forceRefresh: true);
   }
 }
 

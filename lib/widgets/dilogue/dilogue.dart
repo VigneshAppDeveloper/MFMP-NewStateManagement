@@ -207,7 +207,7 @@ class _LoadingDialogueState extends State<_LoadingDialogue> {
       try {
         final result = await widget.load();
         if (mounted) {
-          navigator.pop(DualTypeModel(value1: result, value2: null));
+          navigator.  pop(DualTypeModel(value1: result, value2: null));
         }
       } on Exception catch (e) {
         if (mounted) {

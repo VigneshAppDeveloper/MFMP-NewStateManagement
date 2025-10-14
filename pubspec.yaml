@@ -81,6 +81,7 @@ dependencies:
   flutter_spinkit: ^5.2.1
   shimmer: ^3.0.0
   flutter_screenutil: ^5.9.3
+  flutter_calendar_carousel: ^2.5.4
   
 
 dev_dependencies:
