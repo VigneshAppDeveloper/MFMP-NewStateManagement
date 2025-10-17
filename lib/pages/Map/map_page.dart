@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -14,7 +15,8 @@ import '../../models/Resturant Model/resturant.dart';
 import '../../services/location_service.dart';
 
 class MapPage extends StatefulWidget {
-  const MapPage({super.key});
+  final Function(bool isScrollingDown) onScrollChange;
+  const MapPage({super.key,required this.onScrollChange});
 
   @override
   State<MapPage> createState() => _MapPageState();
@@ -29,12 +31,41 @@ class _MapPageState extends State<MapPage> {
   final Map<String, BitmapDescriptor> markerIconCache = {};
 
   CameraPosition? _lastCameraPosition;
+  bool _isDragging = false; // ✅ to track drag state
+  Timer? _dragEndTimer; 
 
   @override
   void initState() {
     super.initState();
     _loadInitialLocation();
   }
+
+   @override
+  void dispose() {
+    _dragEndTimer?.cancel();
+    super.dispose();
+  }
+
+ // ✅ Called when map starts moving
+void _onCameraMoveStarted() {
+  if (!_isDragging) {
+    _isDragging = true;
+    widget.onScrollChange(true); // hide bottom bar
+  }
+  _dragEndTimer?.cancel(); // cancel any pending timers
+}
+
+// ✅ Called when user stops moving the map
+void _onCameraIdle() {
+  _dragEndTimer?.cancel();
+  _dragEndTimer = Timer(const Duration(milliseconds: 250), () {
+    if (_isDragging) {
+      _isDragging = false;
+      widget.onScrollChange(false); // show bottom bar
+    }
+  });
+}
+
 
   Future<void> _loadInitialLocation() async {
     // 🔑 Use session location first (user-chosen)
@@ -159,6 +190,8 @@ class _MapPageState extends State<MapPage> {
                 onMapCreated: (controller) {
                   _mapController = controller;
                 },
+                 onCameraMoveStarted: _onCameraMoveStarted,
+                onCameraIdle: _onCameraIdle,
                 onCameraMove: (pos) {
                   _lastCameraPosition = pos;
                 },
@@ -222,70 +255,4 @@ class _MapPageState extends State<MapPage> {
     );
   }
 
-  Widget buildRestaurantCard(BuildContext context, Restaurant restaurant) {
-    return GestureDetector(
-      onTap: () {
-        // Navigator.push(
-        //   context,
-        //   MaterialPageRoute(
-        //     builder: (_) => PickupPointsPage(restaurant: restaurant),
-        //   ),
-        // );
-      },
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(blurRadius: 10, color: Colors.black.withAlpha(30)),
-          ],
-        ),
-        child: Row(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.network(
-                restaurant.image,
-                height: 60,
-                width: 60,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    restaurant.name,
-                    style: Styles.textStyleMedium(context),
-                    textScaler: TextScaler.linear(1.0),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      const Icon(Icons.star, size: 16, color: Colors.green),
-                      const SizedBox(width: 4),
-                      Text(
-                        restaurant.franchiseRating.toString(),
-                        style: Styles.textSmall(context),
-                        textScaler: TextScaler.linear(1.0),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    restaurant.address,
-                    style: Styles.textSmall(context),
-                    textScaler: const TextScaler.linear(1.0),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

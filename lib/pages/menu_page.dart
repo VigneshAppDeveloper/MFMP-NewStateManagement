@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:my_food_my_price/util/app_contant.dart';
@@ -12,6 +14,7 @@ import '../components/ResturantMenuDesigns/pickup_date_pickup_point.dart';
 import '../components/ResturantMenuDesigns/resturant_menu_card.dart';
 import '../components/ResturantMenuDesigns/resturant_menu_header.dart';
 import '../components/ResturantMenuDesigns/time_slot_card_ui.dart';
+import '../models/FoodModels/resturant_menu_model.dart';
 import '../models/Resturant Model/resturant.dart';
 import '../route_generator.dart';
 import '../util/color_constant.dart';
@@ -39,6 +42,10 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
   late MenuProvider provider;
   late final CartProvider _cartProvider;
 
+  List<RestaurantMenuModel> filteredMenus = [];
+  Timer? _debounce;
+  bool isSearching = false;
+
   @override
   void initState() {
     super.initState();
@@ -50,24 +57,20 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
     provider.setActive(true);
 
     Future.microtask(() async {
-      // ✅ Always pass the flash flag so provider remembers correct mode
+      // Fetch only if no cached menu or expired
       await provider.getRestaurantMenu(
         widget.restaurant.franchiseId,
         forceRefresh: false,
         isFlash: !widget.showPriceTabs,
       );
 
-      // ✅ Run auto-updaters only for normal (non-flash) mode
       if (widget.showPriceTabs) {
         provider.resumeAutoUpdaters(widget.restaurant.franchiseId);
-
-        // ✅ Optional safe refresh — only if slots exist
         if (provider.timeSlots.isNotEmpty) {
           await provider.refreshTimeSlot(widget.restaurant.franchiseId);
         }
       } else {
-        provider
-            .stopAutoUpdaters(); // 🔒 ensure flash page never triggers normal refresh
+        provider.stopAutoUpdaters();
       }
     });
   }
@@ -97,7 +100,39 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
     provider.clearPickupSelections(); // 👈 safe — no context used
     _cartProvider.clearCart();
     searchController.dispose();
+    _debounce?.cancel();
+    //provider.clearMenu(widget.restaurant.franchiseId);
     super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      final provider = context.read<MenuProvider>();
+      final all = provider.menus;
+      final q = query.trim().toLowerCase();
+
+      if (q.isEmpty) {
+        setState(() {
+          isSearching = false;
+          filteredMenus.clear();
+        });
+        return;
+      }
+
+      final results =
+          all.where((m) {
+            final name = m.menuName.toLowerCase().trim();
+            final desc = m.description?.toLowerCase().trim() ?? "";
+            return name.contains(q) || desc.contains(q);
+          }).toList();
+
+      setState(() {
+        isSearching = true;
+        filteredMenus = results;
+      });
+    });
   }
 
   @override
@@ -272,6 +307,7 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                     flexibleSpace: HomeSearchBar(
                       controller: searchController,
                       onFilterTap: () {},
+                      onChanged: _onSearchChanged, // ✅ connect
                     ),
                   ),
 
@@ -287,18 +323,20 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                           child: const AppShimmer(type: ShimmerType.menu),
                         );
                       }
-                      final filteredMenus =
+                      final allMenus =
                           provider.isFlashMode
                               ? provider.menus
-                              : provider.menus
-                                  .where(
-                                    (m) =>
-                                        m.menuType.toLowerCase() ==
-                                        "fixed price",
-                                  )
-                                  .toList();
+                              : provider.menus.where((m) {
+                                final type = m.menuType.toLowerCase().trim();
+                                return type == "fixed price" ||
+                                    type == "fixed discount" ||
+                                    type == "fixed discount price";
+                              }).toList();
 
-                      if (filteredMenus.isEmpty) {
+                      final displayMenus =
+                          isSearching ? filteredMenus : allMenus;
+
+                      if (displayMenus.isEmpty) {
                         return SliverToBoxAdapter(
                           child: Padding(
                             padding: EdgeInsets.only(top: size.height * 0.2),
@@ -315,12 +353,12 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
 
                       return SliverList(
                         delegate: SliverChildBuilderDelegate((context, index) {
-                          final menu = filteredMenus[index];
+                          final menu = displayMenus[index];
                           return RestaurantMenuCard(
                             menu: menu,
                             restaurant: widget.restaurant,
                           );
-                        }, childCount: filteredMenus.length),
+                        }, childCount: displayMenus.length),
                       );
                     }
                     // ===================== PRICE DISCOVERY TAB =====================

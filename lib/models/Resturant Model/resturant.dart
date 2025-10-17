@@ -9,6 +9,8 @@ class Restaurant {
   final String ownerName;
   final String mobile;
   final String image;
+  final String fssaiCertificate;
+  final String gstCertificate;
   final double franchiseLatitude;
   final double franchiseLongitude;
   final double distanceKm;
@@ -24,6 +26,8 @@ class Restaurant {
     required this.ownerName,
     required this.mobile,
     required this.image,
+    required this.fssaiCertificate,
+    required this.gstCertificate,
     required this.distanceKm,
     required this.franchiseLatitude,
     required this.franchiseLongitude,
@@ -48,12 +52,12 @@ class Restaurant {
       return 0;
     }
 
-    // ✅ Fix image path
-    String rawImage = json['franchise_image']?.toString() ?? '';
-    String fullImage =
-        rawImage.isNotEmpty && !rawImage.startsWith('http')
-            ? AppConfig.instance.storageBaseUrl + rawImage
-            : rawImage;
+    String withStorageUrl(String? path) {
+      if (path == null || path.isEmpty) return '';
+      return path.startsWith('http')
+          ? path
+          : AppConfig.instance.storageBaseUrl + path;
+    }
 
     return Restaurant(
       franchiseId: json['franchise_id']?.toString() ?? '',
@@ -62,16 +66,17 @@ class Restaurant {
       address: json['address']?.toString() ?? '',
       ownerName: json['owner_name']?.toString() ?? '',
       mobile: json['mobile']?.toString() ?? '',
-      image: fullImage,
+      image: withStorageUrl(json['franchise_image']),
+      fssaiCertificate: withStorageUrl(json['fssai_certificate']),
+      gstCertificate: withStorageUrl(json['gst_certificate']),
       franchiseLatitude: toDouble(json['latitude']),
       franchiseLongitude: toDouble(json['longitude']),
       distanceKm: toDouble(json['distance_km']),
       franchiseRating: toDouble(json['franchise_rating']),
       totalRating: toInt(json['total_rating']),
-      pickupPoints:
-          (json['pickup_points'] as List<dynamic>? ?? [])
-              .map((e) => PickpointModel.fromJson(e))
-              .toList(),
+      pickupPoints: (json['pickup_points'] as List<dynamic>? ?? [])
+          .map((e) => PickpointModel.fromJson(e))
+          .toList(),
     );
   }
 }

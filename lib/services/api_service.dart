@@ -502,7 +502,7 @@ class APIService {
           message: "Request timed out",
         );
       }
-      if (e.response?.statusCode == 401) {
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
         await logoutUser();
         throw APIException(
           type: APIErrorType.unauthorized,
@@ -532,16 +532,6 @@ class APIService {
 
         throw APIException(type: APIErrorType.toast, message: combinedMessage);
       }
-
-      // else if (e.response?.statusCode == 422) {
-      //   final errorData = e.response?.data;
-      //   debugPrint("⚠️ Validation Error: $errorData");
-      //   throw APIException(
-      //     type: APIErrorType.toast,
-      //     message:
-      //         errorData['messages'] ?? errorData['message'] ?? "Validation error",
-      //   );
-      // }
 
       throw APIException(type: APIErrorType.other, message: e.toString());
     } catch (e) {
@@ -594,6 +584,9 @@ class APIResp {
     } else if (json.containsKey('results') && json['results'] != null) {
       parsedData = json['results'];
       parsedStatus = true; // treat as valid even if no 'status' key
+    } else if (json.containsKey('result') && json['result'] != null) {
+      parsedData = json['result'];
+      parsedStatus = true;
     } else if (json.containsKey('message')) {
       parsedData = json['message'];
     }

@@ -52,7 +52,7 @@ class _AboutPageState extends State<AboutPage> {
               DrawerListTile(
                 title: "Terms & Conditions",
                 onTap: () {
-                  // AppRouteName.myOrdersPage.push(context);
+                  AppRouteName.termsConditions.push(context);
                 },
               ),
               const SizedBox(height: 20),

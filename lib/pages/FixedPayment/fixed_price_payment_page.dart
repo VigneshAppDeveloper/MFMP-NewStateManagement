@@ -8,6 +8,7 @@ import 'package:my_food_my_price/util/dilogs.dart';
 import 'package:my_food_my_price/util/styles.dart';
 import 'package:my_food_my_price/widgets/dilogue/dilogue.dart';
 
+import '../../Providers/menu_provider.dart';
 import '../../models/FoodModels/resturant_menu_model.dart';
 import '../../models/Resturant Model/resturant.dart';
 import '../../widgets/app_bar.dart';
@@ -46,7 +47,7 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
   PriceSummaryData? priceData;
   bool restaurantContact = false;
   late String selectedPickupDate;
-  late String selectedPickupPoint;
+  late String selectedPickupPointId;
   late bool fromFlashPage;
 
   String _formatDateForApi(String date) {
@@ -73,7 +74,7 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
     profile = AppConstants.profile!;
     quantities = List.filled(widget.menus.length, 1);
     selectedPickupDate = widget.pickupDate;
-    selectedPickupPoint = widget.pickupPoint;
+    selectedPickupPointId  = widget.pickupPoint;
     fromFlashPage = widget.fromFlashPage;
     Future.microtask(() async {
       await orderProvider.getPickupTime(
@@ -128,7 +129,7 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
                       (newDate) => setState(() => selectedPickupDate = newDate),
                   onPickupPointChange:
                       (newPoint) =>
-                          setState(() => selectedPickupPoint = newPoint),
+                          setState(() => selectedPickupPointId  = newPoint),
                             fromFlashPage: fromFlashPage,
                 ),
                 SizedBox(height: size.height * 0.02),
@@ -215,6 +216,8 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
     }
     final apiPickupDate = _formatDateForApi(selectedPickupDate);
     debugPrint("📅 Formatted pickup date for API: $apiPickupDate");
+    final selectedPickupId =
+    context.read<MenuProvider>().selectedPickupPoint?.pickupId.toString() ?? "";
 
     final transactionId = "MT${DateTime.now().millisecondsSinceEpoch}";
     final payable = data.payable;
@@ -241,7 +244,7 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
                   return total.toStringAsFixed(2);
                 }).toList(),
             name: profile.name,
-            pickupPoint: selectedPickupPoint,
+            pickupPoint: selectedPickupId,
             pickupTime: pickupTime,
             mobile: profile.mobile,
             transactionAmount: payable.toStringAsFixed(2),

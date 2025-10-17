@@ -59,13 +59,19 @@ class BidSuccessScreen extends StatelessWidget {
                     ),
                   ),
                   onPressed: () {
-                    AppRouteName.orderHistoryPage.pushAndRemoveUntil(
-                      context,
-                      (route) =>
-                          route.settings.name == AppRouteName.appPage.value,
-                     args: {"initialTab": 1, "forceRefresh": true},
-                    );
-                  },
+                      AppRouteName.appPage.pushAndRemoveUntil(
+                        context,
+                        (route) => false,
+                        args: {"initialTab": 0},
+                      );
+
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        AppRouteName.orderHistoryPage.push(
+                          context,
+                          args: {"initialTab": 1, "forceRefresh": true},
+                        );
+                      });
+                    },
 
                   child: Text(
                     "View Order",

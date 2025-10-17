@@ -4,7 +4,6 @@ class UrlPath {
   static const BiddingUrl biddingUrl = BiddingUrl();
   static const OrderHistoryUrl orderUrl = OrderHistoryUrl();
   static const RatingsUrl ratingUrl = RatingsUrl();
-
 }
 
 class LoginUrl {
@@ -24,8 +23,9 @@ class RestaurantUrl {
   final String getNearbyFranchise = 'getFranchise';
   final String getFoodCategory = 'getMenuTag';
   final String getFranchiseMenu = 'getMenu';
-  
+  final String getBanner = 'get_banner';
 }
+
 class BiddingUrl {
   const BiddingUrl();
   final String getTimeSlots = 'get_time';
@@ -34,21 +34,21 @@ class BiddingUrl {
   final String addBidding = 'add_bidding';
   final String getBidding = 'get_bidding';
   final String getWinner = 'winner';
-    final String getPickupTime = 'get_pickup_time';
+  final String getPickupTime = 'get_pickup_time';
 
   final String addBiddingOrderDetails = 'add_order_and_payment_details';
   final String addFixedOrderDetails = 'add_fixed_order_details';
   final String getPhonePeResponse = 'get_phonepe_response';
 }
- class OrderHistoryUrl {
+
+class OrderHistoryUrl {
   const OrderHistoryUrl();
   final String getFixedOrderDetails = 'get_fixed_orderdetails';
   final String getBiddingOrderDetails = 'get_orderdetails';
- }
+}
 
- class RatingsUrl {
+class RatingsUrl {
   const RatingsUrl();
   final String getFranchiseRating = 'getFranchiseRatings';
   final String addFranchiseRating = 'addRatings';
- }
-  
+}

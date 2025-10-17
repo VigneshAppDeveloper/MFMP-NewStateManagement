@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../models/Resturant Model/resturant.dart';
+import '../../route_generator.dart';
 
 class PickupPointsPage extends StatefulWidget {
   final Restaurant restaurant; // ✅ full Restaurant with pickupPoints
@@ -40,47 +41,47 @@ class _PickupPointsPageState extends State<PickupPointsPage> {
   }
 
   /// ✅ Add pickup markers
-Future<void> loadCustomMarkers() async {
-  List<Marker> temp = [];
+  Future<void> loadCustomMarkers() async {
+    List<Marker> temp = [];
 
-  for (int i = 0; i < widget.restaurant.pickupPoints.length; i++) {
-    final point = widget.restaurant.pickupPoints[i];
-    final isSelected = (i == selectedIndex);
+    for (int i = 0; i < widget.restaurant.pickupPoints.length; i++) {
+      final point = widget.restaurant.pickupPoints[i];
+      final isSelected = (i == selectedIndex);
 
-    // Marker icon changes if selected
-    final icon = await createPickupMarker(point.pickupLocation, isSelected);
+      // Marker icon changes if selected
+      final icon = await createPickupMarker(point.pickupLocation, isSelected);
 
-    // ⚡ Offset if same lat/lng for multiple points
-    double lat = point.latitude;
-    double lng = point.longitude;
-    if (temp.any(
-      (m) => (m.position.latitude == lat && m.position.longitude == lng),
-    )) {
-      lat += 0.00005 * i;
-      lng += 0.00005 * i;
+      // ⚡ Offset if same lat/lng for multiple points
+      double lat = point.latitude;
+      double lng = point.longitude;
+      if (temp.any(
+        (m) => (m.position.latitude == lat && m.position.longitude == lng),
+      )) {
+        lat += 0.00005 * i;
+        lng += 0.00005 * i;
+      }
+
+      temp.add(
+        Marker(
+          markerId: MarkerId(point.pickupId.toString()),
+          position: LatLng(lat, lng),
+          icon: icon,
+          onTap: () async {
+            setState(() {
+              selectedIndex = i;
+            });
+            await loadCustomMarkers(); // 🔁 reload with new highlight
+          },
+        ),
+      );
     }
 
-    temp.add(
-      Marker(
-        markerId: MarkerId(point.pickupId.toString()),
-        position: LatLng(lat, lng),
-        icon: icon,
-        onTap: () async {
-          setState(() {
-            selectedIndex = i;
-          });
-          await loadCustomMarkers(); // 🔁 reload with new highlight
-        },
-      ),
-    );
+    if (mounted) {
+      setState(() {
+        customMarkers = temp;
+      });
+    }
   }
-
-  if (mounted) {
-    setState(() {
-      customMarkers = temp;
-    });
-  }
-}
 
   /// ✅ Calculate distance (Haversine formula)
   String _calculateDistance(LatLng from, LatLng to) {
@@ -143,11 +144,12 @@ Future<void> loadCustomMarkers() async {
               onMapCreated: (controller) => mapController = controller,
               markers: Set.from(customMarkers),
             ),
-        
+
             // ✅ Bottom Info Sheet
             Positioned(
               bottom:
-                  MediaQuery.of(context).size.height * 0.00, // responsive bottom
+                  MediaQuery.of(context).size.height *
+                  0.00, // responsive bottom
               left: 0,
               right: 0,
               child: Container(
@@ -178,8 +180,10 @@ Future<void> loadCustomMarkers() async {
                         fontSize: 16,
                       ),
                     ),
-                    SizedBox(height: MediaQuery.of(context).size.height * 0.012),
-        
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.012,
+                    ),
+
                     // 🔹 Card Row
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -189,7 +193,9 @@ Future<void> loadCustomMarkers() async {
                           size: 28,
                           color: Colors.black87,
                         ),
-                        SizedBox(width: MediaQuery.of(context).size.width * 0.03),
+                        SizedBox(
+                          width: MediaQuery.of(context).size.width * 0.03,
+                        ),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,9 +226,9 @@ Future<void> loadCustomMarkers() async {
                         ),
                       ],
                     ),
-        
+
                     SizedBox(height: MediaQuery.of(context).size.height * 0.02),
-        
+
                     // 🔹 Continue Button
                     SizedBox(
                       width: double.infinity,
@@ -236,10 +242,13 @@ Future<void> loadCustomMarkers() async {
                         ),
                         onPressed: () {
                           // 🚀 Pass restaurant + pickup point
-                          // AppRouteName.menuPage.push(context, args: {
-                          //   'restaurant': widget.restaurant,
-                          //   'pickupPoint': selectedPickup,
-                          // });
+                          AppRouteName.menuPage.push(
+                            context,
+                            args: {
+                              'restaurant': widget.restaurant,
+                              'showPriceTabs': true,
+                            },
+                          );
                         },
                         child: const Text(
                           "CONTINUE",
@@ -262,64 +271,64 @@ Future<void> loadCustomMarkers() async {
   }
 
   /// ✅ Custom marker with pickup point name
- Future<BitmapDescriptor> createPickupMarker(
-  String label,
-  bool isSelected,
-) async {
-  const double width = 150;
-  const double height = 40;
+  Future<BitmapDescriptor> createPickupMarker(
+    String label,
+    bool isSelected,
+  ) async {
+    const double width = 150;
+    const double height = 40;
 
-  final recorder = ui.PictureRecorder();
-  final canvas = Canvas(recorder);
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
 
-  final paint = Paint()
-    ..color = isSelected ? Colors.black : Colors.red; // 🟢 highlight
+    final paint =
+        Paint()..color = isSelected ? Colors.black : Colors.red; // 🟢 highlight
 
-  // Rounded box
-  final rRect = RRect.fromLTRBR(
-    0,
-    0,
-    width,
-    height - 10,
-    const Radius.circular(10),
-  );
-  canvas.drawRRect(rRect, paint);
+    // Rounded box
+    final rRect = RRect.fromLTRBR(
+      0,
+      0,
+      width,
+      height - 10,
+      const Radius.circular(10),
+    );
+    canvas.drawRRect(rRect, paint);
 
-  // Triangle pointer
-  final triangle = Path()
-    ..moveTo(width / 2 - 10, height - 10)
-    ..lineTo(width / 2 + 10, height - 10)
-    ..lineTo(width / 2, height)
-    ..close();
-  canvas.drawPath(triangle, paint);
+    // Triangle pointer
+    final triangle =
+        Path()
+          ..moveTo(width / 2 - 10, height - 10)
+          ..lineTo(width / 2 + 10, height - 10)
+          ..lineTo(width / 2, height)
+          ..close();
+    canvas.drawPath(triangle, paint);
 
-  // Text
-  final textPainter = TextPainter(
-    text: TextSpan(
-      text: label,
-      style: TextStyle(
-        color: Colors.white,
-        fontSize: 12,
-        fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
+    // Text
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: label,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: isSelected ? FontWeight.w900 : FontWeight.bold,
+        ),
       ),
-    ),
-    textDirection: TextDirection.ltr,
-    textAlign: TextAlign.center,
-  );
-  textPainter.layout(maxWidth: width - 16);
-  final offset = Offset(
-    (width - textPainter.width) / 2,
-    (height - 10 - textPainter.height) / 2,
-  );
-  textPainter.paint(canvas, offset);
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.center,
+    );
+    textPainter.layout(maxWidth: width - 16);
+    final offset = Offset(
+      (width - textPainter.width) / 2,
+      (height - 10 - textPainter.height) / 2,
+    );
+    textPainter.paint(canvas, offset);
 
-  final img = await recorder.endRecording().toImage(
-    width.toInt(),
-    height.toInt(),
-  );
-  final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
-  final bytes = byteData!.buffer.asUint8List();
-  return BitmapDescriptor.bytes(bytes);
-}
-
+    final img = await recorder.endRecording().toImage(
+      width.toInt(),
+      height.toInt(),
+    );
+    final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+    final bytes = byteData!.buffer.asUint8List();
+    return BitmapDescriptor.bytes(bytes);
+  }
 }

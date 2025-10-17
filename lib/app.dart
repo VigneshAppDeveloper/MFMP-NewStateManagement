@@ -86,7 +86,7 @@ class _MyAppState extends State<MyApp> {
                   ChangeNotifierProvider(create: (_) => MenuProvider()),
                   ChangeNotifierProvider(create: (_) => BidderProvider()),
                   ChangeNotifierProvider(create: (_) => CartProvider()),
-                   ChangeNotifierProvider(create: (_) => OrderHistoryProvider()),
+                  ChangeNotifierProvider(create: (_) => OrderHistoryProvider()),
                   ChangeNotifierProvider(create: (_) => RatingsProvider()),
                 ],
                 child: MaterialApp(

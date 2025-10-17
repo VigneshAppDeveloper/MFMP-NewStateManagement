@@ -83,12 +83,18 @@ class _FixedSuccessScreenState extends State<FixedSuccessScreen> {
                       elevation: 1,
                     ),
                     onPressed: () {
-                      AppRouteName.orderHistoryPage.pushAndRemoveUntil(
+                      AppRouteName.appPage.pushAndRemoveUntil(
                         context,
-                        (route) =>
-                            route.settings.name == AppRouteName.appPage.value,
-                        args: {"initialTab": 1, "forceRefresh": true},
+                        (route) => false,
+                        args: {"initialTab": 0},
                       );
+
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        AppRouteName.orderHistoryPage.push(
+                          context,
+                          args: {"initialTab": 0, "forceRefresh": true},
+                        );
+                      });
                     },
                     child: Text(
                       "View Order",

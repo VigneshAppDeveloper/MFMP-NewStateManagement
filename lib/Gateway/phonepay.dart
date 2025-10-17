@@ -5,12 +5,14 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:phonepe_payment_sdk/phonepe_payment_sdk.dart';
 
+import '../config/app_config.dart';
+
 class PhonePeGateway {
   static const String _merchantId = "BIRYANIPALAYAMONLINE";
   static const String _saltKey = "a6ca06a7-8b49-45f1-89b6-483e63a6076c";
   static const String _saltIndex = "1";
-  static const String _callbackUrl =
-      "https://mfmpdev.tsitcloud.com/tsit_biriyani_palayam-dev/public/api/phonepe_response";
+  static final String _callbackUrl =
+      "${AppConfig.instance.baseUrl}phonepe_response";
 
   static const bool _enableLogs = true;
   static const String _environment = "PRODUCTION";
@@ -67,65 +69,62 @@ class PhonePeGateway {
     return checksum;
   }
 
- static Future<Map<String, dynamic>?> startPayment({
-  required double amount,
-  required String transactionId,
-  required String userId,
-}) async {
-  try {
-    await init();
+  static Future<Map<String, dynamic>?> startPayment({
+    required double amount,
+    required String transactionId,
+    required String userId,
+  }) async {
+    try {
+      await init();
 
-    final String base64Body = _createTransactionBody(
-      amount: amount,
-      merchantTransactionId: transactionId,
-      merchantUserId: userId,
-    );
+      final String base64Body = _createTransactionBody(
+        amount: amount,
+        merchantTransactionId: transactionId,
+        merchantUserId: userId,
+      );
 
-    final String checksum = _generateChecksum(base64Body);
+      final String checksum = _generateChecksum(base64Body);
 
-    // (body, callbackUrl, checksum, packageName)
-    final response = await PhonePePaymentSdk.startTransaction(
-      base64Body,
-      _callbackUrl,
-      checksum,
-      _packageName,
-    );
+      // (body, callbackUrl, checksum, packageName)
+      final response = await PhonePePaymentSdk.startTransaction(
+        base64Body,
+        _callbackUrl,
+        checksum,
+        _packageName,
+      );
 
-    debugPrint("📡 Raw PhonePe SDK Response: $response");
+      debugPrint("📡 Raw PhonePe SDK Response: $response");
 
-    // ✅ Normalize result
-    String statusCode = "";
-    if (response is Map) {
-      statusCode = (response["statusCode"] ??
-              response["status"] ??
-              response["state"] ??
-              "")
-          .toString()
-          .trim()
-          .toLowerCase();
+      // ✅ Normalize result
+      String statusCode = "";
+      if (response is Map) {
+        statusCode =
+            (response["statusCode"] ??
+                    response["status"] ??
+                    response["state"] ??
+                    "")
+                .toString()
+                .trim()
+                .toLowerCase();
+      }
+
+      String normalized;
+      if (statusCode == "completed" || statusCode == "success") {
+        normalized = "success";
+      } else if (statusCode == "pending") {
+        normalized = "pending";
+      } else {
+        normalized = "failed";
+      }
+
+      debugPrint("📡 Normalized Payment Status: $normalized");
+
+      return {"status": normalized, "raw": response?.toString()};
+    } catch (e, s) {
+      debugPrint("❌ startPayment error: $e\n$s");
+      return {"status": "failed", "error": e.toString()};
     }
-
-    String normalized;
-    if (statusCode == "completed" || statusCode == "success") {
-      normalized = "success";
-    } else if (statusCode == "pending") {
-      normalized = "pending";
-    } else {
-      normalized = "failed";
-    }
-
-    debugPrint("📡 Normalized Payment Status: $normalized");
-
-    return {
-      "status": normalized,
-      "raw": response?.toString(),
-    };
-  } catch (e, s) {
-    debugPrint("❌ startPayment error: $e\n$s");
-    return {"status": "failed", "error": e.toString()};
   }
-}
-
 }
 // class PhonePeGateway {
 //   static const String _merchantId = "BIRYANIPALAYAMONLINE";

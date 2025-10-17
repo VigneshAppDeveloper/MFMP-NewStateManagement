@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:my_food_my_price/route_generator.dart';
@@ -10,7 +9,6 @@ import '../../Providers/location_provider.dart';
 import '../../Providers/restaurant_provider.dart';
 import '../../services/location_service.dart';
 
-
 class HomeAppBar extends StatelessWidget {
   const HomeAppBar({super.key});
 
@@ -20,11 +18,12 @@ class HomeAppBar extends StatelessWidget {
       builder: (context, provider, _) {
         final location = provider.currentLocation;
 
-        final mainAddressLine = location == null
-            ? "Loading..."
-            : (location.areaName.isNotEmpty
-                ? location.areaName
-                : location.district);
+        final mainAddressLine =
+            location == null
+                ? "Loading..."
+                : (location.areaName.isNotEmpty
+                    ? location.areaName
+                    : location.district);
         final subAddressLine = location?.address ?? "Fetching address...";
 
         return Row(
@@ -36,20 +35,27 @@ class HomeAppBar extends StatelessWidget {
                 children: [
                   GestureDetector(
                     onTap: () async {
-                      final result = await AppRouteName.serachLocation.push<LatLng>(context);
+                      final result = await AppRouteName.serachLocation
+                          .push<LatLng>(context);
                       if (result != null && context.mounted) {
                         // 1. Update restaurants
                         context.read<RestaurantProvider>().getRestaurants(
-                              lat: result.latitude,
-                              lng: result.longitude,
-                            );
+                          lat: result.latitude,
+                          lng: result.longitude,
+                        );
 
                         // 2. Save & reload location into provider
-                        final success = await LocationService.fetchAndSaveLocationFromLatLng(result);
+                        final success =
+                            await LocationService.fetchAndSaveLocationFromLatLng(
+                              result,
+                            );
                         if (success) {
-                          final saved = await LocationService.getSavedLocation();
+                          final saved =
+                              await LocationService.getSavedLocation();
                           if (saved != null && context.mounted) {
-                            context.read<LocationProvider>().updateSessionLocation(saved);
+                            context
+                                .read<LocationProvider>()
+                                .updateSessionLocation(saved);
                           }
                         }
                       }
@@ -61,9 +67,9 @@ class HomeAppBar extends StatelessWidget {
                         Flexible(
                           child: Text(
                             mainAddressLine,
-                            style: Styles.textStyleMedium(context).copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: Styles.textStyleMedium(
+                              context,
+                            ).copyWith(fontWeight: FontWeight.bold),
                             overflow: TextOverflow.ellipsis,
                             textScaler: const TextScaler.linear(1.0),
                           ),
@@ -87,9 +93,11 @@ class HomeAppBar extends StatelessWidget {
             const SizedBox(width: 12),
 
             // 💰 Wallet section
-            Image.asset(
-              'assets/icons/reward.gif',
-              height: 30,
+            GestureDetector(
+              onTap: () {
+                AppRouteName.rewards.push(context);
+              },
+              child: Image.asset('assets/icons/reward.gif', height: 30),
             ),
             const SizedBox(width: 6),
             Container(
@@ -100,10 +108,9 @@ class HomeAppBar extends StatelessWidget {
               ),
               child: Text(
                 AppConstants.profile?.wallet ?? '0',
-                style: Styles.textSmall(context).copyWith(
-                  color: Colors.black,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Styles.textSmall(
+                  context,
+                ).copyWith(color: Colors.black, fontWeight: FontWeight.bold),
                 textScaler: const TextScaler.linear(1.0),
               ),
             ),

@@ -113,15 +113,17 @@ class _PickupDatePickupPointState extends State<PickupDatePickupPoint> {
                 onChanged: (value) {
                   setState(() {
                     _selectedPickup = value;
-                    // ❌ Don’t clear date anymore
-                    // _selectedDate = null;
                   });
 
                   final menuProvider = context.read<MenuProvider>();
                   if (value != null) {
                     menuProvider.setPickupPoint(value);
+                    debugPrint(
+                      "📍 Selected pickup: ${value.pickupLocation} (ID: ${value.pickupId})",
+                    );
                   }
                 },
+
                 icon: const Icon(Icons.location_on_outlined, size: 18),
               ),
             ),

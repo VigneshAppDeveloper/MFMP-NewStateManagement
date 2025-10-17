@@ -55,6 +55,10 @@ class MenuProvider extends ChangeNotifier {
   bool _isFlashMode = false;
   bool get isFlashMode => _isFlashMode;
 
+  String? _currentFranchiseId;
+String? get currentFranchiseId => _currentFranchiseId;
+
+
   void setActive(bool val) {
     _isActivePage = val;
     if (!val) stopAutoUpdaters();
@@ -87,25 +91,48 @@ Future<void> getRestaurantMenu(
   _isFlashMode = isFlash;
   if (isFlash) stopAutoUpdaters();
 
-  final now = DateTime.now();
   final cacheKey = isFlash ? "${franchiseId}_flash" : franchiseId;
+  final now = DateTime.now();
   final lastFetch = _lastFetchedTime[cacheKey];
 
-  if (_isFlashMode && !isFlash) {
-    debugPrint("⚠️ Ignoring normal menu fetch — flash mode active");
-    return;
+  // ✅ If switching restaurants, just load cached immediately if present
+  if (_currentFranchiseId != franchiseId) {
+    _currentFranchiseId = franchiseId;
+    if (_cachedMenus.containsKey(cacheKey)) {
+      debugPrint("📦 Switched restaurant → using cached menu for $franchiseId");
+      _menus = List<RestaurantMenuModel>.from(_cachedMenus[cacheKey]!);
+      notifyListeners();
+      // If cache older than 10 min, silently refresh in background
+      if (lastFetch == null ||
+          now.difference(lastFetch).inMinutes >= 10 ||
+          forceRefresh) {
+        unawaited(_backgroundMenuRefresh(franchiseId, isFlash: isFlash));
+      }
+      return;
+    } else {
+      _menus = [];
+      notifyListeners();
+    }
   }
 
+  // ✅ Use cache if still valid
   if (!forceRefresh &&
       _cachedMenus.containsKey(cacheKey) &&
       lastFetch != null &&
       now.difference(lastFetch).inMinutes < 10) {
-    _menus = _cachedMenus[cacheKey]!;
+    _menus = List<RestaurantMenuModel>.from(_cachedMenus[cacheKey]!);
+    _currentFranchiseId = franchiseId;
+    debugPrint("⚡ Served from cache: $franchiseId (${_menus.length} items)");
     notifyListeners();
-    debugPrint("⚡ Loaded ${isFlash ? 'flash' : 'normal'} menu from cache for $franchiseId");
     return;
   }
 
+  // ✅ Otherwise fetch new data
+  await _fetchAndCacheMenu(franchiseId, isFlash: isFlash);
+}
+
+
+Future<void> _fetchAndCacheMenu(String franchiseId, {bool isFlash = false}) async {
   _isLoading = true;
   notifyListeners();
 
@@ -116,22 +143,20 @@ Future<void> getRestaurantMenu(
     final resp = await APIService.get(
       url,
       auth: true,
-      params: isFlash ? {'is_flash': '1'} : null
+      params: isFlash ? {'is_flash': '1'} : null,
     );
 
     if (resp.status) {
       final List<dynamic> data = resp.data ?? [];
       _menus = data.map((e) => RestaurantMenuModel.fromJson(e)).toList();
 
-      // No need for manual filter if backend already handles flash
-      if (isFlash) {
-        debugPrint("⚡ Flash mode active — backend already filtered menus (${_menus.length})");
-      }
+      _cachedMenus[isFlash ? "${franchiseId}_flash" : franchiseId] =
+          List<RestaurantMenuModel>.from(_menus);
+      _lastFetchedTime[isFlash ? "${franchiseId}_flash" : franchiseId] =
+          DateTime.now();
 
-      _cachedMenus[cacheKey] = _menus;
-      _lastFetchedTime[cacheKey] = now;
       error = null;
-      debugPrint("✅ Parsed ${_menus.length} ${isFlash ? 'flash' : 'normal'} menus");
+      debugPrint("✅ Cached ${_menus.length} menus for $franchiseId");
     } else {
       error = resp.message ?? "Failed to fetch menu.";
       _menus = [];
@@ -146,6 +171,14 @@ Future<void> getRestaurantMenu(
   notifyListeners();
 }
 
+Future<void> _backgroundMenuRefresh(String franchiseId, {bool isFlash = false}) async {
+  try {
+    debugPrint("🔄 Background refresh started for $franchiseId");
+    await _fetchAndCacheMenu(franchiseId, isFlash: isFlash);
+  } catch (_) {
+    debugPrint("⚠️ Background refresh failed for $franchiseId");
+  }
+}
 
 
   /// ✅ Clear specific restaurant menu cache
@@ -155,7 +188,8 @@ Future<void> getRestaurantMenu(
     if (_menus.isNotEmpty && _menus.first.franchiseId == franchiseId) {
       _menus = [];
     }
-    notifyListeners();
+      debugPrint("🧹 Cleared menu cache for $franchiseId");
+
   }
 
   /// ✅ Clear all cached menus

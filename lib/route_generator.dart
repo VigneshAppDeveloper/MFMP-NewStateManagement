@@ -16,6 +16,7 @@ import 'package:my_food_my_price/pages/app_guide.dart';
 import 'package:my_food_my_price/pages/app_pages.dart';
 import 'package:my_food_my_price/pages/bidding_page.dart';
 import 'package:my_food_my_price/pages/FixedPayment/fixed_price_payment_page.dart';
+import 'package:my_food_my_price/pages/food_category_restuarnt_page.dart';
 import 'package:my_food_my_price/pages/intro_page.dart';
 import 'package:my_food_my_price/pages/login.dart';
 import 'package:my_food_my_price/pages/menu_page.dart';
@@ -24,20 +25,20 @@ import 'package:my_food_my_price/pages/policy/contact_us.dart';
 import 'package:my_food_my_price/pages/policy/privacy_policy.dart';
 import 'package:my_food_my_price/pages/policy/refund_policy.dart';
 import 'package:my_food_my_price/pages/policy/shipping_policy.dart';
+import 'package:my_food_my_price/pages/policy/terms_condition.dart';
 import 'package:my_food_my_price/pages/register.dart';
 import 'package:my_food_my_price/util/extension.dart';
 import 'package:provider/provider.dart';
 
 import 'Providers/bidding_order_provider.dart';
 import 'Providers/fixed_order_provider.dart';
-import 'Providers/order_history_provider.dart';
 import 'models/BidderModels/winner_model.dart';
-import 'models/FoodModels/resturant_menu_model.dart';
 import 'models/Resturant Model/resturant.dart';
 import 'pages/BiddinPayment/Screens/bid_failure.dart';
 import 'pages/BiddinPayment/Screens/bid_success.dart';
 import 'pages/BiddinPayment/bidding_payment_page.dart';
 import 'pages/Ratings/ratings_page.dart';
+import 'pages/franchise_enquiry.dart';
 
 enum AppRouteName {
   splashPage('/splash_page'),
@@ -68,6 +69,9 @@ enum AppRouteName {
   fixedPricePaymentSuccessPage('/fixed_success'),
   fixedPricePaymentFailedPage('/fixed_failure'),
   ratingsPage('/ratings_page'),
+  franchiseEnquiryPage('/franchise_enquiry_page'),
+  termsConditions('/terms_conditions'),
+  categoryRestaurantsPage('/category_restaurants_page'),
   appSettingsPage('/app_settings');
 
   /// args: TaskViewScreenArgs
@@ -159,14 +163,31 @@ class RouteGenerator {
         return MaterialPageRoute(builder: (_) => RefundPolicy());
       case AppRouteName.shippingPolicy:
         return MaterialPageRoute(builder: (_) => ShippingPolicy());
+      case AppRouteName.termsConditions:
+        return MaterialPageRoute(builder: (_) => TermsCondition());
       case AppRouteName.appGuide:
         return MaterialPageRoute(builder: (_) => AppGuide());
+      case AppRouteName.franchiseEnquiryPage:
+        return MaterialPageRoute(builder: (_) => NewFranchiseEnquiry());
       case AppRouteName.settingsPage:
         return MaterialPageRoute(builder: (_) => SettingsPage());
       case AppRouteName.deleteAccount:
         return MaterialPageRoute(builder: (_) => DeleteAccount());
       case AppRouteName.rewards:
         return MaterialPageRoute(builder: (_) => Rewards());
+      case AppRouteName.categoryRestaurantsPage:
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(
+          builder:
+              (_) => CategoryRestaurantsPage(
+                category: args['category'],
+                lat: args['lat'],
+                lng: args['lng'],
+                fromFlashPage:
+                    args['fromFlashPage'] ?? false, // ✅ default false
+              ),
+        );
+
       case AppRouteName.orderHistoryPage:
         final args = settings.arguments as Map<String, dynamic>?;
         final initialTab = args?['initialTab'] ?? 0;
@@ -272,7 +293,7 @@ class RouteGenerator {
                     pickupDate: args["pickup_date"],
                     pickupPoint: args["pickup_point"],
                     restaurant: args["restaurant"],
-                     fromFlashPage: args["from_flash"] ?? false, 
+                    fromFlashPage: args["from_flash"] ?? false,
                   ),
                 ),
           );

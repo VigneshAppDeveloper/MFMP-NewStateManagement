@@ -21,6 +21,8 @@ import '../widgets/dilogue/dilogue.dart';
 class LoginProvider extends ChangeNotifier {
   bool isApiValidationError = false;
 
+  
+
   Future<void> initialFetch() async {
     AppGlobal.deviceInfo = await DeviceInfoServices.getDeviceInfo();
   }

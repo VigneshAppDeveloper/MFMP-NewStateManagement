@@ -147,18 +147,18 @@ class _AppSettingsState extends State<AppSettings> {
                   HeadingSection(
                     title: "Enquirys & Supports",
                     children: [
-                      DrawerListTile(
-                        icon: Icons.support_agent,
-                        title: "Customer Supports ",
-                        onTap: () {
-                          // AppRouteName.myOrdersPage.push(context);
-                        },
-                      ),
+                      // DrawerListTile(
+                      //   icon: Icons.support_agent,
+                      //   title: "Customer Supports ",
+                      //   onTap: () {
+                      //     // AppRouteName.myOrdersPage.push(context);
+                      //   },
+                      // ),
                       DrawerListTile(
                         icon: Icons.store_mall_directory,
                         title: "Franchise Enquiry",
                         onTap: () {
-                          // AppRouteName.myOrdersPage.push(context);
+                          AppRouteName.franchiseEnquiryPage.push(context);
                         },
                       ),
                       DrawerListTile(

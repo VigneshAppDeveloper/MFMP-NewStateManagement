@@ -22,16 +22,19 @@ class FeedbackSection extends StatefulWidget {
 
 class _FeedbackSectionState extends State<FeedbackSection> {
   bool _isSubmitting = false;
-
+  late final VoidCallback _textListener;
   @override
   void initState() {
     super.initState();
-    widget.controller.addListener(() => setState(() {}));
+    _textListener = () {
+      if (mounted) setState(() {});
+    };
+    widget.controller.addListener(_textListener);
   }
 
   @override
   void dispose() {
-    widget.controller.removeListener(() {});
+    widget.controller.removeListener(_textListener); // ✅ proper cleanup
     super.dispose();
   }
 
@@ -45,8 +48,9 @@ class _FeedbackSectionState extends State<FeedbackSection> {
       children: [
         Text(
           "Feedback & Others",
-          style: Styles.textSmall(context)
-              .copyWith(fontWeight: FontWeight.bold),
+          style: Styles.textSmall(
+            context,
+          ).copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         TextFormField(
@@ -74,21 +78,21 @@ class _FeedbackSectionState extends State<FeedbackSection> {
         Align(
           alignment: Alignment.centerRight,
           child: ElevatedButton.icon(
-            onPressed: canSubmit
-                ? () async {
-                    setState(() => _isSubmitting = true);
-                    await widget.onSubmit();
-                    if (mounted) setState(() => _isSubmitting = false);
-                  }
-                : null, // ✅ Disabled when invalid or submitting
+            onPressed:
+                canSubmit
+                    ? () async {
+                      setState(() => _isSubmitting = true);
+                      await widget.onSubmit();
+                      if (mounted) setState(() => _isSubmitting = false);
+                    }
+                    : null,
             icon: const Icon(Icons.send, color: Colors.white),
             label: Text(
               _isSubmitting ? "Submitting..." : "Submit",
               style: Styles.textSmall(context, color: Colors.white),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor:
-                  canSubmit ? AppColor.maincolor : Colors.grey,
+              backgroundColor: canSubmit ? AppColor.maincolor : Colors.grey,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),

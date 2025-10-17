@@ -21,26 +21,30 @@ class _ExpandableTextState extends State<ExpandableText> {
   bool isExpanded = false;
   bool isOverflowing = false;
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkOverflow();
-    });
-  }
+ @override
+void didChangeDependencies() {
+  super.didChangeDependencies();
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (mounted) _checkOverflow();
+  });
+}
 
   void _checkOverflow() {
-    final span = TextSpan(text: widget.text, style: widget.style);
-    final tp = TextPainter(
-      text: span,
-      maxLines: widget.trimLines,
-      textScaler: widget.textScaler,
-      textDirection: TextDirection.ltr,
-    )..layout(maxWidth: MediaQuery.of(context).size.width);
-    setState(() {
-      isOverflowing = tp.didExceedMaxLines;
-    });
-  }
+  if (!mounted) return; // ✅ prevent calling after dispose
+  final span = TextSpan(text: widget.text, style: widget.style);
+  final tp = TextPainter(
+    text: span,
+    maxLines: widget.trimLines,
+    textScaler: widget.textScaler,
+    textDirection: TextDirection.ltr,
+  )..layout(maxWidth: MediaQuery.of(context).size.width);
+
+  if (!mounted) return; // ✅ double check before setState
+  setState(() {
+    isOverflowing = tp.didExceedMaxLines;
+  });
+}
+
 
   @override
   Widget build(BuildContext context) {

@@ -57,6 +57,33 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
     }
   }
 
+  int _compareTime(String a, String b) {
+    try {
+      final timeA = _parseTo24Hour(a);
+      final timeB = _parseTo24Hour(b);
+      return timeA.compareTo(timeB);
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  DateTime _parseTo24Hour(String timeStr) {
+    // Handles formats like "10:00", "2.15pm", "2:20 PM"
+    String normalized = timeStr.toLowerCase().replaceAll('.', ':').trim();
+    if (!normalized.contains('am') && !normalized.contains('pm')) {
+      // assume 24-hour style
+      final parts = normalized.split(':');
+      final hour = int.parse(parts[0]);
+      final minute = int.parse(parts.length > 1 ? parts[1] : '0');
+      return DateTime(0, 1, 1, hour, minute);
+    }
+
+    final formatter = DateFormat("h:mm a");
+    return formatter.parse(
+      normalized.replaceAll('am', ' AM').replaceAll('pm', ' PM'),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -151,7 +178,20 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
                       } else {
                         setState(() {
                           selectedDate = date;
+                          selectedPickupTime = null; // ✅ clear previous time
                         });
+
+                        // Optional: also clear from provider so UI stays in sync
+                        if (widget.isFixedOrder) {
+                          parentContext
+                              .read<FixedOrderProvider>()
+                              .selectedPickupTime = null;
+                        } else {
+                          parentContext
+                              .read<BiddingOrderProvider>()
+                              .selectedPickupTime = null;
+                        }
+
                         final formatted = DateFormat(
                           'dd-MM-yyyy',
                         ).format(selectedDate);
@@ -348,7 +388,10 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
                           ? "No pickup times"
                           : "Select Pickup Time"),
               items: List<String>.from(
-                biddingProvider.pickupTimes.map((e) => formatTime(e.time)),
+                (biddingProvider.pickupTimes..sort(
+                      (a, b) => _compareTime(a.time, b.time),
+                    )) // ✅ Sort ascending
+                    .map((e) => formatTime(e.time)),
               ),
 
               onChanged:
@@ -418,7 +461,10 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
             setState(() => selectedPickupPoint = value);
             if (value != null) {
               context.read<MenuProvider>().setPickupPoint(value);
-              widget.onPickupPointChange?.call(value.pickupLocation);
+              debugPrint(
+                "📍 Selected pickup point: ${value.pickupLocation} (ID: ${value.pickupId})",
+              );
+              widget.onPickupPointChange?.call(value.pickupId.toString());
             }
           },
           icon: const Icon(

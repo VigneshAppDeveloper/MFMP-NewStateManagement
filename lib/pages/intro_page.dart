@@ -14,11 +14,11 @@ class IntroPage extends StatefulWidget {
 class _IntroPageState extends State<IntroPage> {
   final List<String> imagePaths = [
     'assets/bg/i1.jpg',
-    'assets/bg/i2.jpg',
-    'assets/bg/i3.jpg',
-    'assets/bg/i4.jpg',
-    'assets/bg/i5.jpg',
-    'assets/bg/i6.jpg',
+    'assets/bg/i2-min.jpg',
+    'assets/bg/i3-min.jpg',
+    'assets/bg/i4-min.jpg',
+    'assets/bg/i5-min.jpg',
+    'assets/bg/i6-min.jpg',
   ];
 
   final PageController _pageController = PageController();

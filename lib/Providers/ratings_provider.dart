@@ -126,8 +126,8 @@ class RatingsProvider extends ChangeNotifier {
       final payload = {
         "franchise_id": franchiseId,
         "order_ids": orderIds,
-        "menu_category_ids": menuCategoryIds,
-        "star_ratings": starRatings,
+        "menu_ids": menuCategoryIds,
+        "starRatings": starRatings,
         "user_feedback": feedback,
       };
 
