@@ -1,8 +1,11 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:my_food_my_price/models/Resturant%20Model/resturant.dart';
 import 'package:my_food_my_price/util/name_formatter.dart';
 import 'package:my_food_my_price/util/styles.dart';
 import 'package:my_food_my_price/widgets/expandable_text.dart';
+
+import '../../widgets/app_loader.dart';
 
 class RestaurantCard extends StatelessWidget {
   final Restaurant data;
@@ -25,16 +28,28 @@ class RestaurantCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Image
           ClipRRect(
-            borderRadius: BorderRadius.circular(14),
-            child: Image.network(
-              data.image,
-              width: imageSide,
+            borderRadius: BorderRadius.circular(8),
+            child: CachedNetworkImage(
+              imageUrl: data.image,
               height: imageSide,
+              width: imageSide,
               fit: BoxFit.cover,
+              placeholder: (_, __) => const Center(child: FullScreenLoader()),
+              errorWidget:
+                  (_, __, ___) => Image.asset("assets/icons/product-1.jpg"),
             ),
           ),
+          // Image
+          // ClipRRect(
+          //   borderRadius: BorderRadius.circular(14),
+          //   child: Image.network(
+          //     data.image,
+          //     width: imageSide,
+          //     height: imageSide,
+          //     fit: BoxFit.cover,
+          //   ),
+          // ),
           SizedBox(width: size.width * 0.04),
 
           // Texts

@@ -32,7 +32,8 @@ class BiddingOrderProvider extends ChangeNotifier {
   bool get isPickupTimeLoading => _isPickupTimeLoading;
 
   /// ✅ Place Bidding Order
-  Future<bool> placeBiddingOrder({
+   /// ✅ Place Bidding Order (same as fixed, but includes timer_id)
+  Future<Map<String, dynamic>> placeBiddingOrder({
     required String franchiseId,
     required String userId,
     required List<String> menuIds,
@@ -86,30 +87,41 @@ class BiddingOrderProvider extends ChangeNotifier {
 
       debugPrint("📡 [BIDDING ORDER] RESPONSE BODY: ${resp.fullBody}");
 
+      _isLoading = false;
+      notifyListeners();
+
+      // ✅ Handle partial failure (stock issue)
+      if (resp.fullBody is Map<String, dynamic> &&
+          resp.fullBody['success'] == false &&
+          resp.fullBody['data'] != null &&
+          resp.fullBody['data']['menu_id'] != null) {
+        return {
+          "status": "stock_error",
+          "data": resp.fullBody['data'],
+          "message": resp.fullBody['message'] ?? "Stock issue detected"
+        };
+      }
+
+      // ✅ Normal success
       if (resp.status) {
-        // ✅ Success - parse into model
         final model = OrderBiddingResponse.fromJson(resp.fullBody);
         _lastResponse = model;
         errorMessage = null;
-        _isLoading = false;
-        notifyListeners();
-        return true;
+        return {"status": "success"};
       } else {
-        // ❌ API returned failure
+        // ❌ Failure
         errorMessage = resp.message ?? "Failed to place order";
-        _isLoading = false;
-        notifyListeners();
-        return false;
+        return {"status": "failed", "message": errorMessage};
       }
     } catch (e) {
-      // ❌ Exception handling
       debugPrint("❌ Error in placeBiddingOrder: $e");
       errorMessage = e.toString();
       _isLoading = false;
       notifyListeners();
-      return false;
+      return {"status": "error", "message": e.toString()};
     }
   }
+
 
   Future<bool> updateWallet({required String wallet}) async {
     _isLoading = true;

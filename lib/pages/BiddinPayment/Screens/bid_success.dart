@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:my_food_my_price/route_generator.dart';
 import 'package:my_food_my_price/util/color_constant.dart';
 import 'package:my_food_my_price/util/styles.dart';
-
 
 class BidSuccessScreen extends StatelessWidget {
   const BidSuccessScreen({super.key});
@@ -38,7 +38,7 @@ class BidSuccessScreen extends StatelessWidget {
                 "Payment Successful!",
                 textScaler: const TextScaler.linear(1.0),
                 textAlign: TextAlign.center,
-                style: Styles.textStyleMediumBold(context,),
+                style: Styles.textStyleMediumBold(context),
               ),
               SizedBox(height: size.height * 0.02),
               Text(
@@ -59,22 +59,34 @@ class BidSuccessScreen extends StatelessWidget {
                     ),
                   ),
                   onPressed: () {
-                    
+                    AppRouteName.orderHistoryPage.pushAndRemoveUntil(
+                      context,
+                      (route) =>
+                          route.settings.name == AppRouteName.appPage.value,
+                     args: {"initialTab": 1, "forceRefresh": true},
+                    );
                   },
-                  // onPressed: () =>
-                  //     AppRouteName.biddingOrderHistory.push(context),
+
                   child: Text(
                     "View Order",
                     textScaler: const TextScaler.linear(1.0),
-                    style: Styles.textStyleMediumBold(context,
-                        color: Colors.white),
+                    style: Styles.textStyleMediumBold(
+                      context,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
               SizedBox(height: size.height * 0.03),
               GestureDetector(
-                //onTap: () =>
-                //    AppRouteName.homePage.pushAndRemoveUntil(context),
+                onTap: () {
+                  AppRouteName.appPage.pushAndRemoveUntil(
+                    context,
+                    (route) => false,
+                    args: {"initialTab": 0}, // 👈 home tab
+                  );
+                },
+
                 child: Text(
                   "Done",
                   textScaler: const TextScaler.linear(1.0),

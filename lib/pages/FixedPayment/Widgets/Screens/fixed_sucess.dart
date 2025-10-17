@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../route_generator.dart';
 import '../../../../util/color_constant.dart';
 import '../../../../util/styles.dart';
 
@@ -81,7 +82,14 @@ class _FixedSuccessScreenState extends State<FixedSuccessScreen> {
                       ),
                       elevation: 1,
                     ),
-                    onPressed: () {},
+                    onPressed: () {
+                      AppRouteName.orderHistoryPage.pushAndRemoveUntil(
+                        context,
+                        (route) =>
+                            route.settings.name == AppRouteName.appPage.value,
+                        args: {"initialTab": 1, "forceRefresh": true},
+                      );
+                    },
                     child: Text(
                       "View Order",
                       style: Styles.textStyleMediumBold(
@@ -93,7 +101,13 @@ class _FixedSuccessScreenState extends State<FixedSuccessScreen> {
                 ),
                 SizedBox(height: 20),
                 GestureDetector(
-                  onTap: () {},
+                  onTap: () {
+                    AppRouteName.appPage.pushAndRemoveUntil(
+                      context,
+                      (route) => false,
+                      args: {"initialTab": 0}, // 👈 home tab
+                    );
+                  },
                   child: Text(
                     'Done',
                     style: Styles.textStyleMediumBold(

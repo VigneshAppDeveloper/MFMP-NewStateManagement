@@ -1,3 +1,5 @@
+import '../../config/app_config.dart';
+
 class ProfileModel {
     final String id;
   final String userId;
@@ -22,6 +24,11 @@ class ProfileModel {
   });
 
   factory ProfileModel.fromJson(Map<String, dynamic> json) {
+    String rawImage = json['image']?.toString() ?? '';
+  String fullImage =
+      rawImage.isNotEmpty && !rawImage.startsWith('http')
+          ? AppConfig.instance.storageBaseUrl + rawImage
+          : rawImage;
     return ProfileModel(
       id: json['id']?.toString() ?? '',
       userId: json['user_id']?.toString() ?? '',
@@ -30,8 +37,8 @@ class ProfileModel {
       mobile: json['mobile']?.toString() ?? '',
       referralCode: json['referral_code']?.toString() ?? '',
       wallet: json['wallet']?.toString() ?? '',
-      image: json['image']?.toString() ?? '',
-      imageUrl: json['image']?.toString() ?? '',
+      image: rawImage,
+      imageUrl: fullImage,
     );
   }
 

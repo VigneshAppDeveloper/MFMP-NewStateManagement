@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import '../../Gateway/phonepay.dart';
 import '../../Providers/bidding_order_provider.dart';
+import '../../Providers/menu_provider.dart';
 import '../../models/BidderModels/winner_model.dart';
 import '../../models/Resturant Model/resturant.dart';
 import '../../util/app_contant.dart';
@@ -175,6 +176,7 @@ class _BiddingPaymentPageState extends State<BiddingPaymentPage> {
               label: Text(
                 "Pay ₹${payable.toStringAsFixed(2)}",
                 style: Styles.textStyleMediumBold(context, color: Colors.white),
+                textScaler: const TextScaler.linear(1.0),
               ),
               onPressed: () async {
                 await _handlePlaceOrder(context, data);
@@ -186,154 +188,156 @@ class _BiddingPaymentPageState extends State<BiddingPaymentPage> {
     );
   }
 
-  Future<void> _handlePlaceOrder(
-    BuildContext context,
-    PriceSummaryData? data,
-  ) async {
-    if (data == null) {
-      AppDialogue.toast("Calculating totals...");
-      return;
+ Future<void> _handlePlaceOrder(
+  BuildContext context,
+  PriceSummaryData? data,
+) async {
+  if (data == null) {
+    AppDialogue.toast("Calculating totals...");
+    return;
+  }
+
+  // ✅ collect valid winners
+  final validWinners = <WinnerModel>[];
+  final validQuantities = <int>[];
+
+  for (int i = 0; i < widget.winners.length; i++) {
+    if (quantities[i] > 0) {
+      validWinners.add(widget.winners[i]);
+      validQuantities.add(quantities[i]);
     }
-    final validWinners = <WinnerModel>[];
-    final validQuantities = <int>[];
+  }
 
-    for (int i = 0; i < widget.winners.length; i++) {
-      if (quantities[i] > 0) {
-        validWinners.add(widget.winners[i]);
-        validQuantities.add(quantities[i]);
-      }
-    }
+  if (validWinners.isEmpty) {
+    AppDialogue.toast("Please select at least one item before proceeding");
+    return;
+  }
 
-    if (validWinners.isEmpty) {
-      AppDialogue.toast("Please select at least one item before proceeding");
-      return;
-    }
+  final pickupTime = orderProvider.selectedPickupTime?.time;
+  if (pickupTime == null || pickupTime.isEmpty) {
+    Dialogs.snackbar("Please select pickup time", context, isError: true);
+    return;
+  }
 
-    final pickupTime = orderProvider.selectedPickupTime?.time;
-    if (pickupTime == null || pickupTime.isEmpty) {
-      Dialogs.snackbar("Please select pickup time", context, isError: true);
-      return;
-    }
-    final apiPickupDate = _formatDateForApi(selectedPickupDate);
-    debugPrint("📅 Formatted pickup date for API: $apiPickupDate");
+  final apiPickupDate = _formatDateForApi(selectedPickupDate);
+  final transactionId = "MT${DateTime.now().millisecondsSinceEpoch}";
+  final payable = data.payable;
+  final gst = data.gst;
+  final walletUsed = data.walletUsed;
 
-    final transactionId = "MT${DateTime.now().millisecondsSinceEpoch}";
-    final payable = data.payable;
-    final gst = data.gst;
-    final walletUsed = data.walletUsed;
+  try {
+    await AppDialogue.openLoadingDialogAfterClose(
+      context,
+      text: "Placing your order...",
+      load: () async {
+        return await orderProvider.placeBiddingOrder(
+          franchiseId: widget.winners.first.franchiseId,
+          userId: profile.id.toString(),
+          menuIds: widget.winners.map((w) => w.menuId).toList(),
+          menuNames: widget.winners.map((w) => w.menuName).toList(),
+          menuQuantities: quantities.map((q) => q.toString()).toList(),
+          totalMenuPrices: widget.winners
+              .asMap()
+              .entries
+              .map((e) => (double.tryParse(e.value.finalPrice)! * quantities[e.key]).toString())
+              .toList(),
+          name: profile.name,
+          pickupPoint: selectedPickupPoint,
+          pickupTime: pickupTime,
+          mobile: profile.mobile,
+          transactionAmount: payable.toStringAsFixed(2),
+          merchantTransactionId: transactionId,
+          wallet: walletUsed.toStringAsFixed(2),
+          gst: gst.toStringAsFixed(2),
+          pickupDate: apiPickupDate,
+          contactCustomer: restaurantContact ? 1 : 0,
+          timerId: widget.winners.first.timerId ?? "",
+        );
+      },
+      afterComplete: (result) async {
+        if (!context.mounted) return;
 
-    try {
-      await AppDialogue.openLoadingDialogAfterClose(
-        context,
-        text: "Placing your order...",
-        load: () async {
-          // ✅ Step 1: Save order to backend
-          final success = await orderProvider.placeBiddingOrder(
-            franchiseId: widget.winners.first.franchiseId,
-            userId: profile.id.toString(),
-            menuIds: widget.winners.map((w) => w.menuId).toList(),
-            menuNames: widget.winners.map((w) => w.menuName).toList(),
-            menuQuantities: quantities.map((q) => q.toString()).toList(),
-            totalMenuPrices:
-                widget.winners
-                    .asMap()
-                    .entries
-                    .map(
-                      (e) =>
-                          (double.tryParse(e.value.finalPrice)! *
-                                  quantities[e.key])
-                              .toString(),
-                    )
-                    .toList(),
-            name: profile.name,
-            pickupPoint: selectedPickupPoint,
-            pickupTime: pickupTime,
-            mobile: profile.mobile,
-            transactionAmount: payable.toStringAsFixed(2),
-            merchantTransactionId: transactionId,
-            wallet: walletUsed.toStringAsFixed(2),
-            gst: gst.toStringAsFixed(2),
-            pickupDate: apiPickupDate,
-            contactCustomer: restaurantContact ? 1 : 0,
-            timerId: widget.winners.first.timerId ?? "",
+        // ✅ handle partial stock error
+        if (result is Map &&
+            result['status'] == 'stock_error' &&
+            result['data'] != null) {
+          final data = result['data'];
+          final msg = result['message'] ?? "Stock issue detected";
+          final menuId = data['menu_id'];
+          final available = data['avaliable_stock'];
+
+          // 🔹 update local quantity
+          final winnerIndex = widget.winners.indexWhere(
+            (w) => w.menuId.toString() == menuId.toString(),
           );
+          if (winnerIndex != -1) {
+            setState(() {
+              quantities[winnerIndex] = available;
+            });
+          }
 
-          return success;
-        },
-        afterComplete: (success) async {
-          if (!context.mounted) return;
+          // 🔹 update stock globally in MenuProvider
+          final menuProvider = context.read<MenuProvider>();
+          final menuIndex = menuProvider.menus.indexWhere(
+            (m) => m.id.toString() == menuId.toString(),
+          );
+          if (menuIndex != -1) {
+            final oldMenu = menuProvider.menus[menuIndex];
+            menuProvider.menus[menuIndex] =
+                oldMenu.copyWith(avaliableStocks: available);
+            menuProvider.notifyListeners();
+          }
 
-          if (success) {
-            // ✅ Step 2: If order saved successfully, move to payment
-            if (payable > 0) {
-              await AppDialogue.openLoadingDialogAfterClose(
-                context,
-                text: "Redirecting to PhonePe...",
-                load: () async {
-                  final payment = await PhonePeGateway.startPayment(
-                    amount: payable,
-                    transactionId: transactionId,
-                    userId: profile.id.toString(),
-                  );
-                  return payment;
-                },
-                afterComplete: (payment) async {
-                  final paymentStatus =
-                      (payment?["status"] ?? "")
-                          .toString()
-                          .trim()
-                          .toLowerCase();
-                  debugPrint("📡 PhonePe returned status: $paymentStatus");
+          Dialogs.snackbar(msg, context, isError: true);
+          return;
+        }
 
-                  if (paymentStatus != "success" &&
-                      paymentStatus != "completed") {
-                    await PaymentHelpers.saveFailedPaymentDetails(
-                      winners: widget.winners,
-                      franchiseId: widget.winners.first.franchiseId,
-                      timerId: widget.winners.first.timerId ?? "",
-                    );
+        // ✅ success path
+        if (result['status'] == 'success') {
+          if (payable > 0) {
+            await AppDialogue.openLoadingDialogAfterClose(
+              context,
+              text: "Redirecting to PhonePe...",
+              load: () async {
+                return await PhonePeGateway.startPayment(
+                  amount: payable,
+                  transactionId: transactionId,
+                  userId: profile.id.toString(),
+                );
+              },
+              afterComplete: (payment) async {
+                final status =
+                    (payment?["status"] ?? "").toString().toLowerCase();
 
-                    if (!context.mounted) return;
-                    await AppRouteName.biddingPaymentFailedPage.push(
-                      context,
-                      args: {
-                        "winners": widget.winners,
-                        "franchiseId": widget.winners.first.franchiseId,
-                        "timerId": widget.winners.first.timerId ?? "",
-                      },
-                    );
-                    return;
-                  }
-
-                  // ✅ PhonePe success → verify with backend
-                  debugPrint(
-                    "✅ Proceeding to backend verification for $transactionId",
-                  );
+                if (status == "success" || status == "completed") {
                   await _verifyPaymentStatus(
                     context,
                     transactionId,
                     walletUsed,
                   );
-                },
-              );
-            } else {
-              // await orderProvider.updateWallet(
-              //   wallet: walletUsed.toStringAsFixed(2),
-              // );
-              // await AppRouteName.biddingPaymentSuccessPage.pushAndRemoveUntil(
-              //   context,
-              //   (_) => false,
-              // );
-            }
+                } else {
+                  await AppRouteName.biddingPaymentFailedPage.push(context);
+                }
+              },
+            );
           } else {
-            AppDialogue.toast("Order placement failed");
+            // ✅ order placed fully with wallet (no online payment)
+            await _verifyPaymentStatus(
+              context,
+              transactionId,
+              walletUsed,
+            );
           }
-        },
-      );
-    } catch (e) {
-      AppDialogue.toast("Something went wrong: $e");
-    }
+        } else {
+          AppDialogue.toast(result['message'] ?? "Order failed");
+        }
+      },
+    );
+  } catch (e) {
+    AppDialogue.toast("Something went wrong: $e");
   }
+}
+
 
   Future<void> _verifyPaymentStatus(
     BuildContext context,

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:my_food_my_price/util/color_constant.dart';
 
 import '../../../models/BidderModels/winner_model.dart';
+import '../../../route_generator.dart';
 import '../../../util/styles.dart';
 import '../helper/payment_helper.dart';
-
 
 class BidFailureScreen extends StatelessWidget {
   final List<WinnerModel> winners;
@@ -43,15 +43,18 @@ class BidFailureScreen extends StatelessWidget {
               CircleAvatar(
                 backgroundColor: Colors.red.shade600,
                 radius: size.width * 0.12,
-                child: const Icon(Icons.close_rounded,
-                    color: Colors.white, size: 60),
+                child: const Icon(
+                  Icons.close_rounded,
+                  color: Colors.white,
+                  size: 60,
+                ),
               ),
               SizedBox(height: size.height * 0.04),
               Text(
                 "Payment Failed!",
                 textScaler: const TextScaler.linear(1.0),
                 textAlign: TextAlign.center,
-                style: Styles.textStyleMediumBold(context, ),
+                style: Styles.textStyleMediumBold(context),
               ),
               SizedBox(height: size.height * 0.02),
               Text(
@@ -99,7 +102,11 @@ class BidFailureScreen extends StatelessWidget {
                       franchiseId: franchiseId,
                       timerId: timerId,
                     );
-                    //AppRouteName.homePage.pushAndRemoveUntil(context);
+                    AppRouteName.appPage.pushAndRemoveUntil(
+                      context,
+                      (route) => false,
+                      args: {"initialTab": 0}, // 👈 home tab
+                    );
                   },
                   child: Text(
                     "Cancel",

@@ -28,6 +28,12 @@ class _AppSettingsState extends State<AppSettings> {
     profileFuture = loadProfile();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    profileFuture = loadProfile(); // auto-refresh when returning
+  }
+
   Future<ProfileModel?> loadProfile() async {
     debugPrint("🔄 AppConstants.profile: ${AppConstants.profile}");
 
@@ -130,16 +136,9 @@ class _AppSettingsState extends State<AppSettings> {
                     children: [
                       DrawerListTile(
                         icon: Icons.list_alt,
-                        title: "Fixed Orders",
+                        title: "Orders",
                         onTap: () {
-                           AppRouteName.orderHistoryPage.push(context);
-                        },
-                      ),
-                      DrawerListTile(
-                        icon: Icons.receipt,
-                        title: "Bidding Orders",
-                        onTap: () {
-                          // AppRouteName.myOrdersPage.push(context);
+                          AppRouteName.orderHistoryPage.push(context);
                         },
                       ),
                     ],

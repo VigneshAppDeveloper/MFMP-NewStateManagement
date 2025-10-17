@@ -39,7 +39,6 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
   late MenuProvider provider;
   late final CartProvider _cartProvider;
 
-
   @override
   void initState() {
     super.initState();
@@ -47,16 +46,28 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
     searchController = TextEditingController();
     _cartProvider = context.read<CartProvider>();
 
-    provider = context.read<MenuProvider>(); // 👈 capture once here
+    provider = context.read<MenuProvider>();
     provider.setActive(true);
+
     Future.microtask(() async {
-      provider.getRestaurantMenu(
+      // ✅ Always pass the flash flag so provider remembers correct mode
+      await provider.getRestaurantMenu(
         widget.restaurant.franchiseId,
         forceRefresh: false,
+        isFlash: !widget.showPriceTabs,
       );
-      provider.resumeAutoUpdaters(widget.restaurant.franchiseId);
-      if (provider.timeSlots.isNotEmpty) {
-        await provider.refreshTimeSlot(widget.restaurant.franchiseId);
+
+      // ✅ Run auto-updaters only for normal (non-flash) mode
+      if (widget.showPriceTabs) {
+        provider.resumeAutoUpdaters(widget.restaurant.franchiseId);
+
+        // ✅ Optional safe refresh — only if slots exist
+        if (provider.timeSlots.isNotEmpty) {
+          await provider.refreshTimeSlot(widget.restaurant.franchiseId);
+        }
+      } else {
+        provider
+            .stopAutoUpdaters(); // 🔒 ensure flash page never triggers normal refresh
       }
     });
   }
@@ -84,7 +95,7 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
     provider.setActive(false);
     provider.stopAutoUpdaters();
     provider.clearPickupSelections(); // 👈 safe — no context used
-  _cartProvider.clearCart(); 
+    _cartProvider.clearCart();
     searchController.dispose();
     super.dispose();
   }
@@ -104,10 +115,23 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
           color: AppColor.maincolor,
           onRefresh: () async {
             final provider = context.read<MenuProvider>();
+
+            // ✅ If this is a flash sale page (no tabs)
+            if (!widget.showPriceTabs) {
+              await provider.getRestaurantMenu(
+                widget.restaurant.franchiseId,
+                forceRefresh: true,
+                isFlash: true, // ✅ ensure stays in flash mode
+              );
+              return;
+            }
+
+            // ✅ Normal (non-flash) mode
             if (selectedTab == "Fixed Discount Price") {
               await provider.getRestaurantMenu(
                 widget.restaurant.franchiseId,
                 forceRefresh: true,
+                isFlash: false,
               );
             } else {
               await provider.getTimeSlot(
@@ -116,6 +140,7 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
               );
             }
           },
+
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
             child: CustomScrollView(
@@ -132,7 +157,10 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
 
                 /// 📦 Pickup date + pickup point
                 SliverToBoxAdapter(
-                  child: PickupDatePickupPoint(restaurant: widget.restaurant),
+                  child: PickupDatePickupPoint(
+                    restaurant: widget.restaurant,
+                    fromFlashPage: !widget.showPriceTabs,
+                  ),
                 ),
 
                 /// 💰 Two clickable tabs
@@ -260,9 +288,15 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                         );
                       }
                       final filteredMenus =
-                          provider.menus.where((menu) {
-                            return menu.menuType.toLowerCase() == "fixed price";
-                          }).toList();
+                          provider.isFlashMode
+                              ? provider.menus
+                              : provider.menus
+                                  .where(
+                                    (m) =>
+                                        m.menuType.toLowerCase() ==
+                                        "fixed price",
+                                  )
+                                  .toList();
 
                       if (filteredMenus.isEmpty) {
                         return SliverToBoxAdapter(
@@ -413,13 +447,15 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                     }
                   },
                 ),
+                SliverToBoxAdapter(child: SizedBox(height: size.height * 0.02)),
               ],
             ),
           ),
         ),
       ),
+
       floatingActionButton:
-          cart.hasItems
+          selectedTab == "Fixed Discount Price" && cart.hasItems
               ? SizedBox(
                 width: size.width * 0.9,
                 height: size.height * 0.07,
@@ -434,8 +470,11 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                       context,
                       color: Colors.white,
                     ),
+                    textScaler: TextScaler.linear(1.0),
                   ),
                   onPressed: () {
+                    final menuProvider = context.read<MenuProvider>();
+                    menuProvider.stopAutoUpdaters();
                     if (selectedPickupDate == null ||
                         selectedPickupPoint == null) {
                       AppDialogue.toast(
@@ -455,6 +494,7 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                             selectedPickupPoint
                                 .pickupLocation, // ✅ only string field
                         "restaurant": widget.restaurant,
+                        "from_flash": !widget.showPriceTabs,
                       },
                     );
                   },

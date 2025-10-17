@@ -161,29 +161,7 @@ class _HomePageState extends State<HomePage> {
                 // Static sample list (swap with Provider later)
                 SliverToBoxAdapter(child: SizedBox(height: size.height * 0.01)),
 
-                //      SliverList(
-                //   delegate: SliverChildBuilderDelegate((context, index) {
-                //     final restaurant = restaurants[index];
-
-                //     return Padding(
-                //       padding: EdgeInsets.symmetric(
-                //         vertical: MediaQuery.of(context).size.height * 0.012,
-                //       ),
-                //       child: GestureDetector(
-                //         onTap: () {
-                //           AppRouteName.menuPage.push(
-                //             context,
-                //             args: {
-                //               'restaurant': restaurants[index],
-                //               'showPriceTabs': true, // 👈
-                //             },
-                //           );
-                //         },
-                //         child: RestaurantCard(data: restaurant),
-                //       ),
-                //     );
-                //   }, childCount: restaurants.length),
-                // ),
+              
                 // 🔻 Sliver list of cards
                 Consumer<RestaurantProvider>(
                   builder: (context, provider, _) {

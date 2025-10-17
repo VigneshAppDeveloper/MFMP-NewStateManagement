@@ -3,16 +3,16 @@ import 'package:my_food_my_price/route_generator.dart';
 import 'package:my_food_my_price/util/styles.dart';
 import 'package:provider/provider.dart';
 
+import '../Providers/location_provider.dart';
 import '../Providers/restaurant_provider.dart';
 import '../components/FlashSalePageDesign/flash_app_bar.dart';
 import '../components/HomePageDesigns/food_category_header.dart';
-import '../components/HomePageDesigns/home_search_bar.dart';
 import '../components/HomePageDesigns/restaurant_wiget.dart';
 import '../models/FoodModels/food_model.dart';
-import '../models/Resturant Model/resturant.dart';
-import '../services/secure_storage.dart';
-import '../util/app_contant.dart';
+
+import '../util/color_constant.dart';
 import '../widgets/app_shimmer.dart';
+import '../widgets/shimmer_type.dart';
 
 class FlashSalePage extends StatefulWidget {
   const FlashSalePage({super.key});
@@ -25,35 +25,38 @@ class _FlashSalePageState extends State<FlashSalePage> {
   late ScrollController scrollController;
   late final TextEditingController searchController;
   bool initialized = false;
-
- 
+  bool initalizedResturant = false;
 
   @override
   void initState() {
     super.initState();
     scrollController = ScrollController();
     searchController = TextEditingController();
+    final provider = context.read<RestaurantProvider>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!initialized) {
-        getFlashRestaurants();
-        initialized = true;
+      if (!initalizedResturant) {
+        getRestaurantsList();
+        provider.getFoodCategory();
+        initalizedResturant = true;
       }
     });
   }
 
-  Future<void> getFlashRestaurants() async {
+  Future<void> getRestaurantsList() async {
     try {
-      final lat = await SecureStorageService.read(AppConstants.latitude);
-      final lng = await SecureStorageService.read(AppConstants.longitude);
-      if (lat != null && lng != null) {
+      final location = context.read<LocationProvider>().currentLocation;
+
+      if (location != null) {
         final provider = context.read<RestaurantProvider>();
-        // await provider.getFlashSaleRestaurants(
-        //   lat: double.parse(lat),
-        //   lng: double.parse(lng),
-        // );
+        await provider.getRestaurants(
+          lat: location.latitude,
+          lng: location.longitude,
+        );
+      } else {
+        debugPrint("⚠️ No location found in LocationProvider");
       }
     } catch (e) {
-      debugPrint("❌ Flash API error: $e");
+      debugPrint("❌ Error fetching restaurants: $e");
     }
   }
 
@@ -64,7 +67,9 @@ class _FlashSalePageState extends State<FlashSalePage> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: RefreshIndicator(
-        onRefresh: getFlashRestaurants,
+        onRefresh: () async {
+          await getRestaurantsList();
+        },
         child: CustomScrollView(
           controller: scrollController,
           slivers: [
@@ -90,92 +95,117 @@ class _FlashSalePageState extends State<FlashSalePage> {
               ),
             ),
             SliverToBoxAdapter(child: SizedBox(height: size.height * 0.02)),
-            // SliverPersistentHeader(
-            //   pinned: true,
-            //   delegate: _FoodCategoryHeader([
-            //     FoodCategory(
-            //       name: "Biryani",
-            //       image: "assets/figmaIcons/briyani.png",
-            //     ),
-            //     FoodCategory(
-            //       name: "South Indian",
-            //       image: "assets/figmaIcons/southindian.png",
-            //     ),
-            //     FoodCategory(
-            //       name: "Chinese",
-            //       image: "assets/figmaIcons/chinese.png",
-            //     ),
-            //     FoodCategory(
-            //       name: "North Indian",
-            //       image: "assets/figmaIcons/northindian.png",
-            //     ),
-            //     FoodCategory(
-            //       name: "Noodles",
-            //       image: "assets/figmaIcons/noodles.png",
-            //     ),
-            //   ]),
-            // ),
+
+            Consumer<RestaurantProvider>(
+              builder: (context, provider, _) {
+                if (provider.isLoading && provider.categories.isEmpty) {
+                  return SliverToBoxAdapter(
+                    child: AppShimmer(type: ShimmerType.category, itemCount: 6),
+                  );
+                }
+
+                if (provider.categories.isEmpty) {
+                  return SliverToBoxAdapter(
+                    child: Text(
+                      "No categories available",
+                      textAlign: TextAlign.center,
+                      style: Styles.textStyleMedium(context),
+                      textScaler: const TextScaler.linear(1.0),
+                    ),
+                  );
+                }
+
+                return SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _FoodCategoryHeader(provider.categories),
+                );
+              },
+            ),
+
+            SliverToBoxAdapter(child: SizedBox(height: size.height * 0.02)),
+            SliverToBoxAdapter(
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Divider(color: Colors.grey, thickness: .5),
+                  ),
+                  Container(
+                    height: size.height * 0.055,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: size.width * 0.06,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColor.blackColor,
+                      borderRadius: BorderRadius.circular(25),
+                      border: Border.all(color: Colors.white, width: 0.5),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      'Choose your Favourite Restaurant',
+                      style: Styles.textSmall(context, color: Colors.white),
+                      textScaler: const TextScaler.linear(1.0),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const Expanded(
+                    child: Divider(color: Colors.grey, thickness: .5),
+                  ),
+                ],
+              ),
+            ),
+            // Static sample list (swap with Provider later)
             SliverToBoxAdapter(child: SizedBox(height: size.height * 0.01)),
 
-            // SliverList(
-            //   delegate: SliverChildBuilderDelegate((context, index) {
-            //     final restaurant = restaurants[index];
+         
+            Consumer<RestaurantProvider>(
+              builder: (context, provider, _) {
+                if (provider.isLoading) {
+                  return SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: MediaQuery.of(context).size.height,
+                      child: const AppShimmer(type: ShimmerType.restaurant),
+                    ),
+                  );
+                }
 
-            //     return Padding(
-            //       padding: EdgeInsets.symmetric(
-            //         vertical: MediaQuery.of(context).size.height * 0.012,
-            //       ),
-            //       child: GestureDetector(
-            //         onTap: () {
-            //           AppRouteName.menuPage.push(
-            //             context,
-            //             args: {
-            //               'restaurant': restaurants[index],
-            //               'showPriceTabs': false, // 👈
-            //             },
-            //           );
-            //         },
-            //         child: RestaurantCard(data: restaurant),
-            //       ),
-            //     );
-            //   }, childCount: restaurants.length),
-            // ),
+                if (provider.restaurants.isEmpty) {
+                  return SliverToBoxAdapter(
+                    child: Text(
+                      "No restaurants nearby",
+                      style: Styles.textStyleMedium(
+                        context,
+                      ).copyWith(fontWeight: FontWeight.w700),
 
-            // Consumer<RestaurantProvider>(
-            //   builder: (context, provider, _) {
-            //     if (provider.isLoading) {
-            //       return SliverToBoxAdapter(
-            //         child: SizedBox(
-            //           height: size.height,
-            //           child: const FullScreenShimmer(),
-            //         ),
-            //       );
-            //     }
-            //     if (provider.flashSaleRestaurants.isEmpty) {
-            //       return SliverToBoxAdapter(
-            //         child: Center(
-            //           child: Text(
-            //             "No flash sale offers right now",
-            //             style: Styles.textStyleMedium(context),
-            //             textScaler: TextScaler.linear(1.0),
-            //           ),
-            //         ),
-            //       );
-            //     }
-            //     return SliverList(
-            //       delegate: SliverChildBuilderDelegate(
-            //         (context, index) => Padding(
-            //           padding: EdgeInsets.symmetric(vertical: 12),
-            //           child: RestaurantCard(
-            //             data: provider.flashSaleRestaurants[index],
-            //             //  showDiscount: true, // 👈 add discount badge
-            //           ),
-            //         ),
-            //         childCount: provider.flashSaleRestaurants.length,
-            //       ),
-            //     );
-            //   },
-            // ),
+                      textScaler: const TextScaler.linear(1.0),
+                      textAlign: TextAlign.center,
+                    ),
+                  );
+                }
+
+                return SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) => Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: GestureDetector(
+                        onTap: () {
+                          AppRouteName.menuPage.push(
+                            context,
+                            args: {
+                              'restaurant': provider.restaurants[index],
+                              'showPriceTabs': false,
+                            },
+                          );
+                        },
+                        child: RestaurantCard(
+                          data: provider.restaurants[index],
+                        ),
+                      ),
+                    ),
+                    childCount: provider.restaurants.length,
+                  ),
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -185,8 +215,13 @@ class _FlashSalePageState extends State<FlashSalePage> {
 
 class _FoodCategoryHeader extends SliverPersistentHeaderDelegate {
   final List<FoodCategory> categories;
-
   _FoodCategoryHeader(this.categories);
+
+  // heights
+  double get _headerHeight => 48.0; // title row height
+  double get _spacing => 8.0; // gap below title
+  double get _listHeight => 120.0; // horizontal list height
+  double get _totalHeight => _headerHeight + _spacing + _listHeight;
 
   @override
   Widget build(
@@ -196,80 +231,76 @@ class _FoodCategoryHeader extends SliverPersistentHeaderDelegate {
   ) {
     final size = MediaQuery.of(context).size;
 
-    return Container(
-      color: Colors.white,
-      padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 👇 Removed extra vertical padding (already in FoodCategoryHeader)
-          const FoodCategoryHeader(),
-
-          SizedBox(height: size.height * 0.01),
-
-          Expanded(
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: categories.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (context, index) {
-                final category = categories[index];
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.grey.shade100,
-                        border: Border.all(
-                          color: Colors.grey.shade300,
-                          width: 1,
+    return SizedBox(
+      height: _totalHeight,
+      child: Container(
+        color: Colors.white,
+        padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(height: _headerHeight, child: const FoodCategoryHeader()),
+            SizedBox(height: _spacing),
+            SizedBox(
+              height: _listHeight,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: categories.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (context, index) {
+                  final c = categories[index];
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.grey.shade100,
+                          border: Border.all(
+                            color: Colors.grey.shade300,
+                            width: 1,
+                          ),
+                        ),
+                        padding: const EdgeInsets.all(10),
+                        child: Image.network(
+                          c.image,
+                          height: size.height * 0.06,
+                          width: size.height * 0.06,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => Icon(Icons.fastfood),
                         ),
                       ),
-                      padding: const EdgeInsets.all(10),
-                      child: Image.asset(
-                        category.image,
-                        height: size.height * 0.06,
-                        width: size.height * 0.06,
-                        fit: BoxFit.contain,
+                      const SizedBox(height: 6),
+                      // ✅ Flexible prevents tiny overflow
+                      Flexible(
+                        child: Text(
+                          c.name,
+                          style: Styles.textSmall(
+                            context,
+                          ).copyWith(fontWeight: FontWeight.w400),
+                          textAlign: TextAlign.center,
+                          textScaler: const TextScaler.linear(1.0),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      category.name,
-                      style: Styles.textSmall(
-                        context,
-                      ).copyWith(fontWeight: FontWeight.w400),
-                      textAlign: TextAlign.center,
-                      textScaler: const TextScaler.linear(1.0),
-                    ),
-                  ],
-                );
-              },
+                      //  const SizedBox(height: 6),
+                    ],
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   @override
-  double get maxExtent {
-    final screenHeight =
-        WidgetsBinding.instance.window.physicalSize.height /
-        WidgetsBinding.instance.window.devicePixelRatio;
-
-    final double padding = 0; // 👉 No vertical padding outside
-    final double headerHeight =
-        screenHeight * 0.015 * 2; // from FoodCategoryHeader
-    final double spacing = screenHeight * 0.01;
-    final double gridHeight = screenHeight * 0.11;
-
-    return headerHeight + spacing + gridHeight;
-  }
+  double get maxExtent => _totalHeight;
 
   @override
-  double get minExtent => maxExtent;
+  double get minExtent => _totalHeight;
 
   @override
   bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) =>

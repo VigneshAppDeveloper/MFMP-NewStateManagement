@@ -15,6 +15,9 @@ import 'package:my_food_my_price/route_generator.dart' show RouteGenerator;
 import 'package:my_food_my_price/util/app_contant.dart';
 import 'package:provider/provider.dart';
 
+import 'Providers/order_history_provider.dart';
+import 'Providers/ratings_provider.dart';
+
 ValueNotifier<bool> isDevicePreviewEnabled = ValueNotifier<bool>(false);
 bool testingMode = kDebugMode && F.appFlavor == Flavor.dev;
 
@@ -83,6 +86,8 @@ class _MyAppState extends State<MyApp> {
                   ChangeNotifierProvider(create: (_) => MenuProvider()),
                   ChangeNotifierProvider(create: (_) => BidderProvider()),
                   ChangeNotifierProvider(create: (_) => CartProvider()),
+                   ChangeNotifierProvider(create: (_) => OrderHistoryProvider()),
+                  ChangeNotifierProvider(create: (_) => RatingsProvider()),
                 ],
                 child: MaterialApp(
                   localizationsDelegates: const [],

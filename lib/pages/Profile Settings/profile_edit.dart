@@ -3,9 +3,16 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:my_food_my_price/route_generator.dart';
 import 'package:my_food_my_price/util/app_contant.dart';
 import 'package:my_food_my_price/util/color_constant.dart';
 import 'package:my_food_my_price/util/styles.dart';
+import 'package:provider/provider.dart';
+
+import '../../Providers/login_provider.dart';
+import '../../services/api_service.dart';
+import '../../util/exception.dart';
+import '../../widgets/dilogue/dilogue.dart';
 
 class ProfileEdit extends StatefulWidget {
   const ProfileEdit({super.key});
@@ -28,6 +35,15 @@ class _ProfileEditState extends State<ProfileEdit> {
     loadUserProfile();
   }
 
+
+  @override
+void dispose() {
+  name.dispose();
+  email.dispose();
+  mobile.dispose();
+  super.dispose();
+}
+
   Future<void> loadUserProfile() async {
     final profile = AppConstants.profile;
 
@@ -41,6 +57,7 @@ class _ProfileEditState extends State<ProfileEdit> {
   void pickImage() async {
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile != null) {
+      if (!mounted) return;
       setState(() {
         localprofilepic = File(pickedFile.path);
         isUpdated = true;
@@ -49,6 +66,7 @@ class _ProfileEditState extends State<ProfileEdit> {
   }
 
   void checkIfUpdated() {
+    if (!mounted) return;
     final profile = AppConstants.profile;
 
     final currentName = name.text.trim();
@@ -73,15 +91,52 @@ class _ProfileEditState extends State<ProfileEdit> {
         hasEmailChanged ||
         hasMobileChanged ||
         hasImageChanged;
+
+    if (!mounted) return;
     setState(() {
       isUpdated = allRequiredFilled && somethingChanged;
     });
   }
 
-  void updateProfile() async {
-    FocusScope.of(context).unfocus();
-    setState(() => isUpdated = false);
-  }
+ void updateProfile() async {
+  FocusScope.of(context).unfocus();
+  if (!mounted) return; // ✅ extra safeguard
+
+  final provider = context.read<LoginProvider>();
+
+  await AppDialogue.openLoadingDialogAfterClose(
+    context,
+    text: "Updating your profile...",
+    load: () async {
+      return await provider.updateUserProfile(
+        name: name.text.trim(),
+        email: email.text.trim(),
+        userImage: localprofilepic,
+      );
+    },
+    afterComplete: (result) async {
+      if (!mounted) return; // ✅ ensure widget still alive
+
+      if (result is APIResp && result.status) {
+        AppDialogue.toast("Profile updated successfully");
+
+        // ✅ delay slightly to ensure safe context pop
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        if (!mounted) return; // recheck before navigation
+        if (Navigator.canPop(context)) {
+          Navigator.pop(context);
+        } else {
+          await AppRouteName.appSettingsPage.pushReplacement(context);
+        }
+      } else {
+        if (!mounted) return;
+        AppDialogue.toast("Profile update failed");
+      }
+    },
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -168,71 +223,79 @@ class _ProfileEditState extends State<ProfileEdit> {
   Widget divider() =>
       const Divider(height: 1, thickness: .5, color: Colors.black12);
 
-Widget buildTextField(
-  String label,
-  TextEditingController controller, {
-  required bool isEditable,
-}) {
-  final bool isMobileField = label.toLowerCase() == "mobile";
+  Widget buildTextField(
+    String label,
+    TextEditingController controller, {
+    required bool isEditable,
+  }) {
+    final bool isMobileField = label.toLowerCase() == "mobile";
 
-  return Padding(
-    padding: const EdgeInsets.symmetric(vertical: 10),
-    child: MediaQuery(
-      data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(1.0)),
-      child: TextFormField(
-        controller: controller,
-        readOnly: !isEditable,
-        onChanged: (_) => checkIfUpdated(),
-        style: Styles.textStyleMedium(context),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: Styles.textStyleMedium(context, color: AppColor.hintTextColor),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(5)),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Colors.grey, width: 0.5),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Colors.grey, width: 0.5),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Colors.grey, width: 0.5),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(10),
-            borderSide: const BorderSide(color: Colors.grey, width: 0.5),
-          ),
-          suffixIcon: isEditable && controller.text.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.cancel, color: Colors.grey),
-                  onPressed: () {
-                    setState(() {
-                      controller.clear();
-                      checkIfUpdated();
-                    });
-                  },
-                )
-              : !isEditable && isMobileField
-                  ? TextButton(
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: MediaQuery(
+        data: MediaQuery.of(
+          context,
+        ).copyWith(textScaler: TextScaler.linear(1.0)),
+        child: TextFormField(
+          cursorColor: Colors.black54,
+          controller: controller,
+          readOnly: !isEditable,
+          onChanged: (_) => checkIfUpdated(),
+          style: Styles.textStyleMedium(context),
+          decoration: InputDecoration(
+            labelText: label,
+            labelStyle: Styles.textStyleMedium(
+              context,
+              color: AppColor.hintTextColor,
+            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(5)),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Colors.grey, width: 0.5),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Colors.grey, width: 0.5),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Colors.grey, width: 0.5),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Colors.grey, width: 0.5),
+            ),
+            suffixIcon:
+                isEditable && controller.text.isNotEmpty
+                    ? IconButton(
+                      icon: const Icon(Icons.cancel, color: Colors.grey),
+                      onPressed: () {
+                        setState(() {
+                          controller.clear();
+                          checkIfUpdated();
+                        });
+                      },
+                    )
+                    : !isEditable && isMobileField
+                    ? TextButton(
                       onPressed: () {
                         // ✅ TODO: handle change mobile tap
-                      
-                      }, 
+                      },
                       child: Text(
-                        "Change",
-                        style: Styles.textStyleMedium(context, color: AppColor.maincolor),
+                        "",
+                        style: Styles.textStyleMedium(
+                          context,
+                          color: AppColor.maincolor,
+                        ),
                         textScaler: const TextScaler.linear(1.0),
                       ),
                     )
-                  : null,
+                    : null,
+          ),
         ),
       ),
-    ),
-  );
-}
-
+    );
+  }
 
   bottomSheetImage() async {
     await showModalBottomSheet(
@@ -242,7 +305,7 @@ Widget buildTextField(
           child: Wrap(
             children: <Widget>[
               ListTile(
-                leading: Icon(Icons.photo_library, color : AppColor.maincolor),
+                leading: Icon(Icons.photo_library, color: AppColor.maincolor),
                 title: Text(
                   'Photo Library',
                   style: Styles.textStyleLarge(
@@ -321,6 +384,7 @@ Widget buildTextField(
     );
 
     if (croppedFile != null) {
+      if (!mounted) return;
       setState(() {
         localprofilepic = File(croppedFile.path);
         checkIfUpdated();

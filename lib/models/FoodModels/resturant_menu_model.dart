@@ -28,6 +28,7 @@ class RestaurantMenuModel {
   final List<MenuRating> ratings;
   final int ratingsCount;
   final double? avgStarRating;
+  final double? flashDiscount;
 
   RestaurantMenuModel({
     required this.id,
@@ -56,6 +57,7 @@ class RestaurantMenuModel {
     required this.ratings,
     required this.ratingsCount,
     this.avgStarRating,
+    this.flashDiscount,
   });
 
   // ---------------- SAFE PARSERS ----------------
@@ -90,16 +92,16 @@ class RestaurantMenuModel {
   // ---------------- FROM JSON ----------------
   factory RestaurantMenuModel.fromJson(Map<String, dynamic> json) {
     String rawImage = json['menu_image']?.toString() ?? '';
-    String fullImage = rawImage.isNotEmpty && !rawImage.startsWith('http')
-        ? AppConfig.instance.storageBaseUrl + rawImage
-        : rawImage;
+    String fullImage =
+        rawImage.isNotEmpty && !rawImage.startsWith('http')
+            ? AppConfig.instance.storageBaseUrl + rawImage
+            : rawImage;
 
-    final List<MenuTag> tags = (json['tag'] as List?)
-            ?.map((e) => MenuTag.fromJson(e))
-            .toList() ??
-        [];
+    final List<MenuTag> tags =
+        (json['tag'] as List?)?.map((e) => MenuTag.fromJson(e)).toList() ?? [];
 
-    final List<MenuRating> ratings = (json['ratings'] as List?)
+    final List<MenuRating> ratings =
+        (json['ratings'] as List?)
             ?.map((e) => MenuRating.fromJson(e))
             .toList() ??
         [];
@@ -107,7 +109,9 @@ class RestaurantMenuModel {
     return RestaurantMenuModel(
       id: _safeInt(json['id'], 'id'),
       franchiseId: json['franchise_id']?.toString() ?? '',
-      menuType: json['menu_type']?.toString() ?? '',
+      menuType:
+          json['menu_type']?.toString() ??
+          (json['is_flash'].toString() == '1' ? 'Fixed Price' : ''),
       menuCategoryId: json['menu_category_id']?.toString(),
       menuName: json['menu_name']?.toString() ?? '',
       dietType: json['diet_type']?.toString() ?? '',
@@ -115,30 +119,85 @@ class RestaurantMenuModel {
       description: json['description']?.toString() ?? '',
       basePrice: _safeDouble(json['base_price'], 'base_price'),
       currentPrice: _safeDouble(json['current_price'], 'current_price'),
+      flashPrice:
+          json['flash_price'] != null
+              ? _safeDouble(json['flash_price'], 'flash_price')
+              : null,
       menuStock: _safeInt(json['menu_stock'], 'menu_stock'),
       soldStocks: _safeInt(json['sold_stocks'], 'sold_stocks'),
       avaliableStocks: _safeInt(json['avaliable_stocks'], 'avaliable_stocks'),
       isFlash: json['is_flash'].toString() == '1',
-      flashPrice: json['flash_price'] == null
-          ? null
-          : _safeDouble(json['flash_price'], 'flash_price'),
       flashStart: _safeDate(json['flash_start'], 'flash_start'),
       flashEnd: _safeDate(json['flash_end'], 'flash_end'),
       menuImage: fullImage,
       scrollingText: json['scrolling_text']?.toString(),
       status: json['status']?.toString() ?? '',
-      createdAt:
-          _safeDate(json['created_at'], 'created_at') ?? DateTime.now(),
-      updatedAt:
-          _safeDate(json['updated_at'], 'updated_at') ?? DateTime.now(),
+      createdAt: _safeDate(json['created_at'], 'created_at') ?? DateTime.now(),
+      updatedAt: _safeDate(json['updated_at'], 'updated_at') ?? DateTime.now(),
       tags: tags,
       ratings: ratings,
       ratingsCount: _safeInt(json['ratings_count'], 'ratings_count'),
-      avgStarRating: json['ratings_avg_star_rating'] == null
-          ? null
-          : _safeDouble(
-              json['ratings_avg_star_rating'], 'ratings_avg_star_rating'),
+      avgStarRating:
+          json['ratings_avg_star_rating'] != null
+              ? _safeDouble(
+                json['ratings_avg_star_rating'],
+                'ratings_avg_star_rating',
+              )
+              : null,
+      flashDiscount:
+          json['flash_discount'] != null
+              ? _safeDouble(json['flash_discount'], 'flash_discount')
+              : null,
     );
+  }
+
+  RestaurantMenuModel copyWith({int? avaliableStocks}) {
+    return RestaurantMenuModel(
+      id: id,
+      franchiseId: franchiseId,
+      menuType: menuType,
+      menuCategoryId: menuCategoryId,
+      menuName: menuName,
+      dietType: dietType,
+      halal: halal,
+      description: description,
+      basePrice: basePrice,
+      currentPrice: currentPrice,
+      menuStock: menuStock,
+      soldStocks: soldStocks,
+      avaliableStocks: avaliableStocks ?? this.avaliableStocks,
+      isFlash: isFlash,
+      flashPrice: flashPrice,
+      flashStart: flashStart,
+      flashEnd: flashEnd,
+      menuImage: menuImage,
+      scrollingText: scrollingText,
+      status: status,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      tags: tags,
+      ratings: ratings,
+      ratingsCount: ratingsCount,
+      avgStarRating: avgStarRating,
+    );
+  }
+}
+
+extension RestaurantMenuHelper on RestaurantMenuModel {
+  /// If the page itself is flash (API param is_flash=1),
+  /// UI will explicitly pass `true` when needed.
+  double getDisplayPrice({required bool fromFlashPage}) {
+    //  debugPrint(
+    //   "💰 Menu: $menuName | is_flash=$isFlash | fromFlashPage=$fromFlashPage | "
+    //   "current=$currentPrice | flash=$flashPrice | shown="
+    //   "${(fromFlashPage && flashPrice != null && flashPrice! > 0) ? flashPrice! : currentPrice}",
+    // );
+    // ✅ On flash page → show flash price
+    if (fromFlashPage && flashPrice != null && flashPrice! > 0) {
+      return flashPrice!;
+    }
+    // ✅ On normal page → always show current price
+    return currentPrice;
   }
 }
 
@@ -160,9 +219,10 @@ class MenuTag {
 
   factory MenuTag.fromJson(Map<String, dynamic> json) {
     String rawImage = json['tag_image']?.toString() ?? '';
-    String fullImage = rawImage.isNotEmpty && !rawImage.startsWith('http')
-        ? AppConfig.instance.storageBaseUrl + rawImage
-        : rawImage;
+    String fullImage =
+        rawImage.isNotEmpty && !rawImage.startsWith('http')
+            ? AppConfig.instance.storageBaseUrl + rawImage
+            : rawImage;
 
     return MenuTag(
       id: json['id'] ?? 0,
@@ -210,10 +270,7 @@ class RatingUser {
   final int id;
   final String name;
 
-  RatingUser({
-    required this.id,
-    required this.name,
-  });
+  RatingUser({required this.id, required this.name});
 
   factory RatingUser.fromJson(Map<String, dynamic> json) {
     return RatingUser(

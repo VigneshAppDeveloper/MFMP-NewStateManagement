@@ -114,7 +114,7 @@ class AppDialogue {
 
   static void toast(
     String msg, {
-    Duration duration = const Duration(seconds: 1),
+    Duration duration = const Duration(seconds: 2),
   }) {
     Fluttertoast.showToast(msg: msg);
   }

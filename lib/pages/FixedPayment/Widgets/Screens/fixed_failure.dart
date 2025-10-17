@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../route_generator.dart';
 import '../../../../util/color_constant.dart';
 import '../../../../util/styles.dart';
 
@@ -113,7 +114,11 @@ class _FixedFailureScreenState extends State<FixedFailureScreen> {
                       elevation: 1,
                     ),
                     onPressed: () async {
-                     
+                     AppRouteName.appPage.pushAndRemoveUntil(
+                    context,
+                    (route) => false,
+                    args: {"initialTab": 0}, // 👈 home tab
+                  );
                     },
                     child: Text(
                       textScaler: TextScaler.linear(1.0),

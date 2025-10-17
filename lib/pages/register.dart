@@ -6,7 +6,6 @@ import 'package:my_food_my_price/Providers/login_provider.dart';
 import 'package:my_food_my_price/Providers/register_provider.dart';
 import 'package:my_food_my_price/components/button.dart';
 import 'package:my_food_my_price/route_generator.dart';
-import 'package:my_food_my_price/services/location_service.dart';
 import 'package:my_food_my_price/services/secure_storage.dart';
 import 'package:my_food_my_price/util/app_contant.dart';
 import 'package:my_food_my_price/util/color_constant.dart';
@@ -265,7 +264,7 @@ class _RegisterState extends State<Register> {
 
                             if (resp.status) {
                               navigator.pushReplacementNamed(
-                                AppRouteName.appPage.value,
+                                AppRouteName.introPage.value,
                               );
                             } else if (registerProvider.isApiValidationError) {
                               AppDialogue.alert(

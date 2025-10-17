@@ -52,6 +52,9 @@ class MenuProvider extends ChangeNotifier {
   bool _isActivePage = false;
   bool get isActivePage => _isActivePage;
 
+  bool _isFlashMode = false;
+  bool get isFlashMode => _isFlashMode;
+
   void setActive(bool val) {
     _isActivePage = val;
     if (!val) stopAutoUpdaters();
@@ -63,12 +66,11 @@ class MenuProvider extends ChangeNotifier {
   }
 
   void setPickupPoint(PickpointModel point) {
-  _selectedPickupPoint = point;
-  debugPrint("📍 Pickup point set: ${point.pickupLocation}");
-  debugPrint("📅 Current selected date: $_selectedPickupDate");
-  notifyListeners();
-}
-
+    _selectedPickupPoint = point;
+    debugPrint("📍 Pickup point set: ${point.pickupLocation}");
+    debugPrint("📅 Current selected date: $_selectedPickupDate");
+    notifyListeners();
+  }
 
   void clearPickupSelections() {
     _selectedPickupDate = null;
@@ -77,62 +79,74 @@ class MenuProvider extends ChangeNotifier {
   }
 
   /// ✅ Fetch menu for a restaurant
-  Future<void> getRestaurantMenu(
-    String franchiseId, {
-    bool forceRefresh = false,
-  }) async {
-    final now = DateTime.now();
-    final lastFetch = _lastFetchedTime[franchiseId];
+Future<void> getRestaurantMenu(
+  String franchiseId, {
+  bool forceRefresh = false,
+  bool isFlash = false,
+}) async {
+  _isFlashMode = isFlash;
+  if (isFlash) stopAutoUpdaters();
 
-    // 1️⃣ Return from cache if available and not expired
-    if (!forceRefresh &&
-        _cachedMenus.containsKey(franchiseId) &&
-        lastFetch != null &&
-        now.difference(lastFetch).inMinutes < 10) {
-      _menus = _cachedMenus[franchiseId]!;
-      error = null;
-      notifyListeners();
-      debugPrint("⚡ Loaded menu from cache for franchise: $franchiseId");
-      return;
-    }
+  final now = DateTime.now();
+  final cacheKey = isFlash ? "${franchiseId}_flash" : franchiseId;
+  final lastFetch = _lastFetchedTime[cacheKey];
 
-    _isLoading = true;
+  if (_isFlashMode && !isFlash) {
+    debugPrint("⚠️ Ignoring normal menu fetch — flash mode active");
+    return;
+  }
+
+  if (!forceRefresh &&
+      _cachedMenus.containsKey(cacheKey) &&
+      lastFetch != null &&
+      now.difference(lastFetch).inMinutes < 10) {
+    _menus = _cachedMenus[cacheKey]!;
     notifyListeners();
+    debugPrint("⚡ Loaded ${isFlash ? 'flash' : 'normal'} menu from cache for $franchiseId");
+    return;
+  }
 
-    final url = "${UrlPath.restaurantUrl.getFranchiseMenu}/$franchiseId";
-    debugPrint("🚀 Fetching Menu API: $url");
+  _isLoading = true;
+  notifyListeners();
 
-    try {
-      final resp = await APIService.get(url, auth: true);
-      debugPrint("📡 Menu RESPONSE STATUS: ${resp.status}");
+  final url = "${UrlPath.restaurantUrl.getFranchiseMenu}/$franchiseId";
+  debugPrint("🚀 Fetching Menu API: $url (flash=$isFlash)");
 
-      if (resp.status) {
-        final List<dynamic> data = resp.data;
-        _menus = data.map((e) => RestaurantMenuModel.fromJson(e)).toList();
+  try {
+    final resp = await APIService.get(
+      url,
+      auth: true,
+      params: isFlash ? {'is_flash': '1'} : null
+    );
 
-        // ✅ Cache data & mark fetch time
-        _cachedMenus[franchiseId] = _menus;
-        _lastFetchedTime[franchiseId] = now;
+    if (resp.status) {
+      final List<dynamic> data = resp.data ?? [];
+      _menus = data.map((e) => RestaurantMenuModel.fromJson(e)).toList();
 
-        error = null;
-      } else {
-        error = resp.message ?? "Something went wrong while fetching menu.";
-        _menus = [];
+      // No need for manual filter if backend already handles flash
+      if (isFlash) {
+        debugPrint("⚡ Flash mode active — backend already filtered menus (${_menus.length})");
       }
-    } catch (e) {
-      error = e.toString();
-      debugPrint("❌ Error fetching menu: $e");
+
+      _cachedMenus[cacheKey] = _menus;
+      _lastFetchedTime[cacheKey] = now;
+      error = null;
+      debugPrint("✅ Parsed ${_menus.length} ${isFlash ? 'flash' : 'normal'} menus");
+    } else {
+      error = resp.message ?? "Failed to fetch menu.";
       _menus = [];
     }
-
-    _isLoading = false;
-    notifyListeners();
+  } catch (e) {
+    error = e.toString();
+    _menus = [];
+    debugPrint("❌ Error fetching menu: $e");
   }
 
-  /// ✅ Force-refresh if user pulls to refresh
-  Future<void> refreshMenu(String franchiseId) async {
-    await getRestaurantMenu(franchiseId, forceRefresh: true);
-  }
+  _isLoading = false;
+  notifyListeners();
+}
+
+
 
   /// ✅ Clear specific restaurant menu cache
   void clearMenu(String franchiseId) {

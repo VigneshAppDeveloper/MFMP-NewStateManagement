@@ -2,6 +2,9 @@ class UrlPath {
   static const LoginUrl loginUrl = LoginUrl();
   static const RestaurantUrl restaurantUrl = RestaurantUrl();
   static const BiddingUrl biddingUrl = BiddingUrl();
+  static const OrderHistoryUrl orderUrl = OrderHistoryUrl();
+  static const RatingsUrl ratingUrl = RatingsUrl();
+
 }
 
 class LoginUrl {
@@ -12,6 +15,8 @@ class LoginUrl {
   final String createProfile = 'create_user';
   final String getProfile = 'getUserProfile';
   final String userWalletUpdate = "user_wallet_update";
+  final String updateProfile = "userProfileUpdate";
+  final String deleteAccount = "Tsit_BPM_Delete_Account";
 }
 
 class RestaurantUrl {
@@ -35,3 +40,15 @@ class BiddingUrl {
   final String addFixedOrderDetails = 'add_fixed_order_details';
   final String getPhonePeResponse = 'get_phonepe_response';
 }
+ class OrderHistoryUrl {
+  const OrderHistoryUrl();
+  final String getFixedOrderDetails = 'get_fixed_orderdetails';
+  final String getBiddingOrderDetails = 'get_orderdetails';
+ }
+
+ class RatingsUrl {
+  const RatingsUrl();
+  final String getFranchiseRating = 'getFranchiseRatings';
+  final String addFranchiseRating = 'addRatings';
+ }
+  

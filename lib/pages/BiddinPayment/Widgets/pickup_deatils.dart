@@ -20,7 +20,8 @@ class PickupDetailsSection extends StatefulWidget {
   final Restaurant restaurant;
   final bool isFixedOrder; // ✅ new flag
   final ValueChanged<String>? onDateChange;
-final ValueChanged<String>? onPickupPointChange;
+  final ValueChanged<String>? onPickupPointChange;
+  final bool fromFlashPage;
 
   const PickupDetailsSection({
     super.key,
@@ -30,7 +31,8 @@ final ValueChanged<String>? onPickupPointChange;
     required this.restaurant,
     this.isFixedOrder = false, // default = bidding
     this.onDateChange,
-  this.onPickupPointChange,
+    this.onPickupPointChange,
+    this.fromFlashPage = false,
   });
 
   @override
@@ -88,13 +90,24 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
     final DateTime ntpTime = await ntpService.getCurrentIST();
 
     // ✅ Business rule: if current time >= 2 PM, skip today
-    final DateTime firstDate =
-        ntpTime.hour < 14
-            ? DateTime(ntpTime.year, ntpTime.month, ntpTime.day)
-            : DateTime(ntpTime.year, ntpTime.month, ntpTime.day + 1);
+    DateTime firstDate;
+    DateTime lastDate;
 
-    // ✅ Allow selection up to 30 days from firstDate
-    final DateTime lastDate = firstDate.add(const Duration(days: 30));
+    // ✅ Flash Sale flow → only today allowed
+    if (widget.fromFlashPage) {
+      firstDate = DateTime(ntpTime.year, ntpTime.month, ntpTime.day);
+      lastDate = firstDate; // only today selectable
+      debugPrint(
+        "⚡ Flash Sale Mode: limiting calendar to today (${firstDate.toIso8601String()})",
+      );
+    } else {
+      // ✅ Normal flow → respect 2 PM cutoff and +30 days
+      firstDate =
+          ntpTime.hour < 14
+              ? DateTime(ntpTime.year, ntpTime.month, ntpTime.day)
+              : DateTime(ntpTime.year, ntpTime.month, ntpTime.day + 1);
+      lastDate = firstDate.add(const Duration(days: 30));
+    }
 
     final List<DateTime> blockedDateList =
         blockedDates.map((b) => DateTime.parse(b.date)).toList();
@@ -193,6 +206,7 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
                             child: Text(
                               '${date.day}',
                               style: const TextStyle(color: Colors.grey),
+                              textScaler: const TextScaler.linear(1.0),
                             ),
                           ),
                         );
@@ -215,6 +229,7 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
                             child: Text(
                               '${date.day}',
                               style: const TextStyle(color: Colors.white),
+                              textScaler: const TextScaler.linear(1.0),
                             ),
                           ),
                         );
@@ -248,10 +263,12 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
               context,
               color: AppColor.maincolor,
             ),
+            textScaler: const TextScaler.linear(1.0),
           ),
           content: Text(
             "Reason: $reason",
             style: Styles.textStyleMedium(context),
+            textScaler: const TextScaler.linear(1.0),
           ),
           actions: [
             TextButton(
@@ -261,6 +278,7 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
                   context,
                   color: AppColor.maincolor,
                 ),
+                textScaler: const TextScaler.linear(1.0),
               ),
               onPressed: () => Navigator.of(context).pop(),
             ),
@@ -288,13 +306,21 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Pickup Point", style: Styles.textStyleMediumBold(context)),
+            Text(
+              "Pickup Point",
+              style: Styles.textStyleMediumBold(context),
+              textScaler: const TextScaler.linear(1.0),
+            ),
             SizedBox(height: size.height * 0.008),
             _pickupPointDropdown(context, pickupPoints),
 
             Divider(height: size.height * 0.04, thickness: 0.6),
 
-            Text("Pickup Date", style: Styles.textStyleMediumBold(context)),
+            Text(
+              "Pickup Date",
+              style: Styles.textStyleMediumBold(context),
+              textScaler: const TextScaler.linear(1.0),
+            ),
             SizedBox(height: size.height * 0.008),
             _dateContainer(
               context,
@@ -305,7 +331,11 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
 
             Divider(height: size.height * 0.04, thickness: 0.6),
 
-            Text("Pickup Time", style: Styles.textStyleMediumBold(context)),
+            Text(
+              "Pickup Time",
+              style: Styles.textStyleMediumBold(context),
+              textScaler: const TextScaler.linear(1.0),
+            ),
             SizedBox(height: size.height * 0.008),
             _dropdownContainer(
               context,
@@ -321,16 +351,17 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
                 biddingProvider.pickupTimes.map((e) => formatTime(e.time)),
               ),
 
-               onChanged: biddingProvider.pickupTimes.isEmpty
-      ? null // ✅ disable dropdown when no data
-      : (val) {
-          final match = biddingProvider.pickupTimes.firstWhere(
-            (t) => t.time == val,
-            orElse: () => PickupTimeModel(id: 0, time: val ?? ""),
-          );
-          setState(() => selectedPickupTime = match);
-          biddingProvider.selectedPickupTime = match;
-        },
+              onChanged:
+                  biddingProvider.pickupTimes.isEmpty
+                      ? null // ✅ disable dropdown when no data
+                      : (val) {
+                        final match = biddingProvider.pickupTimes.firstWhere(
+                          (t) => t.time == val,
+                          orElse: () => PickupTimeModel(id: 0, time: val ?? ""),
+                        );
+                        setState(() => selectedPickupTime = match);
+                        biddingProvider.selectedPickupTime = match;
+                      },
             ),
           ],
         ),
@@ -357,6 +388,7 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
           hint: Text(
             "Select Pickup Point",
             style: Styles.textStyleMedium(context, color: Colors.grey),
+            textScaler: const TextScaler.linear(1.0),
           ),
           items:
               points.map((point) {
@@ -375,6 +407,7 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
                           point.pickupLocation,
                           style: Styles.textStyleMedium(context),
                           overflow: TextOverflow.ellipsis,
+                          textScaler: const TextScaler.linear(1.0),
                         ),
                       ),
                     ],
@@ -421,6 +454,7 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
           hint: Text(
             hint,
             style: Styles.textStyleMedium(context, color: Colors.grey),
+            textScaler: const TextScaler.linear(1.0),
           ),
           items:
               items.map((e) {
@@ -435,6 +469,7 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
                           e,
                           style: Styles.textStyleMedium(context),
                           overflow: TextOverflow.ellipsis,
+                          textScaler: const TextScaler.linear(1.0),
                         ),
                       ),
                     ],
@@ -476,7 +511,13 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
           children: [
             Icon(icon, color: AppColor.maincolor, size: 20),
             SizedBox(width: size.width * 0.03),
-            Expanded(child: Text(date, style: Styles.textStyleMedium(context))),
+            Expanded(
+              child: Text(
+                date,
+                style: Styles.textStyleMedium(context),
+                textScaler: const TextScaler.linear(1.0),
+              ),
+            ),
             const Icon(Icons.edit, size: 18, color: Colors.grey),
           ],
         ),

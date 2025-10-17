@@ -30,12 +30,14 @@ import 'package:provider/provider.dart';
 
 import 'Providers/bidding_order_provider.dart';
 import 'Providers/fixed_order_provider.dart';
+import 'Providers/order_history_provider.dart';
 import 'models/BidderModels/winner_model.dart';
 import 'models/FoodModels/resturant_menu_model.dart';
 import 'models/Resturant Model/resturant.dart';
 import 'pages/BiddinPayment/Screens/bid_failure.dart';
 import 'pages/BiddinPayment/Screens/bid_success.dart';
 import 'pages/BiddinPayment/bidding_payment_page.dart';
+import 'pages/Ratings/ratings_page.dart';
 
 enum AppRouteName {
   splashPage('/splash_page'),
@@ -65,6 +67,7 @@ enum AppRouteName {
   biddingPaymentFailedPage('/bid_failure'),
   fixedPricePaymentSuccessPage('/fixed_success'),
   fixedPricePaymentFailedPage('/fixed_failure'),
+  ratingsPage('/ratings_page'),
   appSettingsPage('/app_settings');
 
   /// args: TaskViewScreenArgs
@@ -131,7 +134,12 @@ class RouteGenerator {
       case AppRouteName.introPage:
         return MaterialPageRoute(builder: (_) => IntroPage());
       case AppRouteName.appPage:
-        return MaterialPageRoute(builder: (_) => AppPages());
+        final args = settings.arguments as Map<String, dynamic>?;
+        final initialTab = args?['initialTab'] ?? 0;
+        return MaterialPageRoute(
+          builder: (_) => AppPages(initialTab: initialTab),
+        );
+
       case AppRouteName.serachLocation:
         return MaterialPageRoute<LatLng>(
           builder: (_) => const LocationSearchPage(),
@@ -160,7 +168,18 @@ class RouteGenerator {
       case AppRouteName.rewards:
         return MaterialPageRoute(builder: (_) => Rewards());
       case AppRouteName.orderHistoryPage:
-        return MaterialPageRoute(builder: (_) => OrderHistory());
+        final args = settings.arguments as Map<String, dynamic>?;
+        final initialTab = args?['initialTab'] ?? 0;
+        final forceRefresh = args?['forceRefresh'] ?? false;
+
+        return MaterialPageRoute(
+          builder:
+              (_) => OrderHistory(
+                initialTab: initialTab,
+                forceRefresh: forceRefresh,
+              ),
+        );
+
       case AppRouteName.biddingPage:
         if (args is Map<String, dynamic>) {
           final restaurant = args['restaurant'] as Restaurant;
@@ -253,6 +272,7 @@ class RouteGenerator {
                     pickupDate: args["pickup_date"],
                     pickupPoint: args["pickup_point"],
                     restaurant: args["restaurant"],
+                     fromFlashPage: args["from_flash"] ?? false, 
                   ),
                 ),
           );
@@ -297,6 +317,22 @@ class RouteGenerator {
                 winners: args['winners'],
                 franchiseId: args['franchiseId'],
                 timerId: args['timerId'],
+              ),
+        );
+
+      case AppRouteName.ratingsPage:
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(
+          builder:
+              (_) => RatingsPage(
+                franchiseName: args["franchiseName"],
+                menuCategoryNames: List<String>.from(args["menuCategoryNames"]),
+                menuCategoryIds: List<String>.from(args["menuCategoryIds"]),
+                orderIds: List<String>.from(args["orderIds"]),
+                location: args["location"],
+                franchiseImage: args["franchiseImage"],
+                franchiseId: args["franchiseId"],
+                orderType: args["orderType"],
               ),
         );
       case AppRouteName.fixedPricePaymentSuccessPage:

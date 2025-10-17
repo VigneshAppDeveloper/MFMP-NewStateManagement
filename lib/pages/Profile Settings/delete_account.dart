@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:my_food_my_price/Providers/login_provider.dart';
+import 'package:my_food_my_price/route_generator.dart';
 import 'package:my_food_my_price/util/color_constant.dart';
 import 'package:my_food_my_price/util/styles.dart';
 import 'package:my_food_my_price/widgets/app_bar.dart';
+import 'package:provider/provider.dart';
+
+import '../../services/api_service.dart';
+import '../../widgets/dilogue/dilogue.dart';
 
 class DeleteAccount extends StatefulWidget {
   const DeleteAccount({super.key});
@@ -99,10 +105,27 @@ class _DeleteAccountState extends State<DeleteAccount> {
                 child: const Text("Cancel", textScaler: TextScaler.linear(1.0)),
               ),
               TextButton(
-                onPressed: () {
-                  // Handle confirmed deletion
-                  Navigator.pop(context);
-                  Navigator.pop(context); // go back to settings
+                onPressed: () async {
+                  final provider = context.read<LoginProvider>();
+
+                  await AppDialogue.openLoadingDialogAfterClose(
+                    context,
+                    text: "Deleting your account...",
+                    load: () async => await provider.deleteUserAccount(),
+                    afterComplete: (result) async {
+                      if (!context.mounted) return;
+
+                      if (result is APIResp && result.status) {
+                        // ✅ Navigate to login and clear navigation stack
+                        await AppRouteName.login.pushAndRemoveUntil(
+                          context,
+                          (_) => false,
+                        );
+                      } else {
+                        AppDialogue.toast("Account deletion failed");
+                      }
+                    },
+                  );
                 },
                 child: const Text(
                   "Delete",

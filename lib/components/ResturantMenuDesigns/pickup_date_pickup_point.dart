@@ -13,7 +13,12 @@ import '../../util/styles.dart';
 
 class PickupDatePickupPoint extends StatefulWidget {
   final Restaurant restaurant;
-  const PickupDatePickupPoint({super.key, required this.restaurant});
+  final bool fromFlashPage;
+  const PickupDatePickupPoint({
+    super.key,
+    required this.restaurant,
+    this.fromFlashPage = false,
+  });
 
   @override
   State<PickupDatePickupPoint> createState() => _PickupDatePickupPointState();
@@ -91,6 +96,7 @@ class _PickupDatePickupPointState extends State<PickupDatePickupPoint> {
                   "Select Pickup Point",
                   style: Styles.textSmall(context).copyWith(color: Colors.grey),
                   overflow: TextOverflow.ellipsis,
+                  textScaler: const TextScaler.linear(1.0),
                 ),
                 items:
                     widget.restaurant.pickupPoints.map((point) {
@@ -100,6 +106,7 @@ class _PickupDatePickupPointState extends State<PickupDatePickupPoint> {
                           point.pickupLocation,
                           style: Styles.textSmall(context),
                           overflow: TextOverflow.ellipsis,
+                          textScaler: const TextScaler.linear(1.0),
                         ),
                       );
                     }).toList(),
@@ -125,13 +132,17 @@ class _PickupDatePickupPointState extends State<PickupDatePickupPoint> {
   }
 
   void _showCalendar(BuildContext context) async {
-   debugPrint("🗓 Opening calendar for restaurant: ${widget.restaurant.franchiseId}");
-  debugPrint("🔹 Selected Pickup: ${_selectedPickup?.pickupLocation ?? 'none'}");
+    debugPrint(
+      "🗓 Opening calendar for restaurant: ${widget.restaurant.franchiseId}",
+    );
+    debugPrint(
+      "🔹 Selected Pickup: ${_selectedPickup?.pickupLocation ?? 'none'}",
+    );
     final blockedDates = _selectedPickup?.blockoutDates ?? [];
     debugPrint("🔹 Blocked Dates Count: ${blockedDates.length}");
     if (blockedDates.isEmpty) {
-    debugPrint("⚪ No blocked dates found. Showing clean calendar.");
-  }
+      debugPrint("⚪ No blocked dates found. Showing clean calendar.");
+    }
     final Map<String, String> blockedReasons = {
       for (var b in blockedDates)
         DateFormat('dd-MM-yyyy').format(DateTime.parse(b.date)): b.reason,
@@ -139,33 +150,45 @@ class _PickupDatePickupPointState extends State<PickupDatePickupPoint> {
 
     final ntpService = NtpService();
     final DateTime ntpTime = await ntpService.getCurrentIST();
+    DateTime firstDate;
+    DateTime lastDate;
 
     // ✅ Business rule: if current time >= 2 PM, skip today
-    final DateTime firstDate =
-        ntpTime.hour < 14
-            ? DateTime(ntpTime.year, ntpTime.month, ntpTime.day)
-            : DateTime(ntpTime.year, ntpTime.month, ntpTime.day + 1);
+    if (widget.fromFlashPage) {
+      firstDate = DateTime(ntpTime.year, ntpTime.month, ntpTime.day);
+      lastDate = firstDate; // only today selectable
+      debugPrint(
+        "⚡ Flash Sale Mode: limiting calendar to today (${firstDate.toIso8601String()})",
+      );
+    } else {
+      // ✅ Normal flow → respect 2 PM cutoff and +30 days
+      firstDate =
+          ntpTime.hour < 14
+              ? DateTime(ntpTime.year, ntpTime.month, ntpTime.day)
+              : DateTime(ntpTime.year, ntpTime.month, ntpTime.day + 1);
+      lastDate = firstDate.add(const Duration(days: 30));
+    }
+    final List<DateTime> blockedDateList =
+        blockedDates.isEmpty
+            ? []
+            : blockedDates
+                .where((b) {
+                  try {
+                    final parsed = DateTime.parse(b.date);
+                    return parsed.isAfter(DateTime(2000)); // sanity
+                  } catch (_) {
+                    debugPrint(
+                      "⚠️ Invalid date format in block date: ${b.date}",
+                    );
+                    return false;
+                  }
+                })
+                .map((b) => DateTime.parse(b.date))
+                .toList();
 
-    // ✅ Allow selection up to 30 days from firstDate
-    final DateTime lastDate = firstDate.add(const Duration(days: 30));
-
-    final List<DateTime> blockedDateList = blockedDates.isEmpty
-      ? []
-      : blockedDates
-          .where((b) {
-            try {
-              final parsed = DateTime.parse(b.date);
-              return parsed.isAfter(DateTime(2000)); // sanity
-            } catch (_) {
-              debugPrint("⚠️ Invalid date format in block date: ${b.date}");
-              return false;
-            }
-          })
-          .map((b) => DateTime.parse(b.date))
-          .toList();
-
-  debugPrint("📆 Final Blocked Dates: ${blockedDateList.map((e) => e.toIso8601String()).toList()}");
-
+    debugPrint(
+      "📆 Final Blocked Dates: ${blockedDateList.map((e) => e.toIso8601String()).toList()}",
+    );
 
     showDialog(
       context: context,
@@ -269,6 +292,7 @@ class _PickupDatePickupPointState extends State<PickupDatePickupPoint> {
                         child: Text(
                           '${date.day}',
                           style: const TextStyle(color: Colors.white),
+                          textScaler: const TextScaler.linear(1.0),
                         ),
                       ),
                     );

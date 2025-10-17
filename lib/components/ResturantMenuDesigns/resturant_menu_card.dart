@@ -2,8 +2,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:my_food_my_price/Providers/cart_provider.dart';
 import 'package:my_food_my_price/route_generator.dart';
+import 'package:my_food_my_price/util/color_constant.dart';
 import 'package:provider/provider.dart';
 
+import '../../Providers/menu_provider.dart';
 import '../../models/FoodModels/resturant_menu_model.dart';
 import '../../models/Resturant Model/resturant.dart';
 import '../../util/name_formatter.dart';
@@ -34,8 +36,10 @@ class _RestaurantMenuCardState extends State<RestaurantMenuCard> {
     final halal = widget.menu.halal.toLowerCase();
 
     final icons = <String>[];
-    if (type.contains('non-veg')) icons.add("assets/figmaIcons/non-veg.png");
-    else if (type.contains('veg')) icons.add("assets/figmaIcons/veg.png");
+    if (type.contains('non-veg'))
+      icons.add("assets/figmaIcons/non-veg.png");
+    else if (type.contains('veg'))
+      icons.add("assets/figmaIcons/veg.png");
     if (halal == 'yes') icons.add("assets/figmaIcons/halal.png");
     if (icons.isEmpty) icons.add("assets/figmaIcons/veg.png");
     return icons;
@@ -51,10 +55,14 @@ class _RestaurantMenuCardState extends State<RestaurantMenuCard> {
   @override
   Widget build(BuildContext context) {
     final cartProvider = context.read<CartProvider>();
+    final provider = context.read<MenuProvider>();
     final size = MediaQuery.of(context).size;
     quantity = cartProvider.items[widget.menu] ?? 0;
+   final displayPrice =
+    widget.menu.getDisplayPrice(fromFlashPage: provider.isFlashMode);
+    final basePrice = widget.menu.basePrice;
 
-    final maxStock = widget.menu.menuStock; // ✅ available stock
+    final maxStock = widget.menu.avaliableStocks; // ✅ available stock
 
     return Container(
       margin: EdgeInsets.only(bottom: size.height * 0.015),
@@ -83,25 +91,28 @@ class _RestaurantMenuCardState extends State<RestaurantMenuCard> {
                     Expanded(
                       child: Text(
                         NameFormatter.titleCase(widget.menu.menuName),
-                        style: Styles.textSmall(context)
-                            .copyWith(fontWeight: FontWeight.bold),
+                        style: Styles.textSmall(
+                          context,
+                        ).copyWith(fontWeight: FontWeight.bold),
                         overflow: TextOverflow.ellipsis,
+                        textScaler: TextScaler.linear(1.0),
                       ),
                     ),
                     const SizedBox(width: 4),
                     Row(
                       mainAxisSize: MainAxisSize.min,
-                      children: _foodTypeAssets()
-                          .map(
-                            (path) => Padding(
-                              padding: const EdgeInsets.only(left: 3),
-                              child: Image.asset(
-                                path,
-                                height: size.height * 0.022,
-                              ),
-                            ),
-                          )
-                          .toList(),
+                      children:
+                          _foodTypeAssets()
+                              .map(
+                                (path) => Padding(
+                                  padding: const EdgeInsets.only(left: 3),
+                                  child: Image.asset(
+                                    path,
+                                    height: size.height * 0.022,
+                                  ),
+                                ),
+                              )
+                              .toList(),
                     ),
                   ],
                 ),
@@ -109,19 +120,21 @@ class _RestaurantMenuCardState extends State<RestaurantMenuCard> {
                 Row(
                   children: [
                     Text(
-                      "₹${widget.menu.currentPrice.toStringAsFixed(1)}",
+                      "₹${displayPrice.toStringAsFixed(1)}",
                       style: Styles.textSmall(context).copyWith(
-                        color: Colors.red,
+                        color: AppColor.maincolor,
                         fontWeight: FontWeight.bold,
                       ),
+                      textScaler: TextScaler.linear(1.0),
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      "₹${widget.menu.basePrice.toStringAsFixed(1)}",
+                      "₹${basePrice.toStringAsFixed(1)}",
                       style: Styles.textSmall(context).copyWith(
                         color: Colors.black54,
                         decoration: TextDecoration.lineThrough,
                       ),
+                      textScaler: TextScaler.linear(1.0),
                     ),
                   ],
                 ),
@@ -136,8 +149,10 @@ class _RestaurantMenuCardState extends State<RestaurantMenuCard> {
                           const SizedBox(width: 2),
                           Text(
                             widget.menu.avgStarRating!.toStringAsFixed(1),
-                            style: Styles.textExtraSmall(context)
-                                .copyWith(fontWeight: FontWeight.w600),
+                            style: Styles.textExtraSmall(
+                              context,
+                            ).copyWith(fontWeight: FontWeight.w600),
+                            textScaler: TextScaler.linear(1.0),
                           ),
                           const SizedBox(width: 8),
                         ],
@@ -145,6 +160,7 @@ class _RestaurantMenuCardState extends State<RestaurantMenuCard> {
                     Text(
                       "Available Qty: $maxStock",
                       style: Styles.textExtraSmall(context),
+                      textScaler: TextScaler.linear(1.0),
                     ),
                   ],
                 ),
@@ -152,8 +168,7 @@ class _RestaurantMenuCardState extends State<RestaurantMenuCard> {
                 ExpandableText(
                   widget.menu.description,
                   trimLines: 1,
-                  style:
-                      Styles.textExtraSmall(context, color: Colors.black87),
+                  style: Styles.textExtraSmall(context, color: Colors.black87),
                 ),
               ],
             ),
@@ -170,88 +185,92 @@ class _RestaurantMenuCardState extends State<RestaurantMenuCard> {
                   height: size.height * 0.13,
                   width: size.width * 0.25,
                   fit: BoxFit.cover,
-                  placeholder: (_, __) =>
-                      const Center(child: FullScreenLoader()),
-                  errorWidget: (_, __, ___) =>
-                      Image.asset("assets/icons/product-1.jpg"),
+                  placeholder:
+                      (_, __) => const Center(child: FullScreenLoader()),
+                  errorWidget:
+                      (_, __, ___) => Image.asset("assets/icons/product-1.jpg"),
                 ),
               ),
               Positioned(
                 bottom: 5,
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 250),
-                  child: quantity == 0
-                      ? GestureDetector(
-                          key: const ValueKey('addButton'),
-                          onTap: () {
-                            if (maxStock <= 0) {
-                              AppDialogue.toast("Out of stock");
-                              return;
-                            }
-                            setState(() => quantity = 1);
-                            cartProvider.addItem(widget.menu, 1);
-                          },
-                          child: Container(
-                            width: size.width * 0.24,
-                            height: 42,
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              "ADD",
-                              style: Styles.textSmall(context).copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
+                  child:
+                      quantity == 0
+                          ? GestureDetector(
+                            key: const ValueKey('addButton'),
+                            onTap: () {
+                              if (maxStock <= 0) {
+                                AppDialogue.toast("Out of stock");
+                                return;
+                              }
+                              setState(() => quantity = 1);
+                              cartProvider.addItem(widget.menu, 1);
+                            },
+                            child: Container(
+                              width: size.width * 0.24,
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(10),
                               ),
-                            ),
-                          ),
-                        )
-                      : Container(
-                          key: const ValueKey('qtySelector'),
-                          height: 42,
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF12B400),
-                            borderRadius: BorderRadius.circular(100),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _qtyButton("-", () {
-                                setState(() {
-                                  if (quantity > 1) {
-                                    quantity--;
-                                  } else {
-                                    quantity = 0;
-                                  }
-                                  cartProvider.addItem(
-                                      widget.menu, quantity);
-                                });
-                              }),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8.0),
-                                child: Text(
-                                  "$quantity",
-                                  style: Styles.textStyleMedium(context)
-                                      .copyWith(color: Colors.white),
+                              alignment: Alignment.center,
+                              child: Text(
+                                "ADD",
+                                style: Styles.textSmall(context).copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
                                 ),
+                                textScaler: TextScaler.linear(1.0),
                               ),
-                              _qtyButton("+", () {
-                                if (quantity >= maxStock) {
-                                  AppDialogue.toast(
-                                      "Only $maxStock items available");
-                                  return;
-                                }
-                                setState(() => quantity++);
-                                cartProvider.addItem(widget.menu, quantity);
-                              }),
-                            ],
+                            ),
+                          )
+                          : Container(
+                            key: const ValueKey('qtySelector'),
+                            height: 42,
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF12B400),
+                              borderRadius: BorderRadius.circular(100),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _qtyButton("-", () {
+                                  setState(() {
+                                    if (quantity > 1) {
+                                      quantity--;
+                                    } else {
+                                      quantity = 0;
+                                    }
+                                    cartProvider.addItem(widget.menu, quantity);
+                                  });
+                                }),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8.0,
+                                  ),
+                                  child: Text(
+                                    "$quantity",
+                                    style: Styles.textStyleMedium(
+                                      context,
+                                    ).copyWith(color: Colors.white),
+                                    textScaler: TextScaler.linear(1.0),
+                                  ),
+                                ),
+                                _qtyButton("+", () {
+                                  if (quantity >= maxStock) {
+                                    AppDialogue.toast(
+                                      "Only $maxStock items available",
+                                    );
+                                    return;
+                                  }
+                                  setState(() => quantity++);
+                                  cartProvider.addItem(widget.menu, quantity);
+                                }),
+                              ],
+                            ),
                           ),
-                        ),
                 ),
               ),
             ],
@@ -272,7 +291,11 @@ class _RestaurantMenuCardState extends State<RestaurantMenuCard> {
           shape: BoxShape.circle,
         ),
         alignment: Alignment.center,
-        child: Text(label, style: Styles.textStyleMediumBold(context)),
+        child: Text(
+          label,
+          style: Styles.textStyleMediumBold(context),
+          textScaler: TextScaler.linear(1.0),
+        ),
       ),
     );
   }

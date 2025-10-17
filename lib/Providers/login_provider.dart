@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:my_food_my_price/enums/enum.dart';
 import 'package:my_food_my_price/models/LoginModels/login_model.dart';
@@ -12,6 +15,8 @@ import 'package:my_food_my_price/util/exception.dart';
 import 'package:my_food_my_price/util/global.dart';
 import 'package:my_food_my_price/util/simple_stream.dart';
 import 'package:my_food_my_price/util/url_path.dart';
+
+import '../widgets/dilogue/dilogue.dart';
 
 class LoginProvider extends ChangeNotifier {
   bool isApiValidationError = false;
@@ -168,5 +173,123 @@ class LoginProvider extends ChangeNotifier {
         return profile;
       },
     );
+  }
+
+  /// 🔹 Update User Profile
+  Future<APIResp> updateUserProfile({
+    String? name,
+    String? email,
+    File? userImage,
+  }) async {
+    final url = UrlPath.loginUrl.updateProfile;
+    debugPrint("🚀 Updating user profile at: $url");
+
+    try {
+      // Build payload dynamically — only changed fields
+      final Map<String, dynamic> payload = {};
+
+      final profile = AppConstants.profile;
+      if (name != null &&
+          name.trim().isNotEmpty &&
+          name.trim() != profile?.name) {
+        payload["name"] = name.trim();
+      }
+      if (email != null &&
+          email.trim().isNotEmpty &&
+          email.trim() != profile?.email) {
+        payload["email"] = email.trim();
+      }
+      if (userImage != null) {
+        payload["user_image"] = await MultipartFile.fromFile(
+          userImage.path,
+          filename: userImage.path.split('/').last,
+        );
+      }
+
+      final formData = FormData.fromMap(payload);
+
+      final resp = await APIService.post(
+        url,
+        data: formData,
+        auth: true,
+        shownoInternet: true,
+        forceLogout: true,
+        console: true,
+        timeout: const Duration(seconds: 30),
+      );
+
+      debugPrint("✅ updateUserProfile Response: ${resp.fullBody}");
+
+      if (resp.status) {
+        await getProfile(); // refresh local profile
+        AppDialogue.toast("Profile updated successfully");
+        return resp;
+      } else if (resp.message?.contains("Validation Error") ?? false) {
+        final validation = resp.fullBody["validation Error"];
+        if (validation != null) {
+          final msg = validation.values.first.first ?? "Validation error";
+          AppDialogue.toast(msg);
+        }
+        throw APIException(
+          type: APIErrorType.toast,
+          message: "Validation Error",
+        );
+      } else {
+        throw APIException(
+          type: APIErrorType.toast,
+          message: resp.message ?? "Profile update failed",
+        );
+      }
+    } catch (e, st) {
+      debugPrint("❌ Error updating profile: $e\n$st");
+      throw APIException(
+        type: APIErrorType.toast,
+        message: "Error updating profile: $e",
+      );
+    }
+  }
+
+  /// 🔹 Delete User Account
+  Future<APIResp> deleteUserAccount() async {
+    final url = UrlPath.loginUrl.deleteAccount; // 👈 endpoint constant
+    debugPrint("🚀 Deleting user account at: $url");
+
+    try {
+      // 🔸 API call (POST without body)
+      final resp = await APIService.post(
+        url,
+        data: {}, // No payload
+        auth: true,
+        shownoInternet: true,
+        forceLogout: false,
+        console: true,
+        timeout: const Duration(seconds: 30),
+      );
+
+      debugPrint("✅ deleteUserAccount Response: ${resp.fullBody}");
+
+      if (resp.status) {
+        // ✅ Clear all user data from storage
+      await SecureStorageService.clearAllAppData();
+
+
+        // ✅ Optionally, trigger logout UI state
+        notifyListeners();
+
+        AppDialogue.toast(resp.message ?? "Account deleted successfully");
+        return resp;
+      } else {
+        throw APIException(
+          type: APIErrorType.toast,
+          message: resp.message ?? "Failed to delete account",
+        );
+      }
+    } catch (e, st) {
+      debugPrint("❌ Error deleting account: $e\n$st");
+      throw APIException(
+        type: APIErrorType.toast,
+        message: "Error deleting account: $e",
+      );
+    }
   }
 }

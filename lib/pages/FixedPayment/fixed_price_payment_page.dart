@@ -24,6 +24,7 @@ class FixedPricePaymentPage extends StatefulWidget {
   final String pickupDate;
   final String pickupPoint;
   final Restaurant restaurant;
+  final bool fromFlashPage;
 
   const FixedPricePaymentPage({
     super.key,
@@ -31,6 +32,7 @@ class FixedPricePaymentPage extends StatefulWidget {
     required this.pickupDate,
     required this.pickupPoint,
     required this.restaurant,
+    this.fromFlashPage = false,
   });
 
   @override
@@ -45,6 +47,7 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
   bool restaurantContact = false;
   late String selectedPickupDate;
   late String selectedPickupPoint;
+  late bool fromFlashPage;
 
   String _formatDateForApi(String date) {
     try {
@@ -71,6 +74,7 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
     quantities = List.filled(widget.menus.length, 1);
     selectedPickupDate = widget.pickupDate;
     selectedPickupPoint = widget.pickupPoint;
+    fromFlashPage = widget.fromFlashPage;
     Future.microtask(() async {
       await orderProvider.getPickupTime(
         franchiseId: widget.restaurant.franchiseId,
@@ -99,6 +103,7 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
                   onQuantityChange: (updated) {
                     setState(() => quantities = List.from(updated));
                   },
+                  fromFlashPage: fromFlashPage,
                 ),
                 SizedBox(height: size.height * 0.02),
 
@@ -108,6 +113,7 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
                   menus: widget.menus,
                   quantities: quantities,
                   onPriceUpdate: (data) => setState(() => priceData = data),
+                  fromFlashPage: fromFlashPage,
                 ),
                 SizedBox(height: size.height * 0.02),
 
@@ -123,6 +129,7 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
                   onPickupPointChange:
                       (newPoint) =>
                           setState(() => selectedPickupPoint = newPoint),
+                            fromFlashPage: fromFlashPage,
                 ),
                 SizedBox(height: size.height * 0.02),
 
@@ -139,6 +146,7 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
                       child: Text(
                         "Restaurant should contact me for delivery options.",
                         style: Styles.textStyleMedium(context),
+                        textScaler: const TextScaler.linear(1.0),
                       ),
                     ),
                   ],
@@ -164,6 +172,7 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
               label: Text(
                 "Pay ₹${payable.toStringAsFixed(2)}",
                 style: Styles.textStyleMediumBold(context, color: Colors.white),
+                textScaler: const TextScaler.linear(1.0),
               ),
               onPressed: () async => _handlePlaceOrder(context, data),
             ),
@@ -224,14 +233,13 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
             menuNames: widget.menus.map((m) => m.menuName).toList(),
             menuQuantities: quantities.map((q) => q.toString()).toList(),
             totalMenuPrices:
-                widget.menus
-                    .asMap()
-                    .entries
-                    .map(
-                      (e) =>
-                          (e.value.currentPrice * quantities[e.key]).toString(),
-                    )
-                    .toList(),
+                widget.menus.asMap().entries.map((e) {
+                  final menu = e.value;
+                  final qty = quantities[e.key];
+                  final total =
+                      menu.getDisplayPrice(fromFlashPage: fromFlashPage) * qty;
+                  return total.toStringAsFixed(2);
+                }).toList(),
             name: profile.name,
             pickupPoint: selectedPickupPoint,
             pickupTime: pickupTime,
@@ -244,46 +252,65 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
             contactCustomer: restaurantContact ? 1 : 0,
           );
         },
-        afterComplete: (success) async {
+        afterComplete: (result) async {
           if (!context.mounted) return;
-          if (!success) {
-            AppDialogue.toast("Order placement failed");
-            return;
+
+          if (result is Map<String, dynamic> &&
+              result['status'] == 'stock_error') {
+            final data = result['data'];
+            final menuId = data['menu_id'];
+            final available = data['avaliable_stock'];
+            final msg = result['message'] ?? "Stock issue";
+
+            // 🔹 find affected menu
+            final index = widget.menus.indexWhere(
+              (m) => m.id.toString() == menuId.toString(),
+            );
+            if (index != -1) {
+              setState(() {
+                widget.menus[index] = widget.menus[index].copyWith(
+                  avaliableStocks: available,
+                );
+                quantities[index] = available;
+              });
+            }
+
+            Dialogs.snackbar(msg, context, isError: true);
+            return; // stop flow, let user review again
           }
 
-          if (payable > 0) {
-            await AppDialogue.openLoadingDialogAfterClose(
-              context,
-              text: "Redirecting to PhonePe...",
-              load: () async {
-                return await PhonePeGateway.startPayment(
-                  amount: payable,
-                  transactionId: transactionId,
-                  userId: profile.id.toString(),
-                );
-              },
-              afterComplete: (payment) async {
-                final status =
-                    (payment?["status"] ?? "").toString().toLowerCase();
-                if (status == "success" || status == "completed") {
-                  await _verifyPaymentStatus(
-                    context,
-                    transactionId,
-                    walletUsed,
+          if (result['status'] == 'success') {
+            // continue payment flow
+            if (payable > 0) {
+              await AppDialogue.openLoadingDialogAfterClose(
+                context,
+                text: "Redirecting to PhonePe...",
+                load: () async {
+                  return await PhonePeGateway.startPayment(
+                    amount: payable,
+                    transactionId: transactionId,
+                    userId: profile.id.toString(),
                   );
-                } else {
-                  await AppRouteName.fixedPricePaymentFailedPage.push(context);
-                }
-              },
-            );
+                },
+                afterComplete: (payment) async {
+                  final status =
+                      (payment?["status"] ?? "").toString().toLowerCase();
+                  if (status == "success" || status == "completed") {
+                    await _verifyPaymentStatus(
+                      context,
+                      transactionId,
+                      walletUsed,
+                    );
+                  } else {
+                    await AppRouteName.fixedPricePaymentFailedPage.push(
+                      context,
+                    );
+                  }
+                },
+              );
+            }
           } else {
-            // await orderProvider.updateWallet(
-            //   wallet: walletUsed.toStringAsFixed(2),
-            // );
-            // await AppRouteName.fixedPaymentSuccessPage.pushAndRemoveUntil(
-            //   context,
-            //   (_) => false,
-            // );
+            AppDialogue.toast(result['message'] ?? "Order failed");
           }
         },
       );

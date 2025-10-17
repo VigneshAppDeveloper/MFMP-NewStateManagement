@@ -31,79 +31,88 @@ class FixedOrderProvider extends ChangeNotifier {
   bool get isPickupTimeLoading => _isPickupTimeLoading;
 
   /// ✅ Place Fixed Order (same as bidding but no timer_id)
-  Future<bool> placeFixedOrder({
-    required String franchiseId,
-    required String userId,
-    required List<String> menuIds,
-    required List<String> menuNames,
-    required List<String> menuQuantities,
-    required List<String> totalMenuPrices,
-    required String name,
-    required String pickupPoint,
-    required String pickupTime,
-    required String mobile,
-    required String transactionAmount,
-    required String merchantTransactionId,
-    required String wallet,
-    required String gst,
-    required String pickupDate,
-    required int contactCustomer,
-  }) async {
-    _isLoading = true;
+ Future<Map<String, dynamic>> placeFixedOrder({
+  required String franchiseId,
+  required String userId,
+  required List<String> menuIds,
+  required List<String> menuNames,
+  required List<String> menuQuantities,
+  required List<String> totalMenuPrices,
+  required String name,
+  required String pickupPoint,
+  required String pickupTime,
+  required String mobile,
+  required String transactionAmount,
+  required String merchantTransactionId,
+  required String wallet,
+  required String gst,
+  required String pickupDate,
+  required int contactCustomer,
+}) async {
+  _isLoading = true;
+  notifyListeners();
+
+  final Map<String, dynamic> data = {
+    "franchise_id": franchiseId,
+    "user_id": userId,
+    "menu_ids": menuIds,
+    "menu_names": menuNames,
+    "menu_quantities": menuQuantities,
+    "total_menu_prices": totalMenuPrices,
+    "name": name,
+    "pickup_point": pickupPoint,
+    "pickup_time": pickupTime,
+    "mobile": mobile,
+    "transaction_amount": transactionAmount,
+    "merchant_transaction_id": merchantTransactionId,
+    "wallet": wallet,
+    "gst": gst,
+    "pickup_date": pickupDate,
+    "contact_customer": contactCustomer,
+  };
+
+  try {
+    final resp = await APIService.post(
+      UrlPath.biddingUrl.addFixedOrderDetails,
+      data: data,
+      auth: true,
+      shownoInternet: true,
+      console: true,
+      timeout: const Duration(seconds: 30),
+    );
+
+    debugPrint("📡 [FIXED ORDER] RESPONSE: ${resp.fullBody}");
+
+    _isLoading = false;
     notifyListeners();
 
-    final Map<String, dynamic> data = {
-      "franchise_id": franchiseId,
-      "user_id": userId,
-      "menu_ids": menuIds,
-      "menu_names": menuNames,
-      "menu_quantities": menuQuantities,
-      "total_menu_prices": totalMenuPrices,
-      "name": name,
-      "pickup_point": pickupPoint,
-      "pickup_time": pickupTime,
-      "mobile": mobile,
-      "transaction_amount": transactionAmount,
-      "merchant_transaction_id": merchantTransactionId,
-      "wallet": wallet,
-      "gst": gst,
-      "pickup_date": pickupDate,
-      "contact_customer": contactCustomer,
-    };
-
-    try {
-      final resp = await APIService.post(
-        UrlPath.biddingUrl.addFixedOrderDetails,
-        data: data,
-        auth: true,
-        shownoInternet: true,
-        console: true,
-        timeout: const Duration(seconds: 30),
-      );
-
-      debugPrint("📡 [FIXED ORDER] RESPONSE: ${resp.fullBody}");
-
-      if (resp.status) {
-        final model = OrderBiddingResponse.fromJson(resp.fullBody);
-        _lastResponse = model;
-        errorMessage = null;
-        _isLoading = false;
-        notifyListeners();
-        return true;
-      } else {
-        errorMessage = resp.message ?? "Failed to place order";
-        _isLoading = false;
-        notifyListeners();
-        return false;
-      }
-    } catch (e) {
-      debugPrint("❌ Error in placeFixedOrder: $e");
-      errorMessage = e.toString();
-      _isLoading = false;
-      notifyListeners();
-      return false;
+    // ✅ handle partial failure (stock issue)
+    if (resp.fullBody is Map<String, dynamic> &&
+        resp.fullBody['success'] == false &&
+        resp.fullBody['data'] != null &&
+        resp.fullBody['data']['menu_id'] != null) {
+      return {
+        "status": "stock_error",
+        "data": resp.fullBody['data'],
+        "message": resp.fullBody['message'] ?? "Stock issue detected"
+      };
     }
+
+    if (resp.status) {
+      final model = OrderBiddingResponse.fromJson(resp.fullBody);
+      _lastResponse = model;
+      return {"status": "success"};
+    } else {
+      return {"status": "failed", "message": resp.message ?? "Order failed"};
+    }
+  } catch (e) {
+    debugPrint("❌ Error in placeFixedOrder: $e");
+    _isLoading = false;
+    notifyListeners();
+    return {"status": "error", "message": e.toString()};
   }
+}
+
 
   /// ✅ Reuse wallet update function
   Future<bool> updateWallet({required String wallet}) async {

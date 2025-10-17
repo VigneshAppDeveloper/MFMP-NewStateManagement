@@ -8,21 +8,29 @@ import 'package:my_food_my_price/util/styles.dart';
 import 'package:my_food_my_price/widgets/dilogue/dilogue.dart';
 
 class AppPages extends StatefulWidget {
-  const AppPages({super.key});
+  final int initialTab; // 👈 add this
+  const AppPages({super.key, this.initialTab = 0});
 
   @override
   State<AppPages> createState() => _AppPagesState();
 }
 
 class _AppPagesState extends State<AppPages> {
-  int _currentIndex = 0;
-  DateTime? lastBackPressTime; // for double back exit
+  late int _currentIndex; // 👈 make late
+
+  DateTime? lastBackPressTime;
 
   final List<Widget> _pages = const [
     HomePage(),
     MapPage(),
     FlashSalePage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialTab; // 👈 read initialTab
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -159,6 +167,7 @@ class _AppPagesState extends State<AppPages> {
                   color: isSelected ? AppColor.maincolor : Colors.black,
                   fontSize: 12,
                 ),
+                textScaler: const TextScaler.linear(1.0),
               ),
             ],
           ),

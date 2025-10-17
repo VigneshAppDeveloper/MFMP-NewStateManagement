@@ -12,6 +12,7 @@ class PriceSummarySection extends StatefulWidget {
   final List<RestaurantMenuModel>? menus; // ✅ new optional param
   final List<int> quantities;
   final ValueChanged<PriceSummaryData>? onPriceUpdate;
+  final bool fromFlashPage;
 
   const PriceSummarySection({
     super.key,
@@ -20,6 +21,7 @@ class PriceSummarySection extends StatefulWidget {
     this.menus,
     required this.quantities,
     this.onPriceUpdate,
+     this.fromFlashPage = false,
   });
 
   @override
@@ -38,26 +40,28 @@ class _PriceSummarySectionState extends State<PriceSummarySection> {
   }
 
   /// ✅ Calculates subtotal for either bidding (winners) or fixed (menus)
-  double calculateSubtotal() {
-    double total = 0.0;
+ double calculateSubtotal() {
+  double total = 0.0;
 
-    // Bidding flow
-    if (widget.winners != null && widget.winners!.isNotEmpty) {
-      for (int i = 0; i < widget.winners!.length; i++) {
-        final price = double.tryParse(widget.winners![i].finalPrice) ?? 0.0;
-        total += price * widget.quantities[i];
-      }
+  // Bidding flow
+  if (widget.winners != null && widget.winners!.isNotEmpty) {
+    for (int i = 0; i < widget.winners!.length; i++) {
+      final price = double.tryParse(widget.winners![i].finalPrice) ?? 0.0;
+      total += price * widget.quantities[i];
     }
-    // Fixed-price flow
-    else if (widget.menus != null && widget.menus!.isNotEmpty) {
-      for (int i = 0; i < widget.menus!.length; i++) {
-        final price = widget.menus![i].currentPrice;
-        total += price * widget.quantities[i];
-      }
-    }
-
-    return total;
   }
+  // Fixed or flash flow
+  else if (widget.menus != null && widget.menus!.isNotEmpty) {
+    for (int i = 0; i < widget.menus!.length; i++) {
+      final menu = widget.menus![i];
+      final price = menu.getDisplayPrice(fromFlashPage: widget.fromFlashPage); // ✅ main change
+      total += price * widget.quantities[i];
+    }
+  }
+
+  return total;
+}
+
 
   double calculateGST(double subtotal) => subtotal * 0.05;
 
@@ -136,6 +140,7 @@ class _PriceSummarySectionState extends State<PriceSummarySection> {
                           ? Colors.black
                           : Colors.grey,
                     ),
+                      textScaler: const TextScaler.linear(1.0),
                   ),
                 ),
                 Text(
@@ -143,6 +148,7 @@ class _PriceSummarySectionState extends State<PriceSummarySection> {
                       ? "₹${walletUsed.toStringAsFixed(2)}"
                       : "₹${initialWalletAmount.toStringAsFixed(2)}",
                   style: Styles.textStyleMediumBold(context),
+                    textScaler: const TextScaler.linear(1.0),
                 ),
               ],
             ),
@@ -152,6 +158,7 @@ class _PriceSummarySectionState extends State<PriceSummarySection> {
               Text(
                 "Remaining Wallet: ₹${remainingWallet.toStringAsFixed(2)}",
                 style: Styles.textSmall(context, color: Colors.grey.shade700),
+                  textScaler: const TextScaler.linear(1.0),
               ),
             ],
 
@@ -187,6 +194,7 @@ class _PriceSummarySectionState extends State<PriceSummarySection> {
             style: bold
                 ? Styles.textStyleMediumBold(context)
                 : Styles.textStyleMedium(context),
+                  textScaler: const TextScaler.linear(1.0),
           ),
           Text(
             value,
@@ -194,6 +202,7 @@ class _PriceSummarySectionState extends State<PriceSummarySection> {
               context,
               color: color ?? Colors.black,
             ),
+              textScaler: const TextScaler.linear(1.0),
           ),
         ],
       ),
