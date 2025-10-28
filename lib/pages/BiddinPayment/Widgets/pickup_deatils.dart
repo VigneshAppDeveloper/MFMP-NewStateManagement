@@ -3,6 +3,7 @@ import 'package:flutter_calendar_carousel/flutter_calendar_carousel.dart';
 import 'package:intl/intl.dart';
 import 'package:my_food_my_price/Providers/fixed_order_provider.dart';
 import 'package:my_food_my_price/Providers/menu_provider.dart';
+import 'package:my_food_my_price/util/dilogs.dart';
 import 'package:provider/provider.dart';
 
 import '../../../Providers/bidding_order_provider.dart';
@@ -12,6 +13,7 @@ import '../../../models/Resturant Model/resturant.dart';
 import '../../../services/ntp_service.dart';
 import '../../../util/color_constant.dart';
 import '../../../util/styles.dart';
+import '../../../widgets/dilogue/dilogue.dart';
 
 class PickupDetailsSection extends StatefulWidget {
   final String pickupDate;
@@ -84,6 +86,33 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
     );
   }
 
+  void _revalidateSelectedDate(BuildContext context, PickpointModel value) {
+    // Only check if a date is already selected
+    if (selectedDate != null) {
+      final blocked = value.blockoutDates.any((b) {
+        final d = DateTime.parse(b.date);
+        return d.year == selectedDate.year &&
+            d.month == selectedDate.month &&
+            d.day == selectedDate.day;
+      });
+
+      if (blocked) {
+        // Clear invalid date and show toast/snackbar
+        setState(() {
+          selectedDate = DateTime.now(); // reset visually if needed
+        });
+        Dialogs.snackbar(
+          "The selected date is blocked for this pickup point.",
+          isError: true,
+          context,
+        );
+
+        // Notify parent so dependent data clears
+        widget.onDateChange?.call('');
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -119,6 +148,10 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
     // ✅ Business rule: if current time >= 2 PM, skip today
     DateTime firstDate;
     DateTime lastDate;
+    if (selectedPickupPoint == null && !widget.fromFlashPage) {
+      AppDialogue.toast("Please select a pickup point first.");
+      return;
+    }
 
     // ✅ Flash Sale flow → only today allowed
     if (widget.fromFlashPage) {
@@ -464,6 +497,7 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
               debugPrint(
                 "📍 Selected pickup point: ${value.pickupLocation} (ID: ${value.pickupId})",
               );
+              _revalidateSelectedDate(context, value);
               widget.onPickupPointChange?.call(value.pickupId.toString());
             }
           },

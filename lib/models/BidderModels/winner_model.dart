@@ -9,6 +9,7 @@ class WinnerModel {
   final String franchiseId;
   final String menuName;
   final String finalPrice;
+  
   final String name;
   final String menuId;
   final String userId;

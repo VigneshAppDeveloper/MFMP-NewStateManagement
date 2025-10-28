@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:my_food_my_price/Providers/location_provider.dart';
 import 'package:my_food_my_price/Providers/restaurant_provider.dart';
 import 'package:my_food_my_price/components/HomePageDesigns/banner.dart';
@@ -20,8 +21,7 @@ import '../widgets/dilogue/dilogue.dart';
 import '../widgets/shimmer_type.dart';
 
 class HomePage extends StatefulWidget {
-  final Function(bool isScrollingDown) onScrollChange;
-  const HomePage({super.key, required this.onScrollChange});
+  const HomePage({super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -30,7 +30,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late final ScrollController _scrollController;
   late final TextEditingController _searchController;
-  double lastOffset = 0;
   bool initializedRestaurant = false;
   Timer? _debounce;
 
@@ -41,14 +40,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-
-    _scrollController =
-        ScrollController()..addListener(() {
-          final offset = _scrollController.position.pixels;
-          final isScrollingDown = offset > lastOffset;
-          widget.onScrollChange(isScrollingDown);
-          lastOffset = offset;
-        });
+    _scrollController = ScrollController();
 
     _searchController = TextEditingController();
 
@@ -176,9 +168,9 @@ class _HomePageState extends State<HomePage> {
 
                       // ✅ Only show banners and categories when not searching
                       if (!isSearching) ...[
-                        //  SliverToBoxAdapter(child: HomeBanner()),
+                        SliverToBoxAdapter(child: HomeBanner()),
                         SliverToBoxAdapter(
-                          child: SizedBox(height: size.height * 0.02),
+                          child: SizedBox(height: size.height * 0.001),
                         ),
 
                         Consumer<RestaurantProvider>(
@@ -186,8 +178,7 @@ class _HomePageState extends State<HomePage> {
                             if (provider.isLoading &&
                                 provider.categories.isEmpty) {
                               return SliverToBoxAdapter(
-                                child: 
-                                AppShimmer(
+                                child: AppShimmer(
                                   type: ShimmerType.category,
                                   itemCount: 6,
                                 ),
@@ -231,6 +222,10 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
+  }
+
+  void setStatusBarStyle(SystemUiOverlayStyle style) {
+    SystemChrome.setSystemUIOverlayStyle(style);
   }
 
   Widget _buildDivider(Size size) => SliverToBoxAdapter(

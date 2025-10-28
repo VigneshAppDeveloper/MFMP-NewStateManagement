@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../models/BidderModels/timeslot_winner_list.dart';
 import '../models/FoodModels/resturant_menu_model.dart';
 import '../models/BidderModels/Bidder_count.dart';
 import '../models/BidderModels/time_slot_model.dart';
@@ -56,15 +57,29 @@ class MenuProvider extends ChangeNotifier {
   bool get isFlashMode => _isFlashMode;
 
   String? _currentFranchiseId;
-String? get currentFranchiseId => _currentFranchiseId;
+  String? get currentFranchiseId => _currentFranchiseId;
 
+  final Map<String, List<TimeSlotWinnerListModel>> _cachedWinnerList = {};
+  final Map<String, DateTime> _lastWinnerFetch = {};
+  List<TimeSlotWinnerListModel> _winnerList = [];
+  List<TimeSlotWinnerListModel> get winnerList => _winnerList;
+
+  int _winnerCount = 0;
+  int get winnerCount => _winnerCount;
+
+  int _totalBidderCount = 0;
+  int get totalBidderCount => _totalBidderCount;
+
+  bool _isWinnerLoading = false;
+  bool get isWinnerLoading => _isWinnerLoading;
 
   void setActive(bool val) {
     _isActivePage = val;
     if (!val) stopAutoUpdaters();
   }
 
-  void setPickupDate(DateTime date) {
+  // ✅ change this
+  void setPickupDate(DateTime? date) {
     _selectedPickupDate = date;
     notifyListeners();
   }
@@ -83,103 +98,110 @@ String? get currentFranchiseId => _currentFranchiseId;
   }
 
   /// ✅ Fetch menu for a restaurant
-Future<void> getRestaurantMenu(
-  String franchiseId, {
-  bool forceRefresh = false,
-  bool isFlash = false,
-}) async {
-  _isFlashMode = isFlash;
-  if (isFlash) stopAutoUpdaters();
+  Future<void> getRestaurantMenu(
+    String franchiseId, {
+    bool forceRefresh = false,
+    bool isFlash = false,
+  }) async {
+    _isFlashMode = isFlash;
+    if (isFlash) stopAutoUpdaters();
 
-  final cacheKey = isFlash ? "${franchiseId}_flash" : franchiseId;
-  final now = DateTime.now();
-  final lastFetch = _lastFetchedTime[cacheKey];
+    final cacheKey = isFlash ? "${franchiseId}_flash" : franchiseId;
+    final now = DateTime.now();
+    final lastFetch = _lastFetchedTime[cacheKey];
 
-  // ✅ If switching restaurants, just load cached immediately if present
-  if (_currentFranchiseId != franchiseId) {
-    _currentFranchiseId = franchiseId;
-    if (_cachedMenus.containsKey(cacheKey)) {
-      debugPrint("📦 Switched restaurant → using cached menu for $franchiseId");
-      _menus = List<RestaurantMenuModel>.from(_cachedMenus[cacheKey]!);
-      notifyListeners();
-      // If cache older than 10 min, silently refresh in background
-      if (lastFetch == null ||
-          now.difference(lastFetch).inMinutes >= 10 ||
-          forceRefresh) {
-        unawaited(_backgroundMenuRefresh(franchiseId, isFlash: isFlash));
+    // ✅ If switching restaurants, just load cached immediately if present
+    if (_currentFranchiseId != franchiseId) {
+      _currentFranchiseId = franchiseId;
+      if (_cachedMenus.containsKey(cacheKey)) {
+        debugPrint(
+          "📦 Switched restaurant → using cached menu for $franchiseId",
+        );
+        _menus = List<RestaurantMenuModel>.from(_cachedMenus[cacheKey]!);
+        notifyListeners();
+        // If cache older than 10 min, silently refresh in background
+        if (lastFetch == null ||
+            now.difference(lastFetch).inMinutes >= 5 ||
+            forceRefresh) {
+          unawaited(_backgroundMenuRefresh(franchiseId, isFlash: isFlash));
+        }
+        return;
+      } else {
+        _menus = [];
+        notifyListeners();
       }
-      return;
-    } else {
-      _menus = [];
+    }
+
+    // ✅ Use cache if still valid
+    if (!forceRefresh &&
+        _cachedMenus.containsKey(cacheKey) &&
+        lastFetch != null &&
+        now.difference(lastFetch).inMinutes < 5) {
+      _menus = List<RestaurantMenuModel>.from(_cachedMenus[cacheKey]!);
+      _currentFranchiseId = franchiseId;
+      debugPrint("⚡ Served from cache: $franchiseId (${_menus.length} items)");
       notifyListeners();
+      return;
     }
-  }
 
-  // ✅ Use cache if still valid
-  if (!forceRefresh &&
-      _cachedMenus.containsKey(cacheKey) &&
-      lastFetch != null &&
-      now.difference(lastFetch).inMinutes < 10) {
-    _menus = List<RestaurantMenuModel>.from(_cachedMenus[cacheKey]!);
-    _currentFranchiseId = franchiseId;
-    debugPrint("⚡ Served from cache: $franchiseId (${_menus.length} items)");
-    notifyListeners();
-    return;
-  }
-
-  // ✅ Otherwise fetch new data
-  await _fetchAndCacheMenu(franchiseId, isFlash: isFlash);
-}
-
-
-Future<void> _fetchAndCacheMenu(String franchiseId, {bool isFlash = false}) async {
-  _isLoading = true;
-  notifyListeners();
-
-  final url = "${UrlPath.restaurantUrl.getFranchiseMenu}/$franchiseId";
-  debugPrint("🚀 Fetching Menu API: $url (flash=$isFlash)");
-
-  try {
-    final resp = await APIService.get(
-      url,
-      auth: true,
-      params: isFlash ? {'is_flash': '1'} : null,
-    );
-
-    if (resp.status) {
-      final List<dynamic> data = resp.data ?? [];
-      _menus = data.map((e) => RestaurantMenuModel.fromJson(e)).toList();
-
-      _cachedMenus[isFlash ? "${franchiseId}_flash" : franchiseId] =
-          List<RestaurantMenuModel>.from(_menus);
-      _lastFetchedTime[isFlash ? "${franchiseId}_flash" : franchiseId] =
-          DateTime.now();
-
-      error = null;
-      debugPrint("✅ Cached ${_menus.length} menus for $franchiseId");
-    } else {
-      error = resp.message ?? "Failed to fetch menu.";
-      _menus = [];
-    }
-  } catch (e) {
-    error = e.toString();
-    _menus = [];
-    debugPrint("❌ Error fetching menu: $e");
-  }
-
-  _isLoading = false;
-  notifyListeners();
-}
-
-Future<void> _backgroundMenuRefresh(String franchiseId, {bool isFlash = false}) async {
-  try {
-    debugPrint("🔄 Background refresh started for $franchiseId");
+    // ✅ Otherwise fetch new data
     await _fetchAndCacheMenu(franchiseId, isFlash: isFlash);
-  } catch (_) {
-    debugPrint("⚠️ Background refresh failed for $franchiseId");
   }
-}
 
+  Future<void> _fetchAndCacheMenu(
+    String franchiseId, {
+    bool isFlash = false,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    final url = "${UrlPath.restaurantUrl.getFranchiseMenu}/$franchiseId";
+    debugPrint("🚀 Fetching Menu API: $url (flash=$isFlash)");
+
+    try {
+      final resp = await APIService.get(
+        url,
+        auth: true,
+        params: isFlash ? {'is_flash': '1'} : null,
+      );
+
+      if (resp.status) {
+        final List<dynamic> data = resp.data ?? [];
+        _menus = data.map((e) => RestaurantMenuModel.fromJson(e)).toList();
+
+        _cachedMenus[isFlash
+            ? "${franchiseId}_flash"
+            : franchiseId] = List<RestaurantMenuModel>.from(_menus);
+        _lastFetchedTime[isFlash ? "${franchiseId}_flash" : franchiseId] =
+            DateTime.now();
+
+        error = null;
+        debugPrint("✅ Cached ${_menus.length} menus for $franchiseId");
+      } else {
+        error = resp.message ?? "Failed to fetch menu.";
+        _menus = [];
+      }
+    } catch (e) {
+      error = e.toString();
+      _menus = [];
+      debugPrint("❌ Error fetching menu: $e");
+    }
+
+    _isLoading = false;
+    notifyListeners();
+  }
+
+  Future<void> _backgroundMenuRefresh(
+    String franchiseId, {
+    bool isFlash = false,
+  }) async {
+    try {
+      debugPrint("🔄 Background refresh started for $franchiseId");
+      await _fetchAndCacheMenu(franchiseId, isFlash: isFlash);
+    } catch (_) {
+      debugPrint("⚠️ Background refresh failed for $franchiseId");
+    }
+  }
 
   /// ✅ Clear specific restaurant menu cache
   void clearMenu(String franchiseId) {
@@ -188,8 +210,7 @@ Future<void> _backgroundMenuRefresh(String franchiseId, {bool isFlash = false}) 
     if (_menus.isNotEmpty && _menus.first.franchiseId == franchiseId) {
       _menus = [];
     }
-      debugPrint("🧹 Cleared menu cache for $franchiseId");
-
+    debugPrint("🧹 Cleared menu cache for $franchiseId");
   }
 
   /// ✅ Clear all cached menus
@@ -213,7 +234,7 @@ Future<void> _backgroundMenuRefresh(String franchiseId, {bool isFlash = false}) 
     if (!forceRefresh &&
         _cachedTimeSlots.containsKey(franchiseId) &&
         lastFetch != null &&
-        now.difference(lastFetch).inMinutes < 10) {
+        now.difference(lastFetch).inMinutes < 5) {
       _timeSlots = _cachedTimeSlots[franchiseId]!;
       debugPrint("⚡ Loaded time slots from cache for franchise: $franchiseId");
       notifyListeners();
@@ -433,5 +454,64 @@ Future<void> _backgroundMenuRefresh(String franchiseId, {bool isFlash = false}) 
       _startSlotAutoUpdater(franchiseId);
       debugPrint("▶️ Auto-updaters resumed for $franchiseId");
     }
+  }
+
+  Future<void> getTimeSlotWinnerList({
+    required String franchiseId,
+    required String timerId,
+    bool forceRefresh = false,
+  }) async {
+    final cacheKey = "$franchiseId-$timerId";
+    final now = DateTime.now();
+    final lastFetch = _lastWinnerFetch[cacheKey];
+
+    if (!forceRefresh &&
+        _cachedWinnerList.containsKey(cacheKey) &&
+        lastFetch != null &&
+        now.difference(lastFetch).inMinutes < 5) {
+      _winnerList = _cachedWinnerList[cacheKey]!;
+      debugPrint("⚡ Served winner list from cache for $cacheKey");
+      notifyListeners();
+      return;
+    }
+
+    _isWinnerLoading = true;
+    notifyListeners();
+
+    final url = "${UrlPath.biddingUrl.getTimeSlotWinnerList}/$franchiseId/$timerId";
+    debugPrint("🏆 Fetching Winner List API: $url");
+
+    try {
+      final resp = await APIService.get(url, auth: true);
+      debugPrint("📡 Winner RESPONSE: ${resp.fullBody}");
+
+      if (resp.status) {
+        final parsed = TimeSlotWinnerResponse.fromJson(resp.data ?? {});
+
+        _winnerList = parsed.winners;
+        _winnerCount = parsed.winnerCount;
+        _totalBidderCount = parsed.totalBidderCount;
+
+        _cachedWinnerList[cacheKey] = List<TimeSlotWinnerListModel>.from(
+          _winnerList,
+        );
+        _lastWinnerFetch[cacheKey] = now;
+
+        error = null;
+        debugPrint(
+          "✅ Cached ${_winnerList.length} winners (count=${_winnerCount}, bidders=${_totalBidderCount})",
+        );
+      } else {
+        error = resp.message ?? "Failed to fetch winner list.";
+        _winnerList = [];
+      }
+    } catch (e) {
+      error = e.toString();
+      _winnerList = [];
+      debugPrint("❌ Error fetching winners: $e");
+    }
+
+    _isWinnerLoading = false;
+    notifyListeners();
   }
 }

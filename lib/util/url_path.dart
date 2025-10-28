@@ -23,7 +23,7 @@ class RestaurantUrl {
   final String getNearbyFranchise = 'getFranchise';
   final String getFoodCategory = 'getMenuTag';
   final String getFranchiseMenu = 'getMenu';
-  final String getBanner = 'get_banner';
+  final String getBanner = 'getBannerApp';
 }
 
 class BiddingUrl {
@@ -34,6 +34,7 @@ class BiddingUrl {
   final String addBidding = 'add_bidding';
   final String getBidding = 'get_bidding';
   final String getWinner = 'winner';
+   final String getTimeSlotWinnerList = 'get_winner';
   final String getPickupTime = 'get_pickup_time';
 
   final String addBiddingOrderDetails = 'add_order_and_payment_details';

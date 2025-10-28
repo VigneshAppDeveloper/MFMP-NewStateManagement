@@ -69,21 +69,24 @@ class _BiddingPageState extends State<BiddingPage> with WidgetsBindingObserver {
         final userId = profile.id.toString();
 
         // fetch winners
-  List<WinnerModel> allWinners = [];
+        List<WinnerModel> allWinners = [];
         for (final bid in provider.biddings) {
           final menuWinners = await provider.getWinner(
             widget.timerId,
             bid.menuId,
           );
-           allWinners.addAll(menuWinners);
+          allWinners.addAll(menuWinners);
         }
 
         if (!mounted) return;
         final userWins = allWinners.where((w) => w.userId == userId).toList();
 
         if (userWins.isNotEmpty) {
-        WinnerLooserDialog.showWinnerDialog(context, userWins, widget.restaurant);
-
+          WinnerLooserDialog.showWinnerDialog(
+            context,
+            userWins,
+            widget.restaurant,
+          );
         } else {
           WinnerLooserDialog.showLoserDialog(context);
         }
@@ -111,7 +114,6 @@ class _BiddingPageState extends State<BiddingPage> with WidgetsBindingObserver {
   }
 
   @override
-  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
       // 🔹 When user minimizes app or switches away
@@ -119,7 +121,6 @@ class _BiddingPageState extends State<BiddingPage> with WidgetsBindingObserver {
       provider.stopAll();
     } else if (state == AppLifecycleState.resumed) {
       // 🔹 When user comes back to app
-      final now = DateTime.now();
 
       // If the bidding already ended while user was away
       if (provider.remaining.inSeconds <= 0) {
@@ -192,88 +193,105 @@ class _BiddingPageState extends State<BiddingPage> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: const CommonAppBar(title: "Bidding Room", showBack: true),
-      body: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              SliverToBoxAdapter(child: SizedBox(height: size.height * 0.015)),
-              SliverToBoxAdapter(
-                child: BiddingTimerBar(), // pinned countdown
-              ),
-              SliverToBoxAdapter(child: SizedBox(height: size.height * 0.015)),
-              Consumer2<MenuProvider, BiddingProvider>(
-                builder: (context, menuProvider, bidProvider, _) {
-                  if (bidProvider.isLoading) {
-                    return const SliverToBoxAdapter(
-                      child: Center(child: AppShimmer(type: ShimmerType.menu)),
-                    );
-                  }
-
-                  final menus =
-                      menuProvider.menus
-                          .where((m) => m.menuType.toLowerCase() == "bidding")
-                          .toList();
-
-                  if (menus.isEmpty) {
-                    return SliverToBoxAdapter(
-                      child: Padding(
-                        padding: EdgeInsets.only(top: size.height * 0.3),
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop) {
+          // 🧩 Cleanly stop all timers before leaving
+          provider.stopAll();
+          debugPrint("👋 Leaving Bidding Page — stopped polling & timers");
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: const CommonAppBar(title: "Bidding Room", showBack: true),
+        body: SafeArea(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: SizedBox(height: size.height * 0.015),
+                ),
+                SliverToBoxAdapter(
+                  child: BiddingTimerBar(), // pinned countdown
+                ),
+                SliverToBoxAdapter(
+                  child: SizedBox(height: size.height * 0.015),
+                ),
+                Consumer2<MenuProvider, BiddingProvider>(
+                  builder: (context, menuProvider, bidProvider, _) {
+                    if (bidProvider.isLoading) {
+                      return const SliverToBoxAdapter(
                         child: Center(
-                          child: Text(
-                            "No active bidding menus",
-                            style: Styles.textStyleMedium(context),
-                            textScaler: const TextScaler.linear(1.0),
+                          child: AppShimmer(type: ShimmerType.menu),
+                        ),
+                      );
+                    }
+
+                    final menus =
+                        menuProvider.menus
+                            .where((m) => m.menuType.toLowerCase() == "bidding")
+                            .toList();
+
+                    if (menus.isEmpty) {
+                      return SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.only(top: size.height * 0.3),
+                          child: Center(
+                            child: Text(
+                              "No active bidding menus",
+                              style: Styles.textStyleMedium(context),
+                              textScaler: const TextScaler.linear(1.0),
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  }
+                      );
+                    }
 
-                  return SliverList(
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      final menu = menus[index];
-                      final bid = bidProvider.biddings.firstWhere(
-                        (b) => b.menuId == menu.id.toString(),
-                        orElse:
-                            () => BiddingModel(
-                              menuId: menu.id.toString(),
-                              timerId: widget.timerId,
-                              highestPrice: menu.currentPrice.toStringAsFixed(
-                                2,
+                    return SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final menu = menus[index];
+                        final bid = bidProvider.biddings.firstWhere(
+                          (b) => b.menuId == menu.id.toString(),
+                          orElse:
+                              () => BiddingModel(
+                                menuId: menu.id.toString(),
+                                timerId: widget.timerId,
+                                highestPrice: menu.currentPrice.toStringAsFixed(
+                                  2,
+                                ),
+                                name: "No Bidders Yet",
                               ),
-                              name: "No Bidders Yet",
-                            ),
-                      );
-                      final isLoadingMenu =
-                          bidProvider.menuLoading[menu.id.toString()] ?? false;
-                      final currentBid =
-                          double.tryParse(bid.highestPrice) ??
-                          menu.currentPrice;
-                      final isFrozen =
-                          _frozenMenus[menu.id.toString()] ?? false;
+                        );
+                        final isLoadingMenu =
+                            bidProvider.menuLoading[menu.id.toString()] ??
+                            false;
+                        final currentBid =
+                            double.tryParse(bid.highestPrice) ??
+                            menu.currentPrice;
+                        final isFrozen =
+                            _frozenMenus[menu.id.toString()] ?? false;
 
-                      final priceExceeded =
-                          currentBid >= (menu.basePrice * 0.98);
+                        final priceExceeded =
+                            currentBid >= (menu.basePrice * 0.98);
 
-                      return RestaurantBiddingCard(
-                        menu: menu,
-                        currentBid: currentBid,
-                        highestBidder: bid.name,
-                        priceExceeded: priceExceeded,
-                        isFrozen: isFrozen,
-                        onBid: (price) => _onBid(bid, price),
-                        isLiveUpdating: isLoadingMenu,
-                      );
-                    }, childCount: menus.length),
-                  );
-                },
-              ),
-            ],
+                        return RestaurantBiddingCard(
+                          menu: menu,
+                          currentBid: currentBid,
+                          highestBidder: bid.name,
+                          priceExceeded: priceExceeded,
+                          isFrozen: isFrozen,
+                          onBid: (price) => _onBid(bid, price),
+                          isLiveUpdating: isLoadingMenu,
+                        );
+                      }, childCount: menus.length),
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),

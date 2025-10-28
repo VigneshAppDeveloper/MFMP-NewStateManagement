@@ -101,7 +101,6 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
     _cartProvider.clearCart();
     searchController.dispose();
     _debounce?.cancel();
-    //provider.clearMenu(widget.restaurant.franchiseId);
     super.dispose();
   }
 
@@ -394,7 +393,26 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                               menuProvider.stopAutoUpdaters();
                               final bidderProvider =
                                   context.read<BidderProvider>();
+                              if (!slot.isActive && !slot.isUpcoming) {
+                                // ⏹ Inactive → navigate to Winner Page
+                                AppRouteName.timeSlotWinnerPage.push(
+                                  context,
+                                  args: {
+                                    'franchiseId':
+                                        widget.restaurant.franchiseId,
+                                    'timerId': slot.timerId,
+                                  },
+                                );
+                                return;
+                              }
 
+                              if (slot.isUpcoming) {
+                                // 🕒 Upcoming → not started yet
+                                AppDialogue.toast(
+                                  "Bidding not started yet for this slot.",
+                                );
+                                return;
+                              }
                               final selectedDate =
                                   menuProvider.selectedPickupDate;
                               final selectedPoint =
@@ -403,18 +421,6 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                               if (selectedDate == null) {
                                 AppDialogue.toast(
                                   "Please select a pickup date first.",
-                                );
-                                return;
-                              }
-                              if (selectedPoint == null) {
-                                AppDialogue.toast(
-                                  "Please select a pickup point first.",
-                                );
-                                return;
-                              }
-                              if (!slot.isActive) {
-                                AppDialogue.toast(
-                                  "Bidding not started yet for this slot.",
                                 );
                                 return;
                               }
@@ -485,7 +491,7 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                     }
                   },
                 ),
-                SliverToBoxAdapter(child: SizedBox(height: size.height * 0.02)),
+                SliverToBoxAdapter(child: SizedBox(height: size.height * 0.1)),
               ],
             ),
           ),
@@ -524,7 +530,10 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                     AppRouteName.fixedPricePayment.push(
                       context,
                       args: {
-                        "menus": cart.items.keys.toList(),
+                        "menus":
+                            cart.items.entries
+                                .map((e) => {"menu": e.key, "qty": e.value})
+                                .toList(),
                         "pickup_date": DateFormat(
                           'yyyy-MM-dd',
                         ).format(selectedPickupDate),

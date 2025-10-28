@@ -21,7 +21,7 @@ import '../BiddinPayment/Widgets/price_summary.dart';
 import '../BiddinPayment/Widgets/price_summary_data.dart';
 
 class FixedPricePaymentPage extends StatefulWidget {
-  final List<RestaurantMenuModel> menus;
+  final List<Map<String, dynamic>> menus;
   final String pickupDate;
   final String pickupPoint;
   final Restaurant restaurant;
@@ -49,6 +49,7 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
   late String selectedPickupDate;
   late String selectedPickupPointId;
   late bool fromFlashPage;
+  late List<RestaurantMenuModel> selectedMenus;
 
   String _formatDateForApi(String date) {
     try {
@@ -72,9 +73,11 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
     super.initState();
     orderProvider = context.read<FixedOrderProvider>();
     profile = AppConstants.profile!;
-    quantities = List.filled(widget.menus.length, 1);
+    selectedMenus =
+        widget.menus.map((m) => m['menu'] as RestaurantMenuModel).toList();
+    quantities = widget.menus.map((m) => m['qty'] as int).toList();
     selectedPickupDate = widget.pickupDate;
-    selectedPickupPointId  = widget.pickupPoint;
+    selectedPickupPointId = widget.pickupPoint;
     fromFlashPage = widget.fromFlashPage;
     Future.microtask(() async {
       await orderProvider.getPickupTime(
@@ -99,7 +102,7 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
               children: [
                 /// 🍱 Menu list for fixed items
                 FixedMenuList(
-                  menus: widget.menus,
+                  menus: selectedMenus,
                   quantities: quantities,
                   onQuantityChange: (updated) {
                     setState(() => quantities = List.from(updated));
@@ -111,7 +114,7 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
                 /// 💰 Price Summary Section (same widget reused)
                 PriceSummarySection(
                   profile: profile,
-                  menus: widget.menus,
+                  menus: selectedMenus,
                   quantities: quantities,
                   onPriceUpdate: (data) => setState(() => priceData = data),
                   fromFlashPage: fromFlashPage,
@@ -129,8 +132,8 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
                       (newDate) => setState(() => selectedPickupDate = newDate),
                   onPickupPointChange:
                       (newPoint) =>
-                          setState(() => selectedPickupPointId  = newPoint),
-                            fromFlashPage: fromFlashPage,
+                          setState(() => selectedPickupPointId = newPoint),
+                  fromFlashPage: fromFlashPage,
                 ),
                 SizedBox(height: size.height * 0.02),
 
@@ -196,9 +199,9 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
     final validItems = <RestaurantMenuModel>[];
     final validQuantities = <int>[];
 
-    for (int i = 0; i < widget.menus.length; i++) {
+    for (int i = 0; i < selectedMenus.length; i++) {
       if (quantities[i] > 0) {
-        validItems.add(widget.menus[i]);
+        validItems.add(selectedMenus[i]);
         validQuantities.add(quantities[i]);
       }
     }
@@ -217,7 +220,8 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
     final apiPickupDate = _formatDateForApi(selectedPickupDate);
     debugPrint("📅 Formatted pickup date for API: $apiPickupDate");
     final selectedPickupId =
-    context.read<MenuProvider>().selectedPickupPoint?.pickupId.toString() ?? "";
+        context.read<MenuProvider>().selectedPickupPoint?.pickupId.toString() ??
+        "";
 
     final transactionId = "MT${DateTime.now().millisecondsSinceEpoch}";
     final payable = data.payable;
@@ -232,11 +236,11 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
           return await orderProvider.placeFixedOrder(
             franchiseId: widget.restaurant.franchiseId,
             userId: profile.id.toString(),
-            menuIds: widget.menus.map((m) => m.id.toString()).toList(),
-            menuNames: widget.menus.map((m) => m.menuName).toList(),
+            menuIds: selectedMenus.map((m) => m.id.toString()).toList(),
+            menuNames: selectedMenus.map((m) => m.menuName).toList(),
             menuQuantities: quantities.map((q) => q.toString()).toList(),
             totalMenuPrices:
-                widget.menus.asMap().entries.map((e) {
+                selectedMenus.asMap().entries.map((e) {
                   final menu = e.value;
                   final qty = quantities[e.key];
                   final total =
@@ -266,12 +270,12 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
             final msg = result['message'] ?? "Stock issue";
 
             // 🔹 find affected menu
-            final index = widget.menus.indexWhere(
+            final index = selectedMenus.indexWhere(
               (m) => m.id.toString() == menuId.toString(),
             );
             if (index != -1) {
               setState(() {
-                widget.menus[index] = widget.menus[index].copyWith(
+                selectedMenus[index] = selectedMenus[index].copyWith(
                   avaliableStocks: available,
                 );
                 quantities[index] = available;

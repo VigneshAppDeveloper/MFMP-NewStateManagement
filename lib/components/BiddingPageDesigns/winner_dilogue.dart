@@ -69,7 +69,7 @@ class WinnerLooserDialog {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            "- ₹${w.finalPrice}",
+                            "₹${w.finalPrice}",
                             style: Styles.textStyleMediumBold(
                               context,
                               color: Colors.green,

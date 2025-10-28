@@ -27,6 +27,7 @@ import 'package:my_food_my_price/pages/policy/refund_policy.dart';
 import 'package:my_food_my_price/pages/policy/shipping_policy.dart';
 import 'package:my_food_my_price/pages/policy/terms_condition.dart';
 import 'package:my_food_my_price/pages/register.dart';
+import 'package:my_food_my_price/pages/timeslot_winner_page.dart';
 import 'package:my_food_my_price/util/extension.dart';
 import 'package:provider/provider.dart';
 
@@ -72,6 +73,7 @@ enum AppRouteName {
   franchiseEnquiryPage('/franchise_enquiry_page'),
   termsConditions('/terms_conditions'),
   categoryRestaurantsPage('/category_restaurants_page'),
+  timeSlotWinnerPage('/time_slot_winner_page'),
   appSettingsPage('/app_settings');
 
   /// args: TaskViewScreenArgs
@@ -175,6 +177,16 @@ class RouteGenerator {
         return MaterialPageRoute(builder: (_) => DeleteAccount());
       case AppRouteName.rewards:
         return MaterialPageRoute(builder: (_) => Rewards());
+      case AppRouteName.timeSlotWinnerPage:
+        final args = settings.arguments as Map<String, dynamic>;
+        return MaterialPageRoute(
+          builder:
+              (_) => TimeslotWinnerPage(
+                franchiseId: args['franchiseId'],
+                timerId: args['timerId'],
+              ),
+        );
+
       case AppRouteName.categoryRestaurantsPage:
         final args = settings.arguments as Map<String, dynamic>;
         return MaterialPageRoute(

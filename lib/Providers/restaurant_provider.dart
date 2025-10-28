@@ -34,6 +34,10 @@ class RestaurantProvider extends ChangeNotifier {
   DateTime? _lastBannerFetch;
   final Duration _bannerCacheDuration = const Duration(minutes: 10);
 
+  String _scrollingText = '';
+String get scrollingText => _scrollingText;
+
+
   final Map<int, List<Restaurant>> _categoryCache = {};
   final Map<int, DateTime> _categoryCacheTime = {};
   final Duration _cacheDuration = const Duration(minutes: 10);
@@ -127,55 +131,53 @@ class RestaurantProvider extends ChangeNotifier {
   }
 
   Future<void> getBanners({bool forceRefresh = false}) async {
-    // ✅ Use cached data if not expired
-    final now = DateTime.now();
-    if (!forceRefresh &&
-        _banners.isNotEmpty &&
-        _lastBannerFetch != null &&
-        now.difference(_lastBannerFetch!) < _bannerCacheDuration) {
-      debugPrint("⚡ Loaded banners from cache (${_banners.length})");
-      return;
-    }
-
-    _isBannerLoading = true;
-    notifyListeners();
-
-    final url = UrlPath.restaurantUrl.getBanner;
-    debugPrint("🚀 Fetching banners from: $url");
-
-    try {
-      final resp = await APIService.get(url, auth: true);
-      debugPrint("📡 Banner RESPONSE BODY: ${resp.fullBody}");
-
-      if (resp.status) {
-        // ✅ Handle both {result: [...] } or direct list
-        final data =
-            resp.data is Map<String, dynamic>
-                ? resp.data['result'] ?? []
-                : (resp.data ?? []);
-
-        _banners =
-            (data as List)
-                .map((e) => BannerModel.fromJson(e as Map<String, dynamic>))
-                .toList();
-
-        _lastBannerFetch = now;
-        error = null;
-
-        debugPrint("✅ Parsed ${_banners.length} banners");
-      } else {
-        error = resp.message ?? "Failed to fetch banners.";
-        _banners = [];
-      }
-    } catch (e) {
-      error = e.toString();
-      _banners = [];
-      debugPrint("❌ Error fetching banners: $e");
-    }
-
-    _isBannerLoading = false;
-    notifyListeners();
+  final now = DateTime.now();
+  if (!forceRefresh &&
+      _banners.isNotEmpty &&
+      _lastBannerFetch != null &&
+      now.difference(_lastBannerFetch!) < _bannerCacheDuration) {
+    debugPrint("⚡ Loaded banners from cache (${_banners.length})");
+    return;
   }
+
+  _isBannerLoading = true;
+  notifyListeners();
+
+  final url = UrlPath.restaurantUrl.getBanner;
+  debugPrint("🚀 Fetching banners from: $url");
+
+  try {
+    final resp = await APIService.get(url, auth: true);
+    debugPrint("📡 Banner RESPONSE BODY: ${resp.fullBody}");
+
+    if (resp.status) {
+      final data = resp.data is Map<String, dynamic> ? resp.data : {};
+      final List<dynamic> bannerList = data['banner'] ?? [];
+      final scrollData = data['scrolling_text'] ?? {};
+
+      _banners = bannerList
+          .map((e) => BannerModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+
+      // ✅ Store scrolling text
+      _scrollingText = scrollData['scrolling_text']?.toString() ?? '';
+
+      _lastBannerFetch = now;
+      error = null;
+      debugPrint("✅ Parsed ${_banners.length} banners & scrolling text: $_scrollingText");
+    } else {
+      error = resp.message ?? "Failed to fetch banners.";
+      _banners = [];
+    }
+  } catch (e) {
+    error = e.toString();
+    _banners = [];
+    debugPrint("❌ Error fetching banners: $e");
+  }
+
+  _isBannerLoading = false;
+  notifyListeners();
+}
 
   Future<void> getRestaurantsByCategory({
   required double lat,

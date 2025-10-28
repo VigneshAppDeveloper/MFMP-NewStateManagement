@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:my_food_my_price/util/color_constant.dart';
+import 'package:provider/provider.dart';
 
+import '../../../Providers/menu_provider.dart';
 import '../../../models/BidderModels/winner_model.dart';
 import '../../../models/FoodModels/resturant_menu_model.dart';
 import '../../../util/styles.dart';
@@ -21,7 +23,7 @@ class PriceSummarySection extends StatefulWidget {
     this.menus,
     required this.quantities,
     this.onPriceUpdate,
-     this.fromFlashPage = false,
+    this.fromFlashPage = false,
   });
 
   @override
@@ -40,28 +42,29 @@ class _PriceSummarySectionState extends State<PriceSummarySection> {
   }
 
   /// ✅ Calculates subtotal for either bidding (winners) or fixed (menus)
- double calculateSubtotal() {
-  double total = 0.0;
+  double calculateSubtotal() {
+    double total = 0.0;
 
-  // Bidding flow
-  if (widget.winners != null && widget.winners!.isNotEmpty) {
-    for (int i = 0; i < widget.winners!.length; i++) {
-      final price = double.tryParse(widget.winners![i].finalPrice) ?? 0.0;
-      total += price * widget.quantities[i];
+    // Bidding flow
+    if (widget.winners != null && widget.winners!.isNotEmpty) {
+      for (int i = 0; i < widget.winners!.length; i++) {
+        final price = double.tryParse(widget.winners![i].finalPrice) ?? 0.0;
+        total += price * widget.quantities[i];
+      }
     }
-  }
-  // Fixed or flash flow
-  else if (widget.menus != null && widget.menus!.isNotEmpty) {
-    for (int i = 0; i < widget.menus!.length; i++) {
-      final menu = widget.menus![i];
-      final price = menu.getDisplayPrice(fromFlashPage: widget.fromFlashPage); // ✅ main change
-      total += price * widget.quantities[i];
+    // Fixed or flash flow
+    else if (widget.menus != null && widget.menus!.isNotEmpty) {
+      for (int i = 0; i < widget.menus!.length; i++) {
+        final menu = widget.menus![i];
+        final price = menu.getDisplayPrice(
+          fromFlashPage: widget.fromFlashPage,
+        ); // ✅ main change
+        total += price * widget.quantities[i];
+      }
     }
+
+    return total;
   }
-
-  return total;
-}
-
 
   double calculateGST(double subtotal) => subtotal * 0.05;
 
@@ -84,13 +87,46 @@ class _PriceSummarySectionState extends State<PriceSummarySection> {
     return grand - walletUsed;
   }
 
+  double calculateParcelCharges() {
+    double total = 0.0;
+
+    // For Fixed or Flash menus
+    if (widget.menus != null && widget.menus!.isNotEmpty) {
+      for (int i = 0; i < widget.menus!.length; i++) {
+        final menu = widget.menus![i];
+        total += (menu.parcelCharges * widget.quantities[i]);
+      }
+    }
+    // For Bidding orders, usually parcel charge per item can be same rule
+    else if (widget.winners != null && widget.winners!.isNotEmpty) {
+      for (int i = 0; i < widget.winners!.length; i++) {
+        final winner = widget.winners![i];
+        final menuProvider = context.read<MenuProvider>();
+
+        // find matching menu by id
+        final match =
+            menuProvider.menus
+                .where((m) => m.id.toString() == winner.menuId)
+                .toList();
+
+        if (match.isNotEmpty) {
+          final parcel = match.first.parcelCharges;
+          total += parcel * widget.quantities[i];
+        }
+      }
+    }
+
+    return total;
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
     final subtotal = calculateSubtotal();
     final gst = calculateGST(subtotal);
-    final walletUsed = calculateWalletUsage(subtotal + gst);
+    final parcelCharges = calculateParcelCharges(); // ✅ new
+    final walletUsed = calculateWalletUsage(subtotal + gst + parcelCharges);
     final remainingWallet = calculateRemainingWallet(walletUsed);
     final payable = calculatePayable();
 
@@ -99,6 +135,7 @@ class _PriceSummarySectionState extends State<PriceSummarySection> {
       gst: gst,
       walletUsed: walletUsed,
       payable: payable,
+      parcelCharges: parcelCharges,
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -119,6 +156,13 @@ class _PriceSummarySectionState extends State<PriceSummarySection> {
               "GST & Restaurant Charges",
               "₹${gst.toStringAsFixed(2)}",
             ),
+            //if (parcelCharges > 0)
+              _priceRow(
+                context,
+                "Parcel Charges",
+                "₹${parcelCharges.toStringAsFixed(2)}",
+              ),
+
             const Divider(height: 20),
 
             Row(
@@ -126,9 +170,10 @@ class _PriceSummarySectionState extends State<PriceSummarySection> {
                 Checkbox(
                   value: useWallet,
                   activeColor: AppColor.maincolor,
-                  onChanged: initialWalletAmount > 0
-                      ? (val) => setState(() => useWallet = val ?? false)
-                      : null,
+                  onChanged:
+                      initialWalletAmount > 0
+                          ? (val) => setState(() => useWallet = val ?? false)
+                          : null,
                 ),
                 Expanded(
                   child: Text(
@@ -136,11 +181,10 @@ class _PriceSummarySectionState extends State<PriceSummarySection> {
                         ? "Use up to 30% of bill from Wallet"
                         : "Use Wallet Balance",
                     style: Styles.textSmall(context).copyWith(
-                      color: initialWalletAmount > 0
-                          ? Colors.black
-                          : Colors.grey,
+                      color:
+                          initialWalletAmount > 0 ? Colors.black : Colors.grey,
                     ),
-                      textScaler: const TextScaler.linear(1.0),
+                    textScaler: const TextScaler.linear(1.0),
                   ),
                 ),
                 Text(
@@ -148,7 +192,7 @@ class _PriceSummarySectionState extends State<PriceSummarySection> {
                       ? "₹${walletUsed.toStringAsFixed(2)}"
                       : "₹${initialWalletAmount.toStringAsFixed(2)}",
                   style: Styles.textStyleMediumBold(context),
-                    textScaler: const TextScaler.linear(1.0),
+                  textScaler: const TextScaler.linear(1.0),
                 ),
               ],
             ),
@@ -158,7 +202,7 @@ class _PriceSummarySectionState extends State<PriceSummarySection> {
               Text(
                 "Remaining Wallet: ₹${remainingWallet.toStringAsFixed(2)}",
                 style: Styles.textSmall(context, color: Colors.grey.shade700),
-                  textScaler: const TextScaler.linear(1.0),
+                textScaler: const TextScaler.linear(1.0),
               ),
             ],
 
@@ -191,10 +235,11 @@ class _PriceSummarySectionState extends State<PriceSummarySection> {
         children: [
           Text(
             title,
-            style: bold
-                ? Styles.textStyleMediumBold(context)
-                : Styles.textStyleMedium(context),
-                  textScaler: const TextScaler.linear(1.0),
+            style:
+                bold
+                    ? Styles.textStyleMediumBold(context)
+                    : Styles.textStyleMedium(context),
+            textScaler: const TextScaler.linear(1.0),
           ),
           Text(
             value,
@@ -202,7 +247,7 @@ class _PriceSummarySectionState extends State<PriceSummarySection> {
               context,
               color: color ?? Colors.black,
             ),
-              textScaler: const TextScaler.linear(1.0),
+            textScaler: const TextScaler.linear(1.0),
           ),
         ],
       ),

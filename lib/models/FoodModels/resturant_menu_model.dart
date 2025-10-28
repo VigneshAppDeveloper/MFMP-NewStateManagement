@@ -29,6 +29,7 @@ class RestaurantMenuModel {
   final int ratingsCount;
   final double? avgStarRating;
   final double? flashDiscount;
+  final double parcelCharges;
 
   RestaurantMenuModel({
     required this.id,
@@ -58,6 +59,7 @@ class RestaurantMenuModel {
     required this.ratingsCount,
     this.avgStarRating,
     this.flashDiscount,
+    required this.parcelCharges,
   });
 
   // ---------------- SAFE PARSERS ----------------
@@ -131,6 +133,7 @@ class RestaurantMenuModel {
       flashEnd: _safeDate(json['flash_end'], 'flash_end'),
       menuImage: fullImage,
       scrollingText: json['scrolling_text']?.toString(),
+      parcelCharges: _safeDouble(json['parcel_charges'], 'parcel_charges'),
       status: json['status']?.toString() ?? '',
       createdAt: _safeDate(json['created_at'], 'created_at') ?? DateTime.now(),
       updatedAt: _safeDate(json['updated_at'], 'updated_at') ?? DateTime.now(),
@@ -163,6 +166,7 @@ class RestaurantMenuModel {
       description: description,
       basePrice: basePrice,
       currentPrice: currentPrice,
+      parcelCharges: parcelCharges,
       menuStock: menuStock,
       soldStocks: soldStocks,
       avaliableStocks: avaliableStocks ?? this.avaliableStocks,
@@ -200,7 +204,6 @@ extension RestaurantMenuHelper on RestaurantMenuModel {
     return currentPrice;
   }
 }
-
 
 class MenuTag {
   final int id;

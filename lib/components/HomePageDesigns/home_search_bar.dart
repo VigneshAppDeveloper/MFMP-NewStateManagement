@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:my_food_my_price/pages/app_pages.dart';
 import 'package:my_food_my_price/util/styles.dart';
 
 
@@ -60,28 +59,6 @@ class _HomeSearchBarState extends State<HomeSearchBar> {
               onChanged: widget.onChanged,
               onSubmitted: (_) => FocusScope.of(context).unfocus(),
 
-              onTap: () {
-                _focusNode.requestFocus();
-
-                // ✅ animate bottom bar (optional UX)
-                Future.microtask(() {
-                  final parent =
-                      context.findAncestorStateOfType<AppPagesState>();
-                  if (parent != null && parent.mounted) {
-                    parent.bottomBarController.forward();
-                  }
-                });
-              },
-
-              onEditingComplete: () {
-                Future.microtask(() {
-                  final parent =
-                      context.findAncestorStateOfType<AppPagesState>();
-                  if (parent != null && parent.mounted) {
-                    parent.bottomBarController.reverse();
-                  }
-                });
-              },
 
               decoration: InputDecoration(
                 hintText: "Search for Biryani",
@@ -126,7 +103,33 @@ class _HomeSearchBarState extends State<HomeSearchBar> {
           ),
         ),
         const SizedBox(width: 10),
+        buildFilterButton(context, widget.onFilterTap),
       ],
+    );
+  }
+
+   Widget buildFilterButton(BuildContext context, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.05,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.filter_alt_outlined, size: 20),
+            const SizedBox(width: 6),
+            Text(
+              "Filter",
+              style: Styles.textSmall(context),
+              textScaler: const TextScaler.linear(1.0),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
+import 'package:marquee/marquee.dart';
 import 'package:my_food_my_price/util/color_constant.dart';
 import 'package:my_food_my_price/util/styles.dart';
 import 'package:provider/provider.dart';
@@ -85,11 +86,16 @@ class _HomeBannerState extends State<HomeBanner> {
                   child: CachedNetworkImage(
                     imageUrl: banner.bannerImage,
                     fit: BoxFit.cover,
-                    placeholder: (context, url) => AppShimmer(type: ShimmerType.banner),
-                    errorWidget: (context, url, error) => Container(
-                      color: Colors.grey.shade300,
-                      child: const Icon(Icons.broken_image, color: Colors.grey),
-                    ),
+                    placeholder:
+                        (context, url) => AppShimmer(type: ShimmerType.banner),
+                    errorWidget:
+                        (context, url, error) => Container(
+                          color: Colors.grey.shade300,
+                          child: const Icon(
+                            Icons.broken_image,
+                            color: Colors.grey,
+                          ),
+                        ),
                   ),
                 ),
               ),
@@ -112,17 +118,42 @@ class _HomeBannerState extends State<HomeBanner> {
           ),
         ),
 
-        SizedBox(height: size.height * 0.012),
+        //SizedBox(height: size.height * 0.012),
 
-        Text(
-          "Quantity or Quality. Always the best in Biryani Palayam",
-          textAlign: TextAlign.center,
-          style: Styles.textSmall(
-            context,
-            color: AppColor.maincolor,
-          ).copyWith(fontWeight: FontWeight.bold),
-          textScaler: const TextScaler.linear(1.0),
-        ),
+        // Text(
+        //   "Quantity or Quality. Always the best in Biryani Palayam",
+        //   textAlign: TextAlign.center,
+        //   style: Styles.textSmall(
+        //     context,
+        //     color: AppColor.maincolor,
+        //   ).copyWith(fontWeight: FontWeight.bold),
+        //   textScaler: const TextScaler.linear(1.0),
+        // ),
+        SizedBox(height: size.height * 0.012),
+        if (provider.scrollingText.isNotEmpty) ...[
+          SizedBox(
+            height: size.height * 0.04,
+            width: double.infinity,
+            //color: AppColor.maincolor.withOpacity(0.1),
+            child: MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(1.0)),
+              child: Marquee(
+                text: provider.scrollingText,
+                style: Styles.textSmall(
+                  context,
+                  color: AppColor.maincolor,
+                ).copyWith(fontWeight: FontWeight.bold),
+                velocity: 40.0,
+                blankSpace: 60.0,
+                pauseAfterRound: const Duration(seconds: 1),
+                startPadding: 20.0,
+                // textScaler: const TextScaler.linear(1.0),
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

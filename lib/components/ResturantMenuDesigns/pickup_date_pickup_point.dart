@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_calendar_carousel/flutter_calendar_carousel.dart';
 import 'package:intl/intl.dart';
 import 'package:my_food_my_price/util/color_constant.dart';
+import 'package:my_food_my_price/widgets/dilogue/dilogue.dart';
 import 'package:provider/provider.dart';
 
 import '../../Providers/menu_provider.dart';
@@ -121,6 +122,23 @@ class _PickupDatePickupPointState extends State<PickupDatePickupPoint> {
                     debugPrint(
                       "📍 Selected pickup: ${value.pickupLocation} (ID: ${value.pickupId})",
                     );
+                    if (_selectedDate != null) {
+                      final blocked = value.blockoutDates.any((b) {
+                        final d = DateTime.parse(b.date);
+                        return d.year == _selectedDate!.year &&
+                            d.month == _selectedDate!.month &&
+                            d.day == _selectedDate!.day;
+                      });
+
+                      if (blocked) {
+                        // Clear invalid date and inform user
+                        setState(() => _selectedDate = null);
+                        menuProvider.setPickupDate(null);
+                        AppDialogue.toast(
+                          "The selected date is blocked for this pickup point.",
+                        );
+                      }
+                    }
                   }
                 },
 
@@ -154,7 +172,10 @@ class _PickupDatePickupPointState extends State<PickupDatePickupPoint> {
     final DateTime ntpTime = await ntpService.getCurrentIST();
     DateTime firstDate;
     DateTime lastDate;
-
+    if (_selectedPickup == null && !widget.fromFlashPage) {
+      AppDialogue.toast("Please select a pickup point first.");
+      return;
+    }
     // ✅ Business rule: if current time >= 2 PM, skip today
     if (widget.fromFlashPage) {
       firstDate = DateTime(ntpTime.year, ntpTime.month, ntpTime.day);

@@ -3,11 +3,13 @@ class PriceSummaryData {
   final double gst;
   final double walletUsed;
   final double payable;
+  final double parcelCharges;
 
-  PriceSummaryData({
-    required this.subtotal,
-    required this.gst,
-    required this.walletUsed,
-    required this.payable,
-  });
+PriceSummaryData({
+  required this.subtotal,
+  required this.gst,
+  required this.walletUsed,
+  required this.payable,
+  required this.parcelCharges, // ✅ new
+});
 }

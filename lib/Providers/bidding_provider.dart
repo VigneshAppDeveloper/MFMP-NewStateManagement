@@ -8,9 +8,9 @@ import '../models/BidderModels/winner_model.dart';
 import '../services/api_service.dart';
 import '../services/ntp_service.dart';
 import '../util/url_path.dart';
+import '../widgets/dilogue/dilogue.dart';
 
 class BiddingProvider extends ChangeNotifier {
-  // ---------- STATE ----------
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
@@ -36,16 +36,24 @@ class BiddingProvider extends ChangeNotifier {
   Timer? _countdownTimer;
 
   bool _isPolling = false;
+  bool _biddingEndTriggered = false; // 🆕 Prevent duplicate dialogs
 
   final Map<String, bool> _menuLoading = {};
   Map<String, bool> get menuLoading => _menuLoading;
 
-// ---------- CALLBACK WHEN BIDDING ENDS ----------
-VoidCallback? _onBiddingEnd; // private field
-VoidCallback? get onBiddingEnd => _onBiddingEnd;
-set onBiddingEnd(VoidCallback? callback) => _onBiddingEnd = callback;
+  VoidCallback? _onBiddingEnd;
+  VoidCallback? get onBiddingEnd => _onBiddingEnd;
+  set onBiddingEnd(VoidCallback? cb) => _onBiddingEnd = cb;
 
-
+  Duration? _ntpOffset;
+  // 🆕 Cache NTP offset for accuracy
+  bool _disposed = false;
+  @override
+  void dispose() {
+    _disposed = true;
+    stopAll(); // cancel timers
+    super.dispose();
+  }
 
   // ---------- INITIALIZE ----------
   Future<void> initBidding({
@@ -55,11 +63,20 @@ set onBiddingEnd(VoidCallback? callback) => _onBiddingEnd = callback;
     required DateTime slotStart,
     required DateTime slotEnd,
   }) async {
+    stopAll(); // 🆕 Prevent overlapping timers
+
     _biddings = menus;
     _slotStart = slotStart;
     _slotEnd = slotEnd;
     _biddingEnded = false;
-    _remaining = slotEnd.difference(DateTime.now());
+    _biddingEndTriggered = false;
+
+    // 🧭 Calculate accurate NTP offset once
+    final now = DateTime.now();
+    final serverTime = await NtpService().getCurrentIST();
+    _ntpOffset = serverTime.difference(now);
+
+    _remaining = slotEnd.difference(serverTime);
     notifyListeners();
 
     _startCountdown();
@@ -71,7 +88,6 @@ set onBiddingEnd(VoidCallback? callback) => _onBiddingEnd = callback;
     if (_isAdding) return false;
     _isAdding = true;
     notifyListeners();
-  debugPrint("Adding bidding: ${request.toJson()}");
 
     try {
       final resp = await APIService.post(
@@ -81,12 +97,10 @@ set onBiddingEnd(VoidCallback? callback) => _onBiddingEnd = callback;
       );
 
       if (resp.status) {
-        debugPrint("✅ Bidding updated successfully");
-        // refresh bids immediately
         await getBidding(request.franchiseId, request.timerId, silent: true);
         return true;
       } else {
-        debugPrint("❌ Failed to add bidding: ${resp.message}");
+        AppDialogue.toast(resp.message ?? "Failed to place bid");
         return false;
       }
     } catch (e) {
@@ -109,29 +123,29 @@ set onBiddingEnd(VoidCallback? callback) => _onBiddingEnd = callback;
     if (!silent) _isLoading = true;
     notifyListeners();
 
-    final url = "${UrlPath.biddingUrl.getBidding}/$franchiseId/$timerId";
     try {
+      final url = "${UrlPath.biddingUrl.getBidding}/$franchiseId/$timerId";
       final resp = await APIService.get(url, auth: true);
 
       if (resp.status && resp.fullBody['data'] != null) {
         final List data = resp.fullBody['data'];
         final newList = BiddingModel.listFromJson(data);
 
-        // 🔹 Mark each menu as live-updating (for spinner)
+        // Mark menus as updating
         for (final bid in newList) {
           _menuLoading[bid.menuId] = true;
         }
         notifyListeners();
 
-        // ✅ Skip menus already at price cap (basePrice * 0.98)
+        // Filter only active ones
         final activeNewList =
             newList.where((newBid) {
-              final basePrice = double.tryParse(newBid.basePrice ?? "0") ?? 0;
-              final highest = double.tryParse(newBid.highestPrice) ?? 0;
-              return basePrice == 0 || highest < basePrice * 0.98;
+              final base = double.tryParse(newBid.basePrice ?? "0") ?? 0;
+              final high = double.tryParse(newBid.highestPrice) ?? 0;
+              return base == 0 || high < base * 0.98;
             }).toList();
 
-        // ✅ Delta update (no flicker)
+        // Smooth delta update
         for (final newBid in activeNewList) {
           final index = _biddings.indexWhere((b) => b.menuId == newBid.menuId);
           if (index != -1) {
@@ -145,26 +159,19 @@ set onBiddingEnd(VoidCallback? callback) => _onBiddingEnd = callback;
           }
         }
 
-        // 🔹 Remove old ones not in backend
+        // Remove expired menus
         _biddings.removeWhere((b) => !newList.any((n) => n.menuId == b.menuId));
 
-        if (kDebugMode) {
-          debugPrint("✅ Data: ${resp.fullBody['data']}");
-          debugPrint("🔄 Live bidding data updated (${_biddings.length})");
-        }
-
-        // 🔹 End spinner smoothly
-        Future.delayed(const Duration(milliseconds: 800), () {
+        // End spinner
+        Future.delayed(const Duration(milliseconds: 500), () {
           for (var id in newList.map((b) => b.menuId)) {
             _menuLoading[id] = false;
           }
           notifyListeners();
         });
-      } else {
-        _biddings = [];
       }
     } catch (e) {
-      debugPrint("❌ Exception in getBidding: $e");
+      debugPrint("❌ getBidding error: $e");
     } finally {
       _isPolling = false;
       _isLoading = false;
@@ -172,47 +179,38 @@ set onBiddingEnd(VoidCallback? callback) => _onBiddingEnd = callback;
     }
   }
 
-  // ---------- COUNTDOWN TIMER ----------
- void _startCountdown() {
-  _countdownTimer?.cancel();
-  _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
-    if (_slotEnd == null) return;
+  // ---------- COUNTDOWN ----------
+  void _startCountdown() {
+    _countdownTimer?.cancel();
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      if (_slotEnd == null || _biddingEnded) return;
 
-    final now = await NtpService().getCurrentIST();
-    final diff = _slotEnd!.difference(now);
+      // 🕓 Use cached NTP offset instead of calling every tick
+      final now = DateTime.now().add(_ntpOffset ?? Duration.zero);
+      final diff = _slotEnd!.difference(now);
 
-   if (diff.isNegative) {
-  _remaining = Duration.zero;
-  _biddingEnded = true;
-  stopAll();
-  notifyListeners();
+      if (diff.isNegative) {
+        _remaining = Duration.zero;
+        _biddingEnded = true;
+        stopAll();
+        notifyListeners();
 
-  // 🔹 Trigger callback once bidding fully ends
-  _onBiddingEnd?.call();
-}
- else {
-      _remaining = diff;
-      notifyListeners();
-    }
-  });
-}
+        if (!_biddingEndTriggered) {
+          _biddingEndTriggered = true;
+          _onBiddingEnd?.call();
+        }
+      } else {
+        _remaining = diff;
+        notifyListeners();
+      }
+    });
+  }
 
-
-  // ---------- POLLING LOOP ----------
+  // ---------- POLLING ----------
   void _startPolling(String franchiseId, String timerId) {
     _pollTimer?.cancel();
-
-    // 🔹 Adaptive interval based on active bids
-    int interval =
-        _biddings.any((b) {
-              final base = double.tryParse(b.basePrice ?? "0") ?? 0;
-              final current = double.tryParse(b.highestPrice) ?? 0;
-              return base == 0 || current < base * 0.98; // active bids exist
-            })
-            ? 5
-            : 10;
-
-    int failureCount = 0;
+    int interval = 5;
+    int failures = 0;
 
     _pollTimer = Timer.periodic(Duration(seconds: interval), (timer) async {
       if (_biddingEnded) {
@@ -223,37 +221,32 @@ set onBiddingEnd(VoidCallback? callback) => _onBiddingEnd = callback;
 
       try {
         await getBidding(franchiseId, timerId, silent: true);
-        failureCount = 0;
+        failures = 0;
       } catch (e) {
-        failureCount++;
-        if (failureCount >= 3) {
-          // ⚠️ Slow down polling to reduce server load
+        failures++;
+        if (failures >= 3) {
           interval = (interval * 2).clamp(5, 30);
           timer.cancel();
-          _pollTimer = Timer.periodic(Duration(seconds: interval), (t) async {
+          _pollTimer = Timer.periodic(Duration(seconds: interval), (_) async {
             await getBidding(franchiseId, timerId, silent: true);
           });
-          debugPrint("⚠️ Network unstable — slowing poll to every $interval s");
+          debugPrint("⚠️ Slowing polling to $interval sec");
         }
       }
     });
-
-    debugPrint("🚀 Polling started every $interval seconds");
   }
 
   // ---------- WINNER FETCH ----------
   Future<void> _fetchWinnersAfterEnd(String timerId) async {
-    debugPrint("🏁 Bidding ended — fetching winners...");
     if (_biddings.isEmpty) return;
-
-    // For each menu, request winner
-    for (final bid in _biddings) {
-      final menuId = bid.menuId;
-      final winners = await getWinner(timerId, menuId);
-      if (winners.isNotEmpty) {
-        debugPrint("🏆 Winners for menu $menuId: ${winners.first.name}");
-      }
-    }
+    await Future.wait(
+      _biddings.map((b) async {
+        final winners = await getWinner(timerId, b.menuId);
+        if (winners.isNotEmpty) {
+          debugPrint("🏆 Winner for ${b.menuId}: ${winners.first.name}");
+        }
+      }),
+    );
     notifyListeners();
   }
 
@@ -264,29 +257,28 @@ set onBiddingEnd(VoidCallback? callback) => _onBiddingEnd = callback;
       if (resp.status && resp.fullBody['data']?['winners'] != null) {
         final List winnersJson = resp.fullBody['data']['winners'];
         return winnersJson.map((e) => WinnerModel.fromJson(e)).toList();
-      } else {
-         return [];
       }
-    
     } catch (e) {
-      debugPrint("❌ Exception in getWinner: $e");
-      return [];
+      debugPrint("❌ getWinner error: $e");
     }
+    return [];
   }
 
-  // ---------- STOP ALL ----------
+  // ---------- STOP ----------
   void stopAll() {
-    _pollTimer?.cancel();
-    _countdownTimer?.cancel();
-    debugPrint("🛑 Stopped bidding timers");
-  }
+  _pollTimer?.cancel();
+  _pollTimer = null;
+  _countdownTimer?.cancel();
+  _countdownTimer = null;
+  debugPrint("🛑 Stopped all bidding timers");
+}
 
-  // ---------- CLEAR ----------
   void clearData() {
     stopAll();
     _biddings = [];
     _winners = [];
     _biddingEnded = false;
+    _biddingEndTriggered = false;
     _remaining = Duration.zero;
     notifyListeners();
   }

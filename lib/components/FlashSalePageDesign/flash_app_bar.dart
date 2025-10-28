@@ -1,5 +1,4 @@
-import 'dart:async';
-import 'dart:convert';
+
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -8,21 +7,19 @@ import 'package:provider/provider.dart';
 
 import '../../Providers/location_provider.dart';
 import '../../Providers/restaurant_provider.dart';
-import '../../models/LocationModels/location_model.dart';
 import '../../route_generator.dart';
 import '../../services/location_service.dart';
-import '../../services/secure_storage.dart';
 import '../../util/app_contant.dart';
 import '../HomePageDesigns/home_search_bar.dart';
 
 class FlashBanner extends StatelessWidget {
-  final String countdown;
+ // final String countdown;
   final TextEditingController searchController;
   final ValueChanged<String> onSearchChanged; // ✅ add this
 
   const FlashBanner({
     super.key,
-    required this.countdown,
+ //   required this.countdown,
     required this.searchController,
     required this.onSearchChanged, // ✅ make required
   });
@@ -30,6 +27,7 @@ class FlashBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    
 
     return Container(
       width: double.infinity,
@@ -64,7 +62,7 @@ class FlashBanner extends StatelessWidget {
             ),
 
             SizedBox(height: size.height * 0.02),
-            FlashCountdownRow(countdown: countdown),
+           // FlashCountdownRow(countdown: countdown),
           ],
         ),
       ),
@@ -203,56 +201,56 @@ class FlashTopRow extends StatelessWidget {
   }
 }
 
-class FlashCountdownRow extends StatelessWidget {
-  final String countdown;
-  const FlashCountdownRow({super.key, required this.countdown});
+// class FlashCountdownRow extends StatelessWidget {
+//   final String countdown;
+//   const FlashCountdownRow({super.key, required this.countdown});
 
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          flex: 1,
-          child: Image.asset(
-            "assets/figmaIcons/62-[Converted] 1.png",
-            fit: BoxFit.contain,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          flex: 1,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                "Hurry!! Countdown starts",
-                style: Styles.textSmall(context, color: Colors.white),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-              ),
-              const SizedBox(height: 4),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.orange,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    countdown,
-                    style: Styles.textSmall(context, color: Colors.white),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return Row(
+//       children: [
+//         Expanded(
+//           flex: 1,
+//           child: Image.asset(
+//             "assets/figmaIcons/62-[Converted] 1.png",
+//             fit: BoxFit.contain,
+//           ),
+//         ),
+//         const SizedBox(width: 8),
+//         Expanded(
+//           flex: 1,
+//           child: Column(
+//             crossAxisAlignment: CrossAxisAlignment.end,
+//             mainAxisSize: MainAxisSize.min,
+//             children: [
+//               Text(
+//                 "Hurry!! Countdown starts",
+//                 style: Styles.textSmall(context, color: Colors.white),
+//                 overflow: TextOverflow.ellipsis,
+//                 maxLines: 1,
+//               ),
+//               const SizedBox(height: 4),
+//               Container(
+//                 padding: const EdgeInsets.symmetric(
+//                   horizontal: 10,
+//                   vertical: 4,
+//                 ),
+//                 decoration: BoxDecoration(
+//                   color: Colors.orange,
+//                   borderRadius: BorderRadius.circular(6),
+//                 ),
+//                 child: FittedBox(
+//                   fit: BoxFit.scaleDown,
+//                   child: Text(
+//                     countdown,
+//                     style: Styles.textSmall(context, color: Colors.white),
+//                   ),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ),
+//       ],
+//     );
+//   }
+// }

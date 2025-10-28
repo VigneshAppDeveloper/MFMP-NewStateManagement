@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:my_food_my_price/route_generator.dart';
 import 'package:my_food_my_price/util/styles.dart';
 import 'package:provider/provider.dart';
@@ -20,8 +21,7 @@ import '../widgets/dilogue/dilogue.dart';
 import '../widgets/shimmer_type.dart';
 
 class FlashSalePage extends StatefulWidget {
-  final Function(bool isScrollingDown) onScrollChange;
-  const FlashSalePage({super.key, required this.onScrollChange});
+  const FlashSalePage({super.key});
 
   @override
   State<FlashSalePage> createState() => _FlashSalePageState();
@@ -38,18 +38,16 @@ class _FlashSalePageState extends State<FlashSalePage> {
   List<Restaurant> filteredRestaurants = [];
   bool isSearching = false;
 
+  Duration _remaining = const Duration(hours: 1);
+  Timer? _countdownTimer;
+
   @override
   void initState() {
     super.initState();
-    _scrollController =
-        ScrollController()..addListener(() {
-          final offset = _scrollController.position.pixels;
-          final isScrollingDown = offset > lastOffset;
-          widget.onScrollChange(isScrollingDown);
-          lastOffset = offset;
-        });
+    _scrollController = ScrollController();
 
     _searchController = TextEditingController();
+    _startCountdownTimer();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<RestaurantProvider>();
@@ -66,7 +64,23 @@ class _FlashSalePageState extends State<FlashSalePage> {
     _scrollController.dispose();
     _searchController.dispose();
     _debounce?.cancel();
+    _countdownTimer?.cancel();
     super.dispose();
+  }
+
+  void _startCountdownTimer() {
+    _countdownTimer?.cancel(); // clear if running
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
+
+      setState(() {
+        if (_remaining.inSeconds > 0) {
+          _remaining = _remaining - const Duration(seconds: 1);
+        } else {
+          timer.cancel();
+        }
+      });
+    });
   }
 
   Future<void> getRestaurantsList() async {
@@ -122,11 +136,14 @@ class _FlashSalePageState extends State<FlashSalePage> {
 
   @override
   Widget build(BuildContext context) {
-    if (!mounted || !ModalRoute.of(context)!.isCurrent) {
-      return const SizedBox(); // skip building if page not visible
-    }
     final size = MediaQuery.of(context).size;
     final provider = context.watch<RestaurantProvider>();
+    // String _formatCountdown() {
+    //   final h = _remaining.inHours.toString().padLeft(2, '0');
+    //   final m = (_remaining.inMinutes % 60).toString().padLeft(2, '0');
+    //   final s = (_remaining.inSeconds % 60).toString().padLeft(2, '0');
+    //   return "$h:$m:$s";
+    // }
 
     return PopScope(
       canPop: !isSearching,
@@ -145,108 +162,105 @@ class _FlashSalePageState extends State<FlashSalePage> {
       },
       child: Scaffold(
         backgroundColor: Colors.white,
-        body: SafeArea(
-          child: RefreshIndicator(
-            onRefresh: getRestaurantsList,
-            child: Stack(
-              children: [
-                if (isSearching)
-                  Positioned.fill(
-                    top: size.height * 0.30,
-                    child: Container(color: Colors.white),
-                  ),
-
-                CustomScrollView(
-                  controller: _scrollController,
-                  slivers: [
-                    if (!isSearching)
-                      SliverToBoxAdapter(
-                        child: FlashBanner(
-                          countdown: "00:10:45",
-                          searchController: _searchController,
-                          onSearchChanged: _onSearchChanged,
-                        ),
-                      )
-                    else
-                      SliverAppBar(
-                        pinned: true,
-                        backgroundColor: Colors.white,
-                        elevation: 2,
-                        toolbarHeight: size.height * 0.075,
-                        title: HomeSearchBar(
-                          controller: _searchController,
-                          onFilterTap: () {},
-                          onChanged: _onSearchChanged,
-                        ),
-                      ),
-
-                    if (!isSearching) ...[
-                      SliverToBoxAdapter(
-                        child: SizedBox(height: size.height * 0.02),
-                      ),
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: size.width * 0.03,
-                          ),
-                          child: Row(
-                            children: [
-                              Image.asset(
-                                "assets/figmaIcons/discount.png",
-                                height: 48,
-                                width: 103,
-                                fit: BoxFit.contain,
-                              ),
-                              Expanded(
-                                child: Image.asset(
-                                  "assets/figmaIcons/offer.png",
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      SliverToBoxAdapter(
-                        child: SizedBox(height: size.height * 0.02),
-                      ),
-                      Consumer<RestaurantProvider>(
-                        builder: (context, provider, _) {
-                          if (provider.isLoading &&
-                              provider.categories.isEmpty) {
-                            return SliverToBoxAdapter(
-                              child: AppShimmer(
-                                type: ShimmerType.category,
-                                itemCount: 6,
-                              ),
-                            );
-                          }
-                          if (provider.categories.isEmpty) {
-                            return SliverToBoxAdapter(
-                              child: Text(
-                                "No categories available",
-                                textAlign: TextAlign.center,
-                                style: Styles.textStyleMedium(context),
-                                textScaler: const TextScaler.linear(1.0),
-                              ),
-                            );
-                          }
-                          return SliverPersistentHeader(
-                            pinned: true,
-                            delegate: _FoodCategoryHeader(provider.categories),
-                          );
-                        },
-                      ),
-                      SliverToBoxAdapter(
-                        child: SizedBox(height: size.height * 0.02),
-                      ),
-                      _buildDivider(size),
-                    ],
-
-                    _buildRestaurantList(provider),
-                  ],
+        body: RefreshIndicator(
+          onRefresh: getRestaurantsList,
+          child: Stack(
+            children: [
+              if (isSearching)
+                Positioned.fill(
+                  top: size.height * 0.30,
+                  child: Container(color: Colors.white),
                 ),
-              ],
-            ),
+
+              CustomScrollView(
+                controller: _scrollController,
+                slivers: [
+                  if (!isSearching)
+                    SliverToBoxAdapter(
+                      child: FlashBanner(
+                        // countdown: _formatCountdown(),
+                        searchController: _searchController,
+                        onSearchChanged: _onSearchChanged,
+                      ),
+                    )
+                  else
+                    SliverAppBar(
+                      pinned: true,
+                      backgroundColor: Colors.white,
+                      elevation: 2,
+                      toolbarHeight: size.height * 0.075,
+                      title: HomeSearchBar(
+                        controller: _searchController,
+                        onFilterTap: () {},
+                        onChanged: _onSearchChanged,
+                      ),
+                    ),
+
+                  if (!isSearching) ...[
+                    SliverToBoxAdapter(
+                      child: SizedBox(height: size.height * 0.02),
+                    ),
+                    // SliverToBoxAdapter(
+                    //   child: Padding(
+                    //     padding: EdgeInsets.symmetric(
+                    //       horizontal: size.width * 0.03,
+                    //     ),
+                    //     child: Row(
+                    //       children: [
+                    //         Image.asset(
+                    //           "assets/figmaIcons/discount.png",
+                    //           height: 48,
+                    //           width: 103,
+                    //           fit: BoxFit.contain,
+                    //         ),
+                    //         Expanded(
+                    //           child: Image.asset(
+                    //             "assets/figmaIcons/offer.png",
+                    //           ),
+                    //         ),
+                    //       ],
+                    //     ),
+                    //   ),
+                    // ),
+                    // SliverToBoxAdapter(
+                    //   child: SizedBox(height: size.height * 0.02),
+                    // ),
+                    Consumer<RestaurantProvider>(
+                      builder: (context, provider, _) {
+                        if (provider.isLoading && provider.categories.isEmpty) {
+                          return SliverToBoxAdapter(
+                            child: AppShimmer(
+                              type: ShimmerType.category,
+                              itemCount: 6,
+                            ),
+                          );
+                        }
+                        if (provider.categories.isEmpty) {
+                          return SliverToBoxAdapter(
+                            child: Text(
+                              "No categories available",
+                              textAlign: TextAlign.center,
+                              style: Styles.textStyleMedium(context),
+                              textScaler: const TextScaler.linear(1.0),
+                            ),
+                          );
+                        }
+                        return SliverPersistentHeader(
+                          pinned: true,
+                          delegate: _FoodCategoryHeader(provider.categories),
+                        );
+                      },
+                    ),
+                    SliverToBoxAdapter(
+                      child: SizedBox(height: size.height * 0.02),
+                    ),
+                    _buildDivider(size),
+                  ],
+
+                  _buildRestaurantList(provider),
+                ],
+              ),
+            ],
           ),
         ),
       ),
@@ -281,9 +295,9 @@ class _FlashSalePageState extends State<FlashSalePage> {
   Widget _buildRestaurantList(RestaurantProvider provider) {
     final list = isSearching ? filteredRestaurants : provider.restaurants;
 
-    debugPrint(
-      "📊 Building restaurant list | Searching: $isSearching | Count: ${list.length}",
-    );
+    // debugPrint(
+    //   "📊 Building restaurant list | Searching: $isSearching | Count: ${list.length}",
+    // );
 
     if (provider.isLoading) {
       return SliverToBoxAdapter(
@@ -312,9 +326,9 @@ class _FlashSalePageState extends State<FlashSalePage> {
 
     return SliverList(
       delegate: SliverChildBuilderDelegate((context, index) {
-        debugPrint("🍽️ Showing: ${list[index].name}");
+        //   debugPrint("🍽️ Showing: ${list[index].name}");
         return Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 20),
           child: GestureDetector(
             onTap: () {
               FocusScope.of(context).unfocus();

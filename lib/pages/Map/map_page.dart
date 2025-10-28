@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:my_food_my_price/pages/Map/pickup_points_page.dart';
+import 'package:my_food_my_price/route_generator.dart';
 import 'package:my_food_my_price/util/map_makers_util.dart';
 import 'package:my_food_my_price/util/styles.dart';
 import 'package:my_food_my_price/widgets/app_loader.dart';
@@ -15,8 +16,7 @@ import '../../models/Resturant Model/resturant.dart';
 import '../../services/location_service.dart';
 
 class MapPage extends StatefulWidget {
-  final Function(bool isScrollingDown) onScrollChange;
-  const MapPage({super.key,required this.onScrollChange});
+  const MapPage({super.key});
 
   @override
   State<MapPage> createState() => _MapPageState();
@@ -31,41 +31,12 @@ class _MapPageState extends State<MapPage> {
   final Map<String, BitmapDescriptor> markerIconCache = {};
 
   CameraPosition? _lastCameraPosition;
-  bool _isDragging = false; // ✅ to track drag state
-  Timer? _dragEndTimer; 
 
   @override
   void initState() {
     super.initState();
     _loadInitialLocation();
   }
-
-   @override
-  void dispose() {
-    _dragEndTimer?.cancel();
-    super.dispose();
-  }
-
- // ✅ Called when map starts moving
-void _onCameraMoveStarted() {
-  if (!_isDragging) {
-    _isDragging = true;
-    widget.onScrollChange(true); // hide bottom bar
-  }
-  _dragEndTimer?.cancel(); // cancel any pending timers
-}
-
-// ✅ Called when user stops moving the map
-void _onCameraIdle() {
-  _dragEndTimer?.cancel();
-  _dragEndTimer = Timer(const Duration(milliseconds: 250), () {
-    if (_isDragging) {
-      _isDragging = false;
-      widget.onScrollChange(false); // show bottom bar
-    }
-  });
-}
-
 
   Future<void> _loadInitialLocation() async {
     // 🔑 Use session location first (user-chosen)
@@ -190,8 +161,6 @@ void _onCameraIdle() {
                 onMapCreated: (controller) {
                   _mapController = controller;
                 },
-                 onCameraMoveStarted: _onCameraMoveStarted,
-                onCameraIdle: _onCameraIdle,
                 onCameraMove: (pos) {
                   _lastCameraPosition = pos;
                 },
@@ -203,16 +172,13 @@ void _onCameraIdle() {
                 right: 16,
                 child: GestureDetector(
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (_) => PickupPointsPage(
-                              restaurant:
-                                  selectedRestaurant!, // ✅ pass full model
-                            ),
-                      ),
-                    );
+                    AppRouteName.menuPage.push(
+                            context,
+                            args: {
+                              'restaurant': selectedRestaurant!,
+                              'showPriceTabs': true,
+                            },
+                          );
                   },
                   child: RestaurantCard(
                     data: selectedRestaurant!,
