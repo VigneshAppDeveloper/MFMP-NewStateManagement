@@ -90,7 +90,7 @@ class WinnerLooserDialog {
                       final menuProvider = context.read<MenuProvider>();
                       menuProvider.stopAutoUpdaters();
                       final selectedDate = menuProvider.selectedPickupDate!;
-                      final selectedPoint = menuProvider.selectedPickupPoint!;
+                      // final selectedPoint = menuProvider.selectedPickupPoint!;
 
                       AppRouteName.biddingPaymentPage.pushReplacement(
                         context,
@@ -99,7 +99,7 @@ class WinnerLooserDialog {
                           "pickup_date": DateFormat(
                             'yyyy-MM-dd',
                           ).format(selectedDate),
-                          "pickup_point": selectedPoint.pickupLocation,
+                          //"pickup_point": selectedPoint.pickupLocation,
                           "restaurant": restaurant,
                         },
                       );

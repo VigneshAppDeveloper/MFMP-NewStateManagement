@@ -13,7 +13,6 @@ class OrderDetailModel {
   final String wallet;
   final String gst;
   final String? timeSlot; // only for bidding
-  final PickUpPointModel? pickupPoint;
   final String pickupDate;
   final String pickupTime;
   final String? transactionId;
@@ -23,6 +22,7 @@ class OrderDetailModel {
   final String paymentStatus;
   final String orderStatus;
   final int contactCustomer;
+  final String? message;
   final String date;
   final String time;
   final int ratingsCount;
@@ -31,6 +31,8 @@ class OrderDetailModel {
   final MenuModel? menu;
   final UserModel? user;
   final dynamic ratings; // can be list, null, or single map
+  final List<FlashContactModel>? flashContact;
+  final List<MenuModel>? groupedMenus;
 
   OrderDetailModel({
     required this.id,
@@ -44,7 +46,6 @@ class OrderDetailModel {
     required this.wallet,
     required this.gst,
     this.timeSlot,
-    this.pickupPoint,
     required this.pickupDate,
     required this.pickupTime,
     this.transactionId,
@@ -54,6 +55,7 @@ class OrderDetailModel {
     required this.paymentStatus,
     required this.orderStatus,
     required this.contactCustomer,
+    this.message,
     required this.date,
     required this.time,
     required this.ratingsCount,
@@ -62,6 +64,8 @@ class OrderDetailModel {
     this.menu,
     this.user,
     this.ratings,
+    this.flashContact,
+     this.groupedMenus,
   });
 
   // ✅ Combine `date` + `time` into a single DateTime for sorting
@@ -87,6 +91,77 @@ class OrderDetailModel {
     }
   }
 
+  /// ✅ Add copyWith so we can merge menus when grouping
+  OrderDetailModel copyWith({
+    int? id,
+    String? orderId,
+    String? timerId,
+    String? franchiseId,
+    String? userId,
+    String? menuId,
+    int? menuQuantity,
+    String? totalMenuPrice,
+    String? wallet,
+    String? gst,
+    String? timeSlot,
+    String? pickupDate,
+    String? pickupTime,
+    String? transactionId,
+    String? merchantTransactionId,
+    String? transactionAmount,
+    String? transactionStatus,
+    String? paymentStatus,
+    String? orderStatus,
+    int? contactCustomer,
+    String? message,
+    String? date,
+    String? time,
+    int? ratingsCount,
+    double? ratingsAvgStarRating,
+    FranchiseModel? franchise,
+    MenuModel? menu,
+    UserModel? user,
+    dynamic ratings,
+    List<FlashContactModel>? flashContact,
+    List<MenuModel>? groupedMenus,
+  }) {
+    return OrderDetailModel(
+      id: id ?? this.id,
+      orderId: orderId ?? this.orderId,
+      timerId: timerId ?? this.timerId,
+      franchiseId: franchiseId ?? this.franchiseId,
+      userId: userId ?? this.userId,
+      menuId: menuId ?? this.menuId,
+      menuQuantity: menuQuantity ?? this.menuQuantity,
+      totalMenuPrice: totalMenuPrice ?? this.totalMenuPrice,
+      wallet: wallet ?? this.wallet,
+      gst: gst ?? this.gst,
+      timeSlot: timeSlot ?? this.timeSlot,
+      pickupDate: pickupDate ?? this.pickupDate,
+      pickupTime: pickupTime ?? this.pickupTime,
+      transactionId: transactionId ?? this.transactionId,
+      merchantTransactionId:
+          merchantTransactionId ?? this.merchantTransactionId,
+      transactionAmount: transactionAmount ?? this.transactionAmount,
+      transactionStatus: transactionStatus ?? this.transactionStatus,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
+      orderStatus: orderStatus ?? this.orderStatus,
+      contactCustomer: contactCustomer ?? this.contactCustomer,
+      message: message ?? this.message,
+      date: date ?? this.date,
+      time: time ?? this.time,
+      ratingsCount: ratingsCount ?? this.ratingsCount,
+      ratingsAvgStarRating: ratingsAvgStarRating ?? this.ratingsAvgStarRating,
+      franchise: franchise ?? this.franchise,
+      menu: menu ?? this.menu,
+      user: user ?? this.user,
+      ratings: ratings ?? this.ratings,
+      flashContact: flashContact ?? this.flashContact,
+      groupedMenus: groupedMenus ?? this.groupedMenus, // ✅ include here
+    );
+  }
+
+
   factory OrderDetailModel.fromJson(Map<String, dynamic> json) {
     return OrderDetailModel(
       id: json['id'] ?? 0,
@@ -100,10 +175,7 @@ class OrderDetailModel {
       wallet: json['wallet']?.toString() ?? '0',
       gst: json['gst']?.toString() ?? '0',
       timeSlot: json['time_slot'],
-      pickupPoint:
-          json['pickup_point'] != null
-              ? PickUpPointModel.fromJson(json['pickup_point'])
-              : null,
+     
       pickupDate: json['pickup_date'] ?? '',
       pickupTime: json['pickup_time'] ?? '',
       transactionId: json['transaction_id'],
@@ -113,6 +185,7 @@ class OrderDetailModel {
       paymentStatus: json['payment_status'] ?? '',
       orderStatus: json['order_status'] ?? '',
       contactCustomer: json['contact_customer'] ?? 0,
+       message: json['message'], // ✅ mapped here
       date: json['date'] ?? '',
       time: json['time'] ?? '',
       ratingsCount: json['ratings_count'] ?? 0,
@@ -127,6 +200,13 @@ class OrderDetailModel {
       menu: json['menu'] != null ? MenuModel.fromJson(json['menu']) : null,
       user: json['user'] != null ? UserModel.fromJson(json['user']) : null,
       ratings: json['ratings'],
+      flashContact:
+          json['flash_contact'] != null
+              ? (json['flash_contact'] as List)
+                  .map((e) => FlashContactModel.fromJson(e))
+                  .toList()
+              : null,
+              groupedMenus: null,
     );
   }
 }
@@ -252,6 +332,26 @@ class UserModel {
       userId: json['user_id'] ?? '',
       name: json['name'] ?? '',
       mobile: json['mobile']?.toString() ?? '',
+    );
+  }
+}
+
+class FlashContactModel {
+  final int menuId;
+  final String name;
+  final String contact;
+
+  FlashContactModel({
+    required this.menuId,
+    required this.name,
+    required this.contact,
+  });
+
+  factory FlashContactModel.fromJson(Map<String, dynamic> json) {
+    return FlashContactModel(
+      menuId: json['menu_id'] ?? 0,
+      name: json['name'] ?? '',
+      contact: json['contact']?.toString() ?? '',
     );
   }
 }

@@ -30,6 +30,8 @@ class RestaurantMenuModel {
   final double? avgStarRating;
   final double? flashDiscount;
   final double parcelCharges;
+  final double popDelvApps;
+  final int flashStock;
 
   RestaurantMenuModel({
     required this.id,
@@ -60,6 +62,8 @@ class RestaurantMenuModel {
     this.avgStarRating,
     this.flashDiscount,
     required this.parcelCharges,
+    required this.popDelvApps, // ✅ new
+    required this.flashStock, // ✅ new
   });
 
   // ---------------- SAFE PARSERS ----------------
@@ -151,10 +155,12 @@ class RestaurantMenuModel {
           json['flash_discount'] != null
               ? _safeDouble(json['flash_discount'], 'flash_discount')
               : null,
+      popDelvApps: _safeDouble(json['pop_delv_apps'], 'pop_delv_apps'),
+      flashStock: _safeInt(json['flash_stock'], 'flash_stock'),
     );
   }
 
-  RestaurantMenuModel copyWith({int? avaliableStocks}) {
+  RestaurantMenuModel copyWith({int? avaliableStocks, int? flashStock}) {
     return RestaurantMenuModel(
       id: id,
       franchiseId: franchiseId,
@@ -183,6 +189,8 @@ class RestaurantMenuModel {
       ratings: ratings,
       ratingsCount: ratingsCount,
       avgStarRating: avgStarRating,
+      popDelvApps: popDelvApps,
+      flashStock: flashStock ?? this.flashStock,
     );
   }
 }

@@ -3,11 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_calendar_carousel/flutter_calendar_carousel.dart';
 import 'package:intl/intl.dart';
 import 'package:my_food_my_price/util/color_constant.dart';
-import 'package:my_food_my_price/widgets/dilogue/dilogue.dart';
 import 'package:provider/provider.dart';
 
 import '../../Providers/menu_provider.dart';
-import '../../models/PickUptModels/pickup_point.dart';
 import '../../models/Resturant Model/resturant.dart';
 import '../../services/ntp_service.dart';
 import '../../util/styles.dart';
@@ -22,20 +20,24 @@ class PickupDatePickupPoint extends StatefulWidget {
   });
 
   @override
-  State<PickupDatePickupPoint> createState() => _PickupDatePickupPointState();
+  State<PickupDatePickupPoint> createState() => PickupDatePickupPointState();
 }
 
-class _PickupDatePickupPointState extends State<PickupDatePickupPoint> {
+class PickupDatePickupPointState extends State<PickupDatePickupPoint> {
   DateTime? _selectedDate;
-  PickpointModel? _selectedPickup;
+  // PickpointModel? _selectedPickup;
 
   @override
   void initState() {
     super.initState();
-
-    // ❌ Remove default pickup point auto selection
-    // User will explicitly select from dropdown
-    _selectedPickup = null;
+    if (widget.fromFlashPage) {
+      // ✅ Always set current date for flash offers
+      final today = DateTime.now();
+      _selectedDate = today;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        context.read<MenuProvider>().setPickupDate(today);
+      });
+    }
   }
 
   @override
@@ -47,7 +49,10 @@ class _PickupDatePickupPointState extends State<PickupDatePickupPoint> {
         // 🔹 Date Selector
         Expanded(
           child: GestureDetector(
-            onTap: () => _showCalendar(context),
+            onTap:
+                widget.fromFlashPage
+                    ? null // ❌ Disable calendar open for flash
+                    : () => showCalendar(context),
             child: Container(
               padding: EdgeInsets.symmetric(
                 vertical: size.height * 0.015,
@@ -69,100 +74,33 @@ class _PickupDatePickupPointState extends State<PickupDatePickupPoint> {
                       textScaler: const TextScaler.linear(1.0),
                     ),
                   ),
-                  const Icon(Icons.calendar_today, size: 18),
+                  Icon(
+                    Icons.calendar_today,
+                    size: 18,
+                    color:
+                        widget.fromFlashPage
+                            ? Colors
+                                .grey
+                                .shade400 // muted color
+                            : Colors.black54,
+                  ),
                 ],
               ),
             ),
           ),
         ),
 
-        SizedBox(width: size.width * 0.03),
-
-        // 🔹 Pickup Location Dropdown
-        Expanded(
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              vertical: size.height * 0.002,
-              horizontal: size.width * 0.04,
-            ),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF5F5F5),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<PickpointModel>(
-                isExpanded: true,
-                value: _selectedPickup,
-                hint: Text(
-                  "Select Pickup Point",
-                  style: Styles.textSmall(context).copyWith(color: Colors.grey),
-                  overflow: TextOverflow.ellipsis,
-                  textScaler: const TextScaler.linear(1.0),
-                ),
-                items:
-                    widget.restaurant.pickupPoints.map((point) {
-                      return DropdownMenuItem<PickpointModel>(
-                        value: point,
-                        child: Text(
-                          point.pickupLocation,
-                          style: Styles.textSmall(context),
-                          overflow: TextOverflow.ellipsis,
-                          textScaler: const TextScaler.linear(1.0),
-                        ),
-                      );
-                    }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedPickup = value;
-                  });
-
-                  final menuProvider = context.read<MenuProvider>();
-                  if (value != null) {
-                    menuProvider.setPickupPoint(value);
-                    debugPrint(
-                      "📍 Selected pickup: ${value.pickupLocation} (ID: ${value.pickupId})",
-                    );
-                    if (_selectedDate != null) {
-                      final blocked = value.blockoutDates.any((b) {
-                        final d = DateTime.parse(b.date);
-                        return d.year == _selectedDate!.year &&
-                            d.month == _selectedDate!.month &&
-                            d.day == _selectedDate!.day;
-                      });
-
-                      if (blocked) {
-                        // Clear invalid date and inform user
-                        setState(() => _selectedDate = null);
-                        menuProvider.setPickupDate(null);
-                        AppDialogue.toast(
-                          "The selected date is blocked for this pickup point.",
-                        );
-                      }
-                    }
-                  }
-                },
-
-                icon: const Icon(Icons.location_on_outlined, size: 18),
-              ),
-            ),
-          ),
-        ),
+       
       ],
     );
   }
 
-  void _showCalendar(BuildContext context) async {
+  void showCalendar(BuildContext context) async {
     debugPrint(
       "🗓 Opening calendar for restaurant: ${widget.restaurant.franchiseId}",
     );
-    debugPrint(
-      "🔹 Selected Pickup: ${_selectedPickup?.pickupLocation ?? 'none'}",
-    );
-    final blockedDates = _selectedPickup?.blockoutDates ?? [];
-    debugPrint("🔹 Blocked Dates Count: ${blockedDates.length}");
-    if (blockedDates.isEmpty) {
-      debugPrint("⚪ No blocked dates found. Showing clean calendar.");
-    }
+  
+    final blockedDates = widget.restaurant.blockoutDates;
     final Map<String, String> blockedReasons = {
       for (var b in blockedDates)
         DateFormat('dd-MM-yyyy').format(DateTime.parse(b.date)): b.reason,
@@ -172,10 +110,7 @@ class _PickupDatePickupPointState extends State<PickupDatePickupPoint> {
     final DateTime ntpTime = await ntpService.getCurrentIST();
     DateTime firstDate;
     DateTime lastDate;
-    if (_selectedPickup == null && !widget.fromFlashPage) {
-      AppDialogue.toast("Please select a pickup point first.");
-      return;
-    }
+  
     // ✅ Business rule: if current time >= 2 PM, skip today
     if (widget.fromFlashPage) {
       firstDate = DateTime(ntpTime.year, ntpTime.month, ntpTime.day);
@@ -254,6 +189,13 @@ class _PickupDatePickupPointState extends State<PickupDatePickupPoint> {
                     });
                     context.read<MenuProvider>().setPickupDate(date);
                     Navigator.of(context).pop();
+                    final formatted = DateFormat('yyyy-MM-dd').format(date);
+                    await context.read<MenuProvider>().getRestaurantMenu(
+                      widget.restaurant.franchiseId,
+                      forceRefresh: true,
+                      isFlash: widget.fromFlashPage, // false for normal
+                      pickupDate: formatted, // ✅ send selected date
+                    );
                   }
                 },
                 todayTextStyle: Styles.textStyleMediumBold(

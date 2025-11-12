@@ -13,21 +13,18 @@ import '../../util/app_contant.dart';
 import '../HomePageDesigns/home_search_bar.dart';
 
 class FlashBanner extends StatelessWidget {
- // final String countdown;
   final TextEditingController searchController;
-  final ValueChanged<String> onSearchChanged; // ✅ add this
+  final VoidCallback onFilterTap;
 
   const FlashBanner({
     super.key,
- //   required this.countdown,
     required this.searchController,
-    required this.onSearchChanged, // ✅ make required
+    required this.onFilterTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    
 
     return Container(
       width: double.infinity,
@@ -54,21 +51,24 @@ class FlashBanner extends StatelessWidget {
             const FlashTopRow(),
             SizedBox(height: size.height * 0.012),
 
-            // 🔍 integrated search bar inside banner
+            // ✅ unified search bar design
             HomeSearchBar(
               controller: searchController,
-              onFilterTap: () {},
-              onChanged: onSearchChanged, // ✅ same function used in page
+              enableNavigation: true, // tap → RestaurantSearchPage
+              isFlash: true,
+               hintText: "Search for flash restaurants",
+             onFilterTap: onFilterTap,
+              onChanged: (_) {}, // no local logic
             ),
 
             SizedBox(height: size.height * 0.02),
-           // FlashCountdownRow(countdown: countdown),
           ],
         ),
       ),
     );
   }
 }
+
 
 class FlashTopRow extends StatelessWidget {
   const FlashTopRow({super.key});
@@ -103,6 +103,7 @@ class FlashTopRow extends StatelessWidget {
                         context.read<RestaurantProvider>().getRestaurants(
                           lat: result.latitude,
                           lng: result.longitude,
+                          isFlash: true,
                         );
                         final success =
                             await LocationService.fetchAndSaveLocationFromLatLng(

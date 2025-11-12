@@ -8,7 +8,6 @@ import 'package:my_food_my_price/util/dilogs.dart';
 import 'package:my_food_my_price/util/styles.dart';
 import 'package:my_food_my_price/widgets/dilogue/dilogue.dart';
 
-import '../../Providers/menu_provider.dart';
 import '../../models/FoodModels/resturant_menu_model.dart';
 import '../../models/Resturant Model/resturant.dart';
 import '../../widgets/app_bar.dart';
@@ -19,11 +18,11 @@ import 'Widgets/fixed_menu_list.dart';
 import '../BiddinPayment/Widgets/pickup_deatils.dart';
 import '../BiddinPayment/Widgets/price_summary.dart';
 import '../BiddinPayment/Widgets/price_summary_data.dart';
+import 'Widgets/mesage_to_resturant.dart';
 
 class FixedPricePaymentPage extends StatefulWidget {
   final List<Map<String, dynamic>> menus;
   final String pickupDate;
-  final String pickupPoint;
   final Restaurant restaurant;
   final bool fromFlashPage;
 
@@ -31,7 +30,6 @@ class FixedPricePaymentPage extends StatefulWidget {
     super.key,
     required this.menus,
     required this.pickupDate,
-    required this.pickupPoint,
     required this.restaurant,
     this.fromFlashPage = false,
   });
@@ -47,9 +45,10 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
   PriceSummaryData? priceData;
   bool restaurantContact = false;
   late String selectedPickupDate;
-  late String selectedPickupPointId;
+  //late String selectedPickupPointId;
   late bool fromFlashPage;
   late List<RestaurantMenuModel> selectedMenus;
+  final TextEditingController messageController = TextEditingController();
 
   String _formatDateForApi(String date) {
     try {
@@ -77,14 +76,16 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
         widget.menus.map((m) => m['menu'] as RestaurantMenuModel).toList();
     quantities = widget.menus.map((m) => m['qty'] as int).toList();
     selectedPickupDate = widget.pickupDate;
-    selectedPickupPointId = widget.pickupPoint;
+    //selectedPickupPointId = widget.pickupPoint;
     fromFlashPage = widget.fromFlashPage;
-    Future.microtask(() async {
-      await orderProvider.getPickupTime(
-        franchiseId: widget.restaurant.franchiseId,
-        pickupDate: widget.pickupDate,
-      );
-    });
+    if (!widget.fromFlashPage) {
+      Future.microtask(() async {
+        await orderProvider.getPickupTime(
+          franchiseId: widget.restaurant.franchiseId,
+          pickupDate: widget.pickupDate,
+        );
+      });
+    }
   }
 
   @override
@@ -121,40 +122,67 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
                 ),
                 SizedBox(height: size.height * 0.02),
 
+                MessageToRestaurant(controller: messageController),
+                SizedBox(height: size.height * 0.02),
+
                 /// 📍 Pickup Details
                 PickupDetailsSection(
                   pickupDate: widget.pickupDate,
-                  pickupPoint: widget.pickupPoint,
                   franchiseId: widget.restaurant.franchiseId,
                   restaurant: widget.restaurant,
                   isFixedOrder: true,
                   onDateChange:
                       (newDate) => setState(() => selectedPickupDate = newDate),
-                  onPickupPointChange:
-                      (newPoint) =>
-                          setState(() => selectedPickupPointId = newPoint),
                   fromFlashPage: fromFlashPage,
                 ),
                 SizedBox(height: size.height * 0.02),
-
-                Row(
-                  children: [
-                    Checkbox(
-                      value: restaurantContact,
-                      onChanged: (val) {
-                        setState(() => restaurantContact = val ?? false);
-                      },
-                      activeColor: Colors.green,
+                if (!widget.fromFlashPage) ...[
+                  Row(
+                    children: [
+                      Checkbox(
+                        value: restaurantContact,
+                        onChanged: (val) {
+                          setState(() => restaurantContact = val ?? false);
+                        },
+                        activeColor: Colors.green,
+                      ),
+                      Expanded(
+                        child: Text(
+                          "Restaurant should contact me for delivery options.",
+                          style: Styles.textStyleMedium(context),
+                          textScaler: const TextScaler.linear(1.0),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                if (widget.fromFlashPage) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: size.width * 0.04,
+                      vertical: size.height * 0.012,
                     ),
-                    Expanded(
+                    decoration: BoxDecoration(
+                      color: const Color(
+                        0xFFCB9D6E,
+                      ).withOpacity(0.2), // #FFCB9D6E look
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
                       child: Text(
-                        "Restaurant should contact me for delivery options.",
-                        style: Styles.textStyleMedium(context),
+                        "* No cancellations allowed on Flash Sale orders",
+                        style: Styles.textStyleMedium(context).copyWith(
+                          color: Colors.brown.shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
                         textScaler: const TextScaler.linear(1.0),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
                 SizedBox(height: 100),
               ],
             ),
@@ -212,21 +240,26 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
       );
       return;
     }
-    final pickupTime = orderProvider.selectedPickupTime?.time;
-    if (pickupTime == null || pickupTime.isEmpty) {
-      Dialogs.snackbar("Please select pickup time", context, isError: true);
-      return;
+    String pickupTime = "";
+    if (!fromFlashPage) {
+      final sel = orderProvider.selectedPickupTime?.time;
+      if (sel == null || sel.isEmpty) {
+        Dialogs.snackbar("Please select pickup time", context, isError: true);
+        return;
+      }
+      pickupTime = sel;
     }
     final apiPickupDate = _formatDateForApi(selectedPickupDate);
     debugPrint("📅 Formatted pickup date for API: $apiPickupDate");
-    final selectedPickupId =
-        context.read<MenuProvider>().selectedPickupPoint?.pickupId.toString() ??
-        "";
+    // final selectedPickupId =
+    //     context.read<MenuProvider>().selectedPickupPoint?.pickupId.toString() ??
+    //     "";
 
     final transactionId = "MT${DateTime.now().millisecondsSinceEpoch}";
     final payable = data.payable;
     final gst = data.gst;
     final walletUsed = data.walletUsed;
+    final remainingWalletAmount = data.remainingWallet;
 
     try {
       await AppDialogue.openLoadingDialogAfterClose(
@@ -236,11 +269,11 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
           return await orderProvider.placeFixedOrder(
             franchiseId: widget.restaurant.franchiseId,
             userId: profile.id.toString(),
-            menuIds: selectedMenus.map((m) => m.id.toString()).toList(),
-            menuNames: selectedMenus.map((m) => m.menuName).toList(),
-            menuQuantities: quantities.map((q) => q.toString()).toList(),
+            menuIds: validItems.map((m) => m.id.toString()).toList(),
+            menuNames: validItems.map((m) => m.menuName).toList(),
+            menuQuantities: validQuantities.map((q) => q.toString()).toList(),
             totalMenuPrices:
-                selectedMenus.asMap().entries.map((e) {
+                validItems.asMap().entries.map((e) {
                   final menu = e.value;
                   final qty = quantities[e.key];
                   final total =
@@ -248,7 +281,7 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
                   return total.toStringAsFixed(2);
                 }).toList(),
             name: profile.name,
-            pickupPoint: selectedPickupId,
+            // pickupPoint: selectedPickupId,
             pickupTime: pickupTime,
             mobile: profile.mobile,
             transactionAmount: payable.toStringAsFixed(2),
@@ -257,6 +290,10 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
             gst: gst.toStringAsFixed(2),
             pickupDate: apiPickupDate,
             contactCustomer: restaurantContact ? 1 : 0,
+            isFlash: fromFlashPage ? 1 : 0,
+            message: messageController.text.trim().isNotEmpty
+      ? messageController.text.trim()
+      : null, // ✅ added line
           );
         },
         afterComplete: (result) async {
@@ -264,26 +301,44 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
 
           if (result is Map<String, dynamic> &&
               result['status'] == 'stock_error') {
-            final data = result['data'];
+            final data = result['data'] ?? {};
             final menuId = data['menu_id'];
-            final available = data['avaliable_stock'];
+
+            // 🔹 Detect correct stock key from backend
+            final available =
+                fromFlashPage
+                    ? (data['flash_stock'] ?? data['avaliable_stock'] ?? 0)
+                    : (data['avaliable_stock'] ?? data['flash_stock'] ?? 0);
+
             final msg = result['message'] ?? "Stock issue";
 
-            // 🔹 find affected menu
+            // 🔹 Find which menu item failed
             final index = selectedMenus.indexWhere(
               (m) => m.id.toString() == menuId.toString(),
             );
+
             if (index != -1) {
               setState(() {
-                selectedMenus[index] = selectedMenus[index].copyWith(
-                  avaliableStocks: available,
-                );
-                quantities[index] = available;
+                // ✅ Update the correct stock field
+                if (fromFlashPage) {
+                  selectedMenus[index] = selectedMenus[index].copyWith(
+                    flashStock: int.tryParse(available.toString()) ?? 0,
+                  );
+                } else {
+                  selectedMenus[index] = selectedMenus[index].copyWith(
+                    avaliableStocks: int.tryParse(available.toString()) ?? 0,
+                  );
+                }
+
+                // ✅ Cap quantity to the new available value
+                final newLimit = int.tryParse(available.toString()) ?? 0;
+                quantities[index] =
+                    newLimit < quantities[index] ? newLimit : quantities[index];
               });
             }
 
             Dialogs.snackbar(msg, context, isError: true);
-            return; // stop flow, let user review again
+            return; // stop the flow
           }
 
           if (result['status'] == 'success') {
@@ -307,6 +362,7 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
                       context,
                       transactionId,
                       walletUsed,
+                      remainingWalletAmount,
                     );
                   } else {
                     await AppRouteName.fixedPricePaymentFailedPage.push(
@@ -326,37 +382,57 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
     }
   }
 
-  Future<void> _verifyPaymentStatus(
-    BuildContext context,
-    String txnId,
-    double walletUsed,
-  ) async {
-    await AppDialogue.openLoadingDialogAfterClose(
-      context,
-      text: "Verifying payment...",
-      load:
-          () async => await orderProvider.fetchPaymentStatus(
-            merchantTransactionId: txnId,
-          ),
-      afterComplete: (status) async {
-        final result = status?.toString().toLowerCase() ?? "failed";
-        if (result == "success") {
-          if (walletUsed > 0) {
-            await orderProvider.verifyAndUpdateWallet(
-              merchantTransactionId: txnId,
-              walletUsed: walletUsed.toStringAsFixed(2),
-            );
-          }
-          if (!context.mounted) return;
-          await AppRouteName.fixedPricePaymentSuccessPage.pushAndRemoveUntil(
+ Future<void> _verifyPaymentStatus(
+  BuildContext context,
+  String txnId,
+  double walletUsed,
+  double remainingWalletAmount,
+) async {
+  await AppDialogue.openLoadingDialogAfterClose(
+    context,
+    text: "Verifying payment...",
+    load: () async {
+      return await orderProvider.fetchPaymentStatus(
+        merchantTransactionId: txnId,
+      );
+    },
+    afterComplete: (status) async {
+      final result = status?.toString().toLowerCase() ?? "failed";
+
+      if (result == "success") {
+        // ✅ Step 1: update wallet + profile if wallet was used
+        if (walletUsed > 0) {
+          await AppDialogue.openLoadingDialogAfterClose(
             context,
-            (_) => false,
+            text: "Updating wallet & refreshing profile...",
+            load: () async {
+              await orderProvider.verifyAndUpdateWallet(
+                merchantTransactionId: txnId,
+                remainingWalletAmount: remainingWalletAmount.toStringAsFixed(2),
+                context: context,
+              );
+              return true;
+            },
+            afterComplete: (_) async {
+              debugPrint("✅ Wallet updated and profile refreshed");
+            },
           );
-        } else {
-          if (!context.mounted) return;
-          await AppRouteName.fixedPricePaymentFailedPage.push(context);
         }
-      },
-    );
-  }
+
+        // ✅ Step 2: go to success page
+        if (!context.mounted) return;
+        await AppRouteName.fixedPricePaymentSuccessPage.pushAndRemoveUntil(
+          context,
+          (_) => false,
+          args: {"fromFlashPage": fromFlashPage},
+        );
+      } else {
+        // ❌ Payment failed
+        if (!context.mounted) return;
+        await AppRouteName.fixedPricePaymentFailedPage.push(context);
+      }
+    },
+  );
+}
+
 }

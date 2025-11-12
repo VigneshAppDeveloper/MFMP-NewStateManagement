@@ -44,7 +44,8 @@ class _ShippingPolicyState extends State<ShippingPolicy> {
                       Expanded(
                         child: GestureDetector(
                           onTap:
-                              () => UrlLauncherHelper.launchInBrowser(
+                              () => 
+                              UrlLauncherHelper.launchInBrowser(
                                 context,
                                 'https://www.biryanipalayam.com/copy-of-cancellation-refund-policy-1',
                               ),

@@ -4,6 +4,7 @@ class PriceSummaryData {
   final double walletUsed;
   final double payable;
   final double parcelCharges;
+  final double remainingWallet;
 
 PriceSummaryData({
   required this.subtotal,
@@ -11,5 +12,6 @@ PriceSummaryData({
   required this.walletUsed,
   required this.payable,
   required this.parcelCharges, // ✅ new
+  required this.remainingWallet, // ✅ new
 });
 }

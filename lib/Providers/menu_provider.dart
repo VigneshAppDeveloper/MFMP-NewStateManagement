@@ -45,10 +45,10 @@ class MenuProvider extends ChangeNotifier {
   Map<String, int> get bidderCounts => _bidderCounts;
 
   DateTime? _selectedPickupDate;
-  PickpointModel? _selectedPickupPoint;
+  //PickpointModel? _selectedPickupPoint;
 
   DateTime? get selectedPickupDate => _selectedPickupDate;
-  PickpointModel? get selectedPickupPoint => _selectedPickupPoint;
+  //PickpointModel? get selectedPickupPoint => _selectedPickupPoint;
 
   bool _isActivePage = false;
   bool get isActivePage => _isActivePage;
@@ -84,16 +84,16 @@ class MenuProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setPickupPoint(PickpointModel point) {
-    _selectedPickupPoint = point;
-    debugPrint("📍 Pickup point set: ${point.pickupLocation}");
-    debugPrint("📅 Current selected date: $_selectedPickupDate");
-    notifyListeners();
-  }
+  // void setPickupPoint(PickpointModel point) {
+  //   _selectedPickupPoint = point;
+  //   debugPrint("📍 Pickup point set: ${point.pickupLocation}");
+  //   debugPrint("📅 Current selected date: $_selectedPickupDate");
+  //   notifyListeners();
+  // }
 
   void clearPickupSelections() {
     _selectedPickupDate = null;
-    _selectedPickupPoint = null;
+    //_selectedPickupPoint = null;
     // notifyListeners();
   }
 
@@ -102,6 +102,7 @@ class MenuProvider extends ChangeNotifier {
     String franchiseId, {
     bool forceRefresh = false,
     bool isFlash = false,
+    String? pickupDate,
   }) async {
     _isFlashMode = isFlash;
     if (isFlash) stopAutoUpdaters();
@@ -145,26 +146,34 @@ class MenuProvider extends ChangeNotifier {
     }
 
     // ✅ Otherwise fetch new data
-    await _fetchAndCacheMenu(franchiseId, isFlash: isFlash);
+    await _fetchAndCacheMenu(
+      franchiseId,
+      isFlash: isFlash,
+      pickupDate: pickupDate,
+    );
   }
 
   Future<void> _fetchAndCacheMenu(
     String franchiseId, {
     bool isFlash = false,
+    String? pickupDate,
   }) async {
     _isLoading = true;
     notifyListeners();
 
     final url = "${UrlPath.restaurantUrl.getFranchiseMenu}/$franchiseId";
-    debugPrint("🚀 Fetching Menu API: $url (flash=$isFlash)");
+    debugPrint("🚀 Fetching Menu API: $url (flash=$isFlash, date=$pickupDate)");
 
     try {
+      final Map<String, String> params = {};
+      if (isFlash) params['is_flash'] = '1';
+      if (pickupDate != null) params['date'] = pickupDate;
+
       final resp = await APIService.get(
         url,
         auth: true,
-        params: isFlash ? {'is_flash': '1'} : null,
+        params: params.isEmpty ? null : params,
       );
-
       if (resp.status) {
         final List<dynamic> data = resp.data ?? [];
         _menus = data.map((e) => RestaurantMenuModel.fromJson(e)).toList();
@@ -176,7 +185,9 @@ class MenuProvider extends ChangeNotifier {
             DateTime.now();
 
         error = null;
-        debugPrint("✅ Cached ${_menus.length} menus for $franchiseId");
+        debugPrint(
+          "✅ Cached ${_menus.length} menus for $franchiseId (date=$pickupDate)",
+        );
       } else {
         error = resp.message ?? "Failed to fetch menu.";
         _menus = [];
@@ -478,7 +489,8 @@ class MenuProvider extends ChangeNotifier {
     _isWinnerLoading = true;
     notifyListeners();
 
-    final url = "${UrlPath.biddingUrl.getTimeSlotWinnerList}/$franchiseId/$timerId";
+    final url =
+        "${UrlPath.biddingUrl.getTimeSlotWinnerList}/$franchiseId/$timerId";
     debugPrint("🏆 Fetching Winner List API: $url");
 
     try {

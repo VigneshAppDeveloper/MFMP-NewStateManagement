@@ -39,7 +39,8 @@ class FixedMenuList extends StatelessWidget {
             final menu = entry.value;
             final qty = quantities[index];
             final price = menu.getDisplayPrice(fromFlashPage: fromFlashPage);
-            final maxStock = menu.avaliableStocks;
+            final maxStock =
+                fromFlashPage ? menu.flashStock : menu.avaliableStocks;
 
             return Container(
               margin: EdgeInsets.only(bottom: size.height * 0.012),
@@ -96,14 +97,16 @@ class FixedMenuList extends StatelessWidget {
                           ),
                           SizedBox(height: 6),
                           Text(
-                            "Available: $maxStock",
+                            fromFlashPage
+                                ? "Flash Stock: $maxStock"
+                                : "Available: $maxStock",
                             style: Styles.textSmall(
                               context,
                               color: AppColor.maincolor,
                             ),
                             textScaler: TextScaler.linear(1.0),
                           ),
-                          SizedBox(height: 6),
+                          SizedBox(height: 6),   
                           Row(
                             children: [
                               _qtySelector(context, index, qty, maxStock),

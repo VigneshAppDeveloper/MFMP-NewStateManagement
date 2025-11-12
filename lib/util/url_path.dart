@@ -46,6 +46,7 @@ class OrderHistoryUrl {
   const OrderHistoryUrl();
   final String getFixedOrderDetails = 'get_fixed_orderdetails';
   final String getBiddingOrderDetails = 'get_orderdetails';
+  final String getFlashOrderDetails = 'dtitMfmpGetFlashOrderdetails';
 }
 
 class RatingsUrl {

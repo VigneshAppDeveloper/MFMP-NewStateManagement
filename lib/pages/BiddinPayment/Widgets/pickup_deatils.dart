@@ -2,38 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_calendar_carousel/flutter_calendar_carousel.dart';
 import 'package:intl/intl.dart';
 import 'package:my_food_my_price/Providers/fixed_order_provider.dart';
-import 'package:my_food_my_price/Providers/menu_provider.dart';
-import 'package:my_food_my_price/util/dilogs.dart';
+
 import 'package:provider/provider.dart';
 
 import '../../../Providers/bidding_order_provider.dart';
-import '../../../models/PickUptModels/pickup_point.dart';
 import '../../../models/PickUptModels/pickup_time_model.dart';
 import '../../../models/Resturant Model/resturant.dart';
 import '../../../services/ntp_service.dart';
 import '../../../util/color_constant.dart';
 import '../../../util/styles.dart';
-import '../../../widgets/dilogue/dilogue.dart';
 
 class PickupDetailsSection extends StatefulWidget {
   final String pickupDate;
-  final String pickupPoint;
   final String franchiseId;
   final Restaurant restaurant;
   final bool isFixedOrder; // ✅ new flag
   final ValueChanged<String>? onDateChange;
-  final ValueChanged<String>? onPickupPointChange;
   final bool fromFlashPage;
 
   const PickupDetailsSection({
     super.key,
     required this.pickupDate,
-    required this.pickupPoint,
     required this.franchiseId,
     required this.restaurant,
     this.isFixedOrder = false, // default = bidding
     this.onDateChange,
-    this.onPickupPointChange,
     this.fromFlashPage = false,
   });
 
@@ -43,7 +36,6 @@ class PickupDetailsSection extends StatefulWidget {
 
 class _PickupDetailsSectionState extends State<PickupDetailsSection> {
   late DateTime selectedDate;
-  PickpointModel? selectedPickupPoint;
   PickupTimeModel? selectedPickupTime;
 
   String formatTime(String time24h) {
@@ -86,33 +78,6 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
     );
   }
 
-  void _revalidateSelectedDate(BuildContext context, PickpointModel value) {
-    // Only check if a date is already selected
-    if (selectedDate != null) {
-      final blocked = value.blockoutDates.any((b) {
-        final d = DateTime.parse(b.date);
-        return d.year == selectedDate.year &&
-            d.month == selectedDate.month &&
-            d.day == selectedDate.day;
-      });
-
-      if (blocked) {
-        // Clear invalid date and show toast/snackbar
-        setState(() {
-          selectedDate = DateTime.now(); // reset visually if needed
-        });
-        Dialogs.snackbar(
-          "The selected date is blocked for this pickup point.",
-          isError: true,
-          context,
-        );
-
-        // Notify parent so dependent data clears
-        widget.onDateChange?.call('');
-      }
-    }
-  }
-
   @override
   void initState() {
     super.initState();
@@ -128,13 +93,14 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
       selectedDate = DateTime.now(); // fallback to today
     }
 
-    selectedPickupPoint = context.read<MenuProvider>().selectedPickupPoint;
+    // selectedPickupPoint = context.read<MenuProvider>().selectedPickupPoint;
   }
 
   // ✅ Same logic as MenuPage (blocked calendar)
   void _showCalendar(BuildContext context) async {
     final parentContext = context; // keep outer context for provider access
-    final blockedDates = selectedPickupPoint?.blockoutDates ?? [];
+    // final blockedDates = selectedPickupPoint?.blockoutDates ?? [];
+    final blockedDates = widget.restaurant.blockoutDates;
 
     final Map<String, String> blockedReasons = {
       for (var b in blockedDates)
@@ -148,10 +114,10 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
     // ✅ Business rule: if current time >= 2 PM, skip today
     DateTime firstDate;
     DateTime lastDate;
-    if (selectedPickupPoint == null && !widget.fromFlashPage) {
-      AppDialogue.toast("Please select a pickup point first.");
-      return;
-    }
+    // if (selectedPickupPoint == null && !widget.fromFlashPage) {
+    //   AppDialogue.toast("Please select a pickup point first.");
+    //   return;
+    // }
 
     // ✅ Flash Sale flow → only today allowed
     if (widget.fromFlashPage) {
@@ -369,7 +335,7 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
         isFixed
             ? context.watch<FixedOrderProvider>() as dynamic
             : context.watch<BiddingOrderProvider>() as dynamic;
-    final pickupPoints = widget.restaurant.pickupPoints;
+    // final pickupPoints = widget.restaurant.pickupPoints;
 
     return Card(
       elevation: 2,
@@ -380,15 +346,14 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Pickup Point",
+              widget.fromFlashPage ? "Restaurant Address :" : "Pickup Point :",
               style: Styles.textStyleMediumBold(context),
               textScaler: const TextScaler.linear(1.0),
             ),
             SizedBox(height: size.height * 0.008),
-            _pickupPointDropdown(context, pickupPoints),
-
-            Divider(height: size.height * 0.04, thickness: 0.6),
-
+            _pickupPointDropdown(context),
+            Divider(height: size.height * 0.02, thickness: 0.6),
+          if (!widget.fromFlashPage) ...[
             Text(
               "Pickup Date",
               style: Styles.textStyleMediumBold(context),
@@ -401,54 +366,53 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
               date: DateFormat('dd-MM-yyyy').format(selectedDate),
               onTap: () => _showCalendar(context),
             ),
-
+          
             Divider(height: size.height * 0.04, thickness: 0.6),
+          ],
 
-            Text(
-              "Pickup Time",
-              style: Styles.textStyleMediumBold(context),
-              textScaler: const TextScaler.linear(1.0),
-            ),
-            SizedBox(height: size.height * 0.008),
-            _dropdownContainer(
-              context,
-              icon: Icons.access_time,
-              value: selectedPickupTime?.time,
-              hint:
-                  biddingProvider.isLoading
-                      ? "Loading..."
-                      : (biddingProvider.pickupTimes.isEmpty
-                          ? "No pickup times"
-                          : "Select Pickup Time"),
-              items: List<String>.from(
-                (biddingProvider.pickupTimes..sort(
-                      (a, b) => _compareTime(a.time, b.time),
-                    )) // ✅ Sort ascending
-                    .map((e) => formatTime(e.time)),
+            if (!widget.fromFlashPage) ...[
+              Text(
+                "Pickup Time",
+                style: Styles.textStyleMediumBold(context),
+                textScaler: const TextScaler.linear(1.0),
               ),
-
-              onChanged:
-                  biddingProvider.pickupTimes.isEmpty
-                      ? null // ✅ disable dropdown when no data
-                      : (val) {
-                        final match = biddingProvider.pickupTimes.firstWhere(
-                          (t) => t.time == val,
-                          orElse: () => PickupTimeModel(id: 0, time: val ?? ""),
-                        );
-                        setState(() => selectedPickupTime = match);
-                        biddingProvider.selectedPickupTime = match;
-                      },
-            ),
+              SizedBox(height: size.height * 0.008),
+              _dropdownContainer(
+                context,
+                icon: Icons.access_time,
+                value: selectedPickupTime?.time,
+                hint:
+                    biddingProvider.isLoading
+                        ? "Loading..."
+                        : (biddingProvider.pickupTimes.isEmpty
+                            ? "No pickup times"
+                            : "Select Pickup Time"),
+                items: List<String>.from(
+                  (biddingProvider.pickupTimes
+                        ..sort((a, b) => _compareTime(a.time, b.time)))
+                      .map((e) => formatTime(e.time)),
+                ),
+                onChanged:
+                    biddingProvider.pickupTimes.isEmpty
+                        ? null
+                        : (val) {
+                          final match = biddingProvider.pickupTimes.firstWhere(
+                            (t) => t.time == val,
+                            orElse:
+                                () => PickupTimeModel(id: 0, time: val ?? ""),
+                          );
+                          setState(() => selectedPickupTime = match);
+                          biddingProvider.selectedPickupTime = match;
+                        },
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _pickupPointDropdown(
-    BuildContext context,
-    List<PickpointModel> points,
-  ) {
+  Widget _pickupPointDropdown(BuildContext context) {
     final size = MediaQuery.of(context).size;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
@@ -457,56 +421,11 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
         borderRadius: BorderRadius.circular(10),
         color: Colors.white,
       ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<PickpointModel>(
-          isExpanded: true,
-          value: selectedPickupPoint,
-          hint: Text(
-            "Select Pickup Point",
-            style: Styles.textStyleMedium(context, color: Colors.grey),
-            textScaler: const TextScaler.linear(1.0),
-          ),
-          items:
-              points.map((point) {
-                return DropdownMenuItem<PickpointModel>(
-                  value: point,
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.location_on_outlined,
-                        color: AppColor.maincolor,
-                        size: 20,
-                      ),
-                      SizedBox(width: size.width * 0.03),
-                      Expanded(
-                        child: Text(
-                          point.pickupLocation,
-                          style: Styles.textStyleMedium(context),
-                          overflow: TextOverflow.ellipsis,
-                          textScaler: const TextScaler.linear(1.0),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-          onChanged: (value) {
-            setState(() => selectedPickupPoint = value);
-            if (value != null) {
-              context.read<MenuProvider>().setPickupPoint(value);
-              debugPrint(
-                "📍 Selected pickup point: ${value.pickupLocation} (ID: ${value.pickupId})",
-              );
-              _revalidateSelectedDate(context, value);
-              widget.onPickupPointChange?.call(value.pickupId.toString());
-            }
-          },
-          icon: const Icon(
-            Icons.keyboard_arrow_down,
-            color: Colors.black,
-            size: 20,
-          ),
-        ),
+      child: Text(
+        widget.restaurant.address,
+        style: Styles.textStyleMedium(context),
+        //overflow: TextOverflow.ellipsis,
+        textScaler: const TextScaler.linear(1.0),
       ),
     );
   }
@@ -575,7 +494,7 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
   }) {
     final size = MediaQuery.of(context).size;
     return InkWell(
-      onTap: onTap,
+      onTap: widget.fromFlashPage ? null : onTap,
       borderRadius: BorderRadius.circular(10),
       child: Container(
         padding: EdgeInsets.symmetric(
@@ -598,7 +517,8 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
                 textScaler: const TextScaler.linear(1.0),
               ),
             ),
-            const Icon(Icons.edit, size: 18, color: Colors.grey),
+            if (!widget.fromFlashPage)
+              const Icon(Icons.edit, size: 18, color: Colors.grey),
           ],
         ),
       ),

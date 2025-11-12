@@ -245,15 +245,15 @@ class _RewardsState extends State<Rewards> {
           style: Styles.textStyleLarge(context),
           textScaler: const TextScaler.linear(1.0),
         ),
-        const SizedBox(width: 6),
-        const Icon(Icons.info_outline, size: 18, color: Colors.grey),
+        // const SizedBox(width: 6),
+        // const Icon(Icons.info_outline, size: 18, color: Colors.grey),
 
-        const Spacer(),
-        Text(
-          "Transaction History",
-          style: Styles.textSmall(context, color: Colors.grey),
-          textScaler: const TextScaler.linear(1.0),
-        ),
+        // const Spacer(),
+        // Text(
+        //   "Transaction History",
+        //   style: Styles.textSmall(context, color: Colors.grey),
+        //   textScaler: const TextScaler.linear(1.0),
+        // ),
       ],
     );
   }

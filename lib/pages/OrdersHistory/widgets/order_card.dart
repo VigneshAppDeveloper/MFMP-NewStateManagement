@@ -13,7 +13,8 @@ import '../../../util/styles.dart';
 
 class OrderCard extends StatelessWidget {
   final OrderDetailModel order;
-  const OrderCard({super.key, required this.order});
+  final String orderType; // ✅ add this
+  const OrderCard({super.key, required this.order, required this.orderType});
 
   // ✅ Common date formatter (yyyy-mm-dd → dd-mm-yyyy)
   String formatDate(String? date) {
@@ -48,13 +49,21 @@ class OrderCard extends StatelessWidget {
 
   Future<bool> canCancelOrder(String pickupDate, String pickupTime) async {
     try {
-      // ✅ Use accurate server time instead of device time
+      // ✅ Always use server time for accuracy
       final now = await NtpService().getCurrentIST();
 
-      // Parse pickup date and time safely
-      final parsedDate = DateFormat("yyyy-MM-dd").parse(pickupDate);
-      final parsedTime = DateFormat("HH:mm:ss").parse(pickupTime);
+      // ✅ Parse pickup date (handles both yyyy-MM-dd or dd-MM-yyyy safely)
+      DateTime parsedDate;
+      try {
+        parsedDate = DateFormat("yyyy-MM-dd").parse(pickupDate);
+      } catch (_) {
+        parsedDate = DateFormat("dd-MM-yyyy").parse(pickupDate);
+      }
 
+      // ✅ Normalize pickup time to 24-hour DateTime
+      DateTime parsedTime = _parseFlexibleTime(pickupTime.trim());
+
+      // ✅ Combine date + time
       final pickupDateTime = DateTime(
         parsedDate.year,
         parsedDate.month,
@@ -64,12 +73,30 @@ class OrderCard extends StatelessWidget {
         parsedTime.second,
       );
 
-      // ✅ Cancellation allowed only if pickup is more than 24 h away
-      return now.isBefore(pickupDateTime.subtract(const Duration(hours: 24)));
+      // ✅ Cancellation allowed if pickup > 24h from now
+      final cutoff = pickupDateTime.subtract(const Duration(hours: 24));
+      return now.isBefore(cutoff);
     } catch (e) {
       debugPrint("Cancel-check error: $e");
       return false;
     }
+  }
+
+  /// ✅ Utility: safely parse any time string like
+  /// "16:30", "16:30:00", "4:30 PM", "04:30 pm", etc.
+  DateTime _parseFlexibleTime(String time) {
+    final formats = ["HH:mm:ss", "HH:mm", "h:mm a", "hh:mm a", "h:mm:ss a"];
+
+    for (final f in formats) {
+      try {
+        return DateFormat(f).parse(time);
+      } catch (_) {
+        continue;
+      }
+    }
+
+    // fallback midnight if parsing fails
+    return DateTime(0, 1, 1, 0, 0, 0);
   }
 
   @override
@@ -78,7 +105,7 @@ class OrderCard extends StatelessWidget {
     final franchise = order.franchise;
     final user = order.user;
     final menu = order.menu;
-    final pickup = order.pickupPoint;
+    //  final pickup = order.pickupPoint;
 
     return Container(
       margin: EdgeInsets.only(bottom: size.height * 0.02),
@@ -161,7 +188,7 @@ class OrderCard extends StatelessWidget {
                                 "location":
                                     order.franchise?.district?.district ?? '',
                                 "franchiseImage": order.menu?.menuImage ?? '',
-                                "orderType": "fixed",
+                                "orderType": orderType,
                               },
                             );
 
@@ -314,7 +341,7 @@ class OrderCard extends StatelessWidget {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      pickup?.pickupLocation ?? '-',
+                      franchise?.address ?? '-',
                       style: Styles.textSmall(context),
                       textScaler: const TextScaler.linear(1.0),
                       overflow: TextOverflow.ellipsis,
@@ -337,14 +364,14 @@ class OrderCard extends StatelessWidget {
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       onPressed: () async {
-                        final link = pickup?.googleMapLink ?? '';
-                        if (link.isNotEmpty &&
-                            await canLaunchUrl(Uri.parse(link))) {
-                          await launchUrl(
-                            Uri.parse(link),
-                            mode: LaunchMode.externalApplication,
-                          );
-                        }
+                        // final link = pickup?.googleMapLink ?? '';
+                        // if (link.isNotEmpty &&
+                        //     await canLaunchUrl(Uri.parse(link))) {
+                        //   await launchUrl(
+                        //     Uri.parse(link),
+                        //     mode: LaunchMode.externalApplication,
+                        //   );
+                        // }
                       },
                       icon: const Icon(
                         Icons.maps_home_work_sharp,
@@ -381,21 +408,25 @@ class OrderCard extends StatelessWidget {
                       maxLines: 1,
                     ),
                   ),
-                  const Icon(
-                    Icons.access_time,
-                    color: Colors.black54,
-                    size: 16,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    formatTime(order.pickupTime),
-                    style: Styles.textSmall(context),
-                    textScaler: const TextScaler.linear(1.0),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
+                  if (orderType != "flash") ...[
+                    // ✅ hide for flash
+                    const Icon(
+                      Icons.access_time,
+                      color: Colors.black54,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      formatTime(order.pickupTime),
+                      style: Styles.textSmall(context),
+                      textScaler: const TextScaler.linear(1.0),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ],
                 ],
               ),
+
               SizedBox(height: size.height * 0.01),
               Row(
                 children: [
@@ -428,10 +459,22 @@ class OrderCard extends StatelessWidget {
               ),
               SizedBox(height: size.height * 0.01),
               // ✅ Item details
-              _infoText(
-                context,
-                "${menu?.menuName ?? 'Unknown'} × ${order.menuQuantity}",
-              ),
+              if ((order.groupedMenus?.isNotEmpty ?? false)) ...[
+                for (final m in order.groupedMenus!)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: _infoText(
+                      context,
+                      "${m?.menuName ?? 'Unknown'} × ${order.menuQuantity}",
+                    ),
+                  ),
+              ] else ...[
+                _infoText(
+                  context,
+                  "${menu?.menuName ?? 'Unknown'} × ${order.menuQuantity}",
+                ),
+              ],
+
               SizedBox(height: size.height * 0.01),
 
               Container(
@@ -463,11 +506,108 @@ class OrderCard extends StatelessWidget {
                   ],
                 ),
               ),
+            if (order.message != null && order.message!.trim().isNotEmpty)  SizedBox(height: size.height * 0.01),
+              if (order.message != null && order.message!.trim().isNotEmpty)
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Message to Restaurant",
+                          style: Styles.textStyleMediumBold(context),
+                          textScaler: const TextScaler.linear(1.0),
+                        ),
+                        SizedBox(height: size.height * 0.004),
+                        Text(
+                          "Restaurant will try their best to comply.",
+                          style: Styles.textExtraSmall(
+                            context,
+                          ).copyWith(color: Colors.black54),
+                          textScaler: const TextScaler.linear(1.0),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+               SizedBox(height: size.height * 0.01),
+              if (order.message != null && order.message!.trim().isNotEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300, width: 1),
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.white,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        order.message!,
+                        style: Styles.textSmall(context),
+                        textScaler: const TextScaler.linear(1.0),
+                      ),
+                    ],
+                  ),
+                ),
 
-              const Divider(),
-
+              SizedBox(height: size.height * 0.01),
               // ✅ Cancel option + support
-              if (order.paymentStatus.toLowerCase() == "success")
+              // ✅ Cancel option + support OR Flash contact section
+              if (orderType == "flash") ...[
+                SizedBox(height: size.height * 0.01),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300, width: 1),
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.grey.shade50,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Restaurant Contact Details for this Order :",
+                        style: Styles.textSmall(
+                          context,
+                        ).copyWith(fontWeight: FontWeight.bold),
+                        textScaler: const TextScaler.linear(1.0),
+                      ),
+                      SizedBox(height: size.height * 0.008),
+                      if ((order.flashContact?.isNotEmpty ?? false)) ...[
+                        Text(
+                          "Name: ${order.flashContact!.first.name} * (Res Contact person name).",
+                          style: Styles.textSmall(context),
+                          textScaler: const TextScaler.linear(1.0),
+                        ),
+                        Text(
+                          "Phone: ${order.flashContact!.first.contact} * (Res Contact person number).",
+                          style: Styles.textSmall(context),
+                          textScaler: const TextScaler.linear(1.0),
+                        ),
+                      ] else
+                        Text(
+                          "Contact details not available.",
+                          style: Styles.textSmall(context),
+                          textScaler: const TextScaler.linear(1.0),
+                        ),
+                      SizedBox(height: size.height * 0.008),
+                      Text(
+                        "* No cancellations allowed on Flash Sale orders.",
+                        style: Styles.textSmall(
+                          context,
+                          color: Colors.red,
+                        ).copyWith(fontWeight: FontWeight.w500),
+                        textScaler: const TextScaler.linear(1.0),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else if (order.paymentStatus.toLowerCase() == "success") ...[
                 FutureBuilder<bool>(
                   future: canCancelOrder(
                     order.pickupDate,
@@ -475,36 +615,150 @@ class OrderCard extends StatelessWidget {
                   ),
                   builder: (context, snapshot) {
                     final allowed = snapshot.data ?? false;
-                    return GestureDetector(
-                      onTap: () {
-                        if (!allowed) return; // Disabled if within 24 h
-                        // 👉 your dialog or cancel API call here
-                      },
-                      child: Text(
-                        allowed
-                            ? "❌ Cancel Order"
-                            : "Cancellation Unavailable (within 24 h)",
-                        style: Styles.textSmall(
-                          context,
-                          color: allowed ? Colors.red : Colors.grey,
+
+                    if (!allowed) {
+                      // ⛔ Within 24h – show disabled info text
+                      return Center(
+                        child: Text(
+                          "Cancellation Unavailable (within 24h)",
+                          style: Styles.textSmall(context, color: Colors.grey),
+                          textScaler: const TextScaler.linear(1.0),
                         ),
-                        textScaler: const TextScaler.linear(1.0),
-                        overflow: TextOverflow.ellipsis,
+                      );
+                    }
+
+                    // ✅ Allowed – show full-width button
+                    return Padding(
+                      padding: EdgeInsets.only(
+                        top: MediaQuery.of(context).size.height * 0.012,
+                      ),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: MediaQuery.of(context).size.height * 0.055,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColor.maincolor,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            elevation: 0,
+                          ),
+                          onPressed: () async {
+                            await showCancelInfoDialog(context);
+                            // final confirmed = await Dialogs.confirmation(
+                            //   context,
+                            //   title: "Cancel Order?",
+                            //   message:
+                            //       "Are you sure you want to cancel this order?",
+                            // );
+                            // if (!confirmed) return;
+
+                            // await context
+                            //     .read<OrderHistoryProvider>()
+                            //     .cancelOrder(order.orderId);
+
+                            // AppDialogue.toast("Order canceled successfully");
+                            // context.read<OrderHistoryProvider>().getFixedOrders(
+                            //   forceRefresh: true,
+                            // );
+                          },
+                          child: Text(
+                            "Cancel Order",
+                            style: Styles.textStyleMediumBold(
+                              context,
+                              color: Colors.white,
+                            ),
+                            textScaler: const TextScaler.linear(1.0),
+                          ),
+                        ),
                       ),
                     );
                   },
                 ),
+              ],
 
-              SizedBox(height: size.height * 0.01),
-              Text(
-                "For any order issues or modifications, please call the owner at 📞 ${pickup?.ownerNumber ?? '-'}",
-                style: Styles.textSmall(context, color: Colors.black54),
-                textScaler: const TextScaler.linear(1.0),
-              ),
+              // SizedBox(height: size.height * 0.01),
+              // Text(
+              //   "For any order issues or modifications, please call the owner at 📞 ${pickup?.ownerNumber ?? '-'}",
+              //   style: Styles.textSmall(context, color: Colors.black54),
+              //   textScaler: const TextScaler.linear(1.0),
+              // ),
             ],
           );
         },
       ),
+    );
+  }
+
+  Future<void> showCancelInfoDialog(BuildContext context) async {
+    final size = MediaQuery.of(context).size;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) {
+        return Dialog(
+          insetPadding: EdgeInsets.symmetric(
+            horizontal: size.width * 0.06,
+            vertical: size.height * 0.04,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(size.width * 0.05),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // 🖼 optional illustration (replace with your asset)
+                // Image.asset(
+                //   "assets/images/cancel_info.png",
+                //   width: size.width * 0.25,
+                //   fit: BoxFit.contain,
+                // ),
+                // SizedBox(height: size.height * 0.02),
+
+                // 📄 Info text
+                Text(
+                  "Cancellations or Modifications are not allowed if your scheduled pickup date is within 24 hours.\n\n"
+                  "For assistance with Order Cancellation or Modification, reach out at:\n"
+                  "+918062178089\n(Don't forget to add prefix 0 or +91)\n\n"
+                  "WhatsApp: +919080461946",
+                  style: Styles.textSmall(context, color: Colors.black87),
+                  textAlign: TextAlign.center,
+                  textScaler: const TextScaler.linear(1.0),
+                ),
+                SizedBox(height: size.height * 0.025),
+
+                // ✅ OK button
+                SizedBox(
+                  width: double.infinity,
+                  height: size.height * 0.055,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      elevation: 0,
+                    ),
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text(
+                      "OK",
+                      style: Styles.textStyleMediumBold(
+                        context,
+                        color: Colors.white,
+                      ),
+                      textScaler: const TextScaler.linear(1.0),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

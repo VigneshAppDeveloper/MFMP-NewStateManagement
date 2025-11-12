@@ -82,7 +82,8 @@ class _PriceSummarySectionState extends State<PriceSummarySection> {
   double calculatePayable() {
     final subtotal = calculateSubtotal();
     final gst = calculateGST(subtotal);
-    final grand = subtotal + gst;
+    final parcel = calculateParcelCharges();
+    final grand = subtotal + gst + parcel;
     final walletUsed = calculateWalletUsage(grand);
     return grand - walletUsed;
   }
@@ -136,6 +137,7 @@ class _PriceSummarySectionState extends State<PriceSummarySection> {
       walletUsed: walletUsed,
       payable: payable,
       parcelCharges: parcelCharges,
+      remainingWallet: remainingWallet,
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -156,7 +158,7 @@ class _PriceSummarySectionState extends State<PriceSummarySection> {
               "GST & Restaurant Charges",
               "₹${gst.toStringAsFixed(2)}",
             ),
-            //if (parcelCharges > 0)
+            if (parcelCharges > 0)
               _priceRow(
                 context,
                 "Parcel Charges",

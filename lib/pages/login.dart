@@ -1,9 +1,7 @@
-import 'dart:io';
 import 'dart:math';
 
 import 'package:country_picker/country_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:mobile_number/mobile_number.dart';
 import 'package:my_food_my_price/Providers/login_provider.dart';
 import 'package:my_food_my_price/components/button.dart';
 import 'package:my_food_my_price/route_generator.dart';
@@ -15,7 +13,6 @@ import 'package:my_food_my_price/util/exception.dart';
 import 'package:my_food_my_price/util/styles.dart';
 import 'package:my_food_my_price/util/validator.dart';
 import 'package:my_food_my_price/widgets/dilogue/dilogue.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 class Login extends StatefulWidget {
@@ -40,146 +37,146 @@ class _LoginState extends State<Login> {
   LoginProvider get loginProvider => context.read<LoginProvider>();
   String _selectedPhoneCode = "91";
   String _selectedFlag = "🇮🇳";
-  @override
-  void initState() {
-    super.initState();
-    getPhoneNumbers();
-  }
+  // @override
+  // void initState() {
+  //   super.initState();
+  // //  getPhoneNumbers();
+  // }
 
-  Future<void> getPhoneNumbers() async {
-    setState(() {
-      isLoading = true;
-    });
+  // Future<void> getPhoneNumbers() async {
+  //   setState(() {
+  //     isLoading = true;
+  //   });
 
-    try {
-      if (Platform.isAndroid) {
-        bool granted = await Permission.phone.request().isGranted;
-        if (!granted) {
-          setState(() {
-            isManualInput = true;
-          });
-          return;
-        }
+  //   try {
+  //     if (Platform.isAndroid) {
+  //       bool granted = await Permission.phone.request().isGranted;
+  //       if (!granted) {
+  //         setState(() {
+  //           isManualInput = true;
+  //         });
+  //         return;
+  //       }
 
-        List<SimCard> simCards = await (MobileNumber.getSimCards ?? []);
+  //       List<SimCard> simCards = await (MobileNumber.getSimCards ?? []);
 
-        List<String> phoneNumbers = [];
+  //       List<String> phoneNumbers = [];
 
-        for (var sim in simCards) {
-          if (sim.number != null &&
-              sim.number!.isNotEmpty &&
-              !phoneNumbers.contains(sim.number!)) {
-            phoneNumbers.add(sim.number!);
-          }
-        }
+  //       for (var sim in simCards) {
+  //         if (sim.number != null &&
+  //             sim.number!.isNotEmpty &&
+  //             !phoneNumbers.contains(sim.number!)) {
+  //           phoneNumbers.add(sim.number!);
+  //         }
+  //       }
 
-        if (phoneNumbers.isNotEmpty) {
-          _showPhoneNumberDialog(phoneNumbers);
-        } else {
-          setState(() {
-            isManualInput = true;
-          });
-        }
-      } else if (Platform.isIOS) {
-        setState(() {
-          isManualInput = true;
-        });
-      }
-    } catch (e) {
-      setState(() {
-        isManualInput = true;
-      });
-    } finally {
-      setState(() {
-        isLoading = false;
-      });
-    }
-  }
+  //       if (phoneNumbers.isNotEmpty) {
+  //         _showPhoneNumberDialog(phoneNumbers);
+  //       } else {
+  //         setState(() {
+  //           isManualInput = true;
+  //         });
+  //       }
+  //     } else if (Platform.isIOS) {
+  //       setState(() {
+  //         isManualInput = true;
+  //       });
+  //     }
+  //   } catch (e) {
+  //     setState(() {
+  //       isManualInput = true;
+  //     });
+  //   } finally {
+  //     setState(() {
+  //       isLoading = false;
+  //     });
+  //   }
+  // }
 
-  // Method to show a dialog with detected phone numbers
-  void _showPhoneNumberDialog(List<String> phoneNumbers) {
-    showDialog(
-      context: context,
-      barrierDismissible: true, // allow dismissing by tapping outside
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          backgroundColor: Colors.white,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start, // Important
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    "Continue with",
-                    style: Styles.textStyleMedium(context, color: Colors.grey),
-                    textScaler: TextScaler.linear(1.0),
-                  ),
-                ),
-                SizedBox(height: 20),
-                ...phoneNumbers.map((phone) {
-                  String phoneWithoutCountryCode =
-                      phone.length > 10
-                          ? phone.substring(phone.length - 10)
-                          : phone;
+  // // Method to show a dialog with detected phone numbers
+  // void _showPhoneNumberDialog(List<String> phoneNumbers) {
+  //   showDialog(
+  //     context: context,
+  //     barrierDismissible: true, // allow dismissing by tapping outside
+  //     builder: (BuildContext context) {
+  //       return Dialog(
+  //         shape: RoundedRectangleBorder(
+  //           borderRadius: BorderRadius.circular(20),
+  //         ),
+  //         backgroundColor: Colors.white,
+  //         child: Padding(
+  //           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+  //           child: Column(
+  //             mainAxisSize: MainAxisSize.min,
+  //             crossAxisAlignment: CrossAxisAlignment.start, // Important
+  //             children: [
+  //               Align(
+  //                 alignment: Alignment.centerLeft,
+  //                 child: Text(
+  //                   "Continue with",
+  //                   style: Styles.textStyleMedium(context, color: Colors.grey),
+  //                   textScaler: TextScaler.linear(1.0),
+  //                 ),
+  //               ),
+  //               SizedBox(height: 20),
+  //               ...phoneNumbers.map((phone) {
+  //                 String phoneWithoutCountryCode =
+  //                     phone.length > 10
+  //                         ? phone.substring(phone.length - 10)
+  //                         : phone;
 
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: Colors.grey, // Circle color grey
-                      child: Icon(
-                        Icons.phone,
-                        color: Colors.white, // Phone icon color white
-                        size: 20,
-                      ),
-                    ),
-                    title: Text(
-                      phoneWithoutCountryCode,
-                      style: Styles.textStyleMedium(
-                        context,
-                        color: AppColor.blackColor,
-                      ),
-                      textScaler: TextScaler.linear(1.0),
-                    ),
-                    onTap: () {
-                      setState(() {
-                        mobile.text = phoneWithoutCountryCode;
-                        isManualInput = false;
-                      });
-                      Navigator.of(context).pop(); // Close the dialog
-                    },
-                  );
-                }),
-                ListTile(
-                  title: Center(
-                    child: Text(
-                      "NONE OF THE ABOVE",
-                      style: Styles.textStyleMedium(
-                        context,
-                        color: Colors.blue,
-                      ),
-                      textScaler: TextScaler.linear(1.0),
-                    ),
-                  ),
-                  onTap: () {
-                    setState(() {
-                      isManualInput = true;
-                      mobile.clear();
-                    });
-                    Navigator.of(context).pop();
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
+  //                 return ListTile(
+  //                   leading: CircleAvatar(
+  //                     backgroundColor: Colors.grey, // Circle color grey
+  //                     child: Icon(
+  //                       Icons.phone,
+  //                       color: Colors.white, // Phone icon color white
+  //                       size: 20,
+  //                     ),
+  //                   ),
+  //                   title: Text(
+  //                     phoneWithoutCountryCode,
+  //                     style: Styles.textStyleMedium(
+  //                       context,
+  //                       color: AppColor.blackColor,
+  //                     ),
+  //                     textScaler: TextScaler.linear(1.0),
+  //                   ),
+  //                   onTap: () {
+  //                     setState(() {
+  //                       mobile.text = phoneWithoutCountryCode;
+  //                       isManualInput = false;
+  //                     });
+  //                     Navigator.of(context).pop(); // Close the dialog
+  //                   },
+  //                 );
+  //               }),
+  //               ListTile(
+  //                 title: Center(
+  //                   child: Text(
+  //                     "NONE OF THE ABOVE",
+  //                     style: Styles.textStyleMedium(
+  //                       context,
+  //                       color: Colors.blue,
+  //                     ),
+  //                     textScaler: TextScaler.linear(1.0),
+  //                   ),
+  //                 ),
+  //                 onTap: () {
+  //                   setState(() {
+  //                     isManualInput = true;
+  //                     mobile.clear();
+  //                   });
+  //                   Navigator.of(context).pop();
+  //                 },
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //       );
+  //     },
+  //   );
+  // }
 
   @override
   Widget build(BuildContext context) {

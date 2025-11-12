@@ -462,15 +462,16 @@ class APIService {
     try {
       final dio = DioClient.instance;
       debugPrint("🚀 Dio instance ready - making request...");
-      final respFun =
-          isPost
-              ? dio.post(uri.toString(), cancelToken: cancelToken, data: data)
-              : dio.get(
-                uri.toString(),
-                cancelToken: cancelToken,
-                queryParameters: params,
-              );
-
+      final respFun = isPost
+    ? dio.post(
+        uri.toString(),
+        cancelToken: cancelToken,
+        data: data,
+      )
+    : dio.get(
+        uri.toString(),
+        cancelToken: cancelToken,
+      );
       Response resp =
           await (timeout != null ? respFun.timeout(timeout) : respFun);
       debugPrint("📡 RESPONSE STATUS: ${resp.statusCode}");

@@ -46,6 +46,11 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
   Timer? _debounce;
   bool isSearching = false;
 
+  bool isFiltering = false;
+  Set<String> selectedFilters = {};
+
+  final GlobalKey<PickupDatePickupPointState> _pickupKey = GlobalKey();
+
   @override
   void initState() {
     super.initState();
@@ -134,13 +139,168 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
     });
   }
 
+  void _openFilterSheet() {
+    final size = MediaQuery.of(context).size;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        Set<String> tempFilters = Set.from(selectedFilters);
+
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: size.width * 0.05,
+                right: size.width * 0.05,
+                top: size.height * 0.02,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 90,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Filter Menu",
+                    style: Styles.textStyleMedium(
+                      context,
+                    ).copyWith(fontWeight: FontWeight.bold),
+                    textScaler: const TextScaler.linear(1.0),
+                  ),
+                  const SizedBox(height: 14),
+
+                  // 🔹 Chips Row
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 8,
+                    children: [
+                      _buildFilterChipModal(
+                        "Veg",
+                        "veg",
+                        tempFilters,
+                        setModalState,
+                      ),
+                      _buildFilterChipModal(
+                        "Non-Veg",
+                        "nonveg",
+                        tempFilters,
+                        setModalState,
+                      ),
+                      _buildFilterChipModal(
+                        "Halal",
+                        "halal",
+                        tempFilters,
+                        setModalState,
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 25),
+
+                  // 🔹 Buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            selectedFilters.clear();
+                            isFiltering = false;
+                          });
+                          Navigator.pop(context);
+                        },
+                        child: Text(
+                          "Clear",
+                          style: Styles.textStyleMediumBold(context),
+                          textScaler: const TextScaler.linear(1.0),
+                        ),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColor.maincolor,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            selectedFilters = Set.from(tempFilters);
+                            isFiltering = selectedFilters.isNotEmpty;
+                          });
+                          Navigator.pop(context);
+                        },
+                        child: const Text(
+                          "Apply",
+                          textScaler: TextScaler.linear(1.0),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildFilterChipModal(
+    String label,
+    String value,
+    Set<String> tempFilters,
+    void Function(void Function()) setModalState,
+  ) {
+    final bool isSelected = tempFilters.contains(value);
+
+    return FilterChip(
+      label: Text(label, textScaler: const TextScaler.linear(1.0)),
+      selected: isSelected,
+      selectedColor: AppColor.maincolor.withOpacity(0.15),
+      backgroundColor: Colors.grey.shade100,
+      onSelected: (_) {
+        setModalState(() {
+          // 🟢 Veg = single select, others combine
+          if (value == 'veg') {
+            tempFilters
+              ..clear()
+              ..add('veg');
+          } else {
+            if (tempFilters.contains(value)) {
+              tempFilters.remove(value);
+            } else {
+              tempFilters.remove('veg');
+              tempFilters.add(value);
+            }
+          }
+        });
+      },
+      labelStyle: TextStyle(
+        color: isSelected ? AppColor.maincolor : Colors.black87,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(
+          color: isSelected ? AppColor.maincolor : Colors.grey.shade300,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final cart = context.watch<CartProvider>();
     final provider = context.watch<MenuProvider>();
     final selectedPickupDate = provider.selectedPickupDate;
-    final selectedPickupPoint = provider.selectedPickupPoint;
+    //final selectedPickupPoint = provider.selectedPickupPoint;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -192,6 +352,7 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                 /// 📦 Pickup date + pickup point
                 SliverToBoxAdapter(
                   child: PickupDatePickupPoint(
+                    key: _pickupKey,
                     restaurant: widget.restaurant,
                     fromFlashPage: !widget.showPriceTabs,
                   ),
@@ -295,7 +456,9 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                 SliverToBoxAdapter(child: SizedBox(height: size.height * 0.02)),
 
                 /// 🔍 Search bar
-                if (selectedTab == "Fixed Discount Price")
+                if (selectedTab == "Fixed Discount Price" &&
+                    (provider.isFlashMode ||
+                        provider.selectedPickupDate != null))
                   SliverAppBar(
                     backgroundColor: Colors.white,
                     floating: true,
@@ -305,11 +468,48 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                     automaticallyImplyLeading: false,
                     flexibleSpace: HomeSearchBar(
                       controller: searchController,
-                      onFilterTap: () {},
+                      enableNavigation: false,
+                      onFilterTap: _openFilterSheet,
                       onChanged: _onSearchChanged, // ✅ connect
+                       hintText: "Search Dishes",
                     ),
                   ),
-
+                if (isFiltering)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            isFiltering = false;
+                            selectedFilters.clear();
+                          });
+                        },
+                        child: Container(
+                          alignment: Alignment.center,
+                          margin: EdgeInsets.symmetric(
+                            horizontal: size.width * 0.25,
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 8,
+                            horizontal: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColor.maincolor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                          child: Text(
+                            "Clear Filters ✕",
+                            style: Styles.textSmall(
+                              context,
+                              color: AppColor.maincolor,
+                            ).copyWith(fontWeight: FontWeight.w600),
+                            textScaler: const TextScaler.linear(1.0),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 SliverToBoxAdapter(child: SizedBox(height: size.height * 0.02)),
 
                 /// 🍱 Menu List or TimeSlot List
@@ -322,6 +522,7 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                           child: const AppShimmer(type: ShimmerType.menu),
                         );
                       }
+
                       final allMenus =
                           provider.isFlashMode
                               ? provider.menus
@@ -332,16 +533,43 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                                     type == "fixed discount price";
                               }).toList();
 
-                      final displayMenus =
+                      List<RestaurantMenuModel> displayMenus =
                           isSearching ? filteredMenus : allMenus;
 
+                      // ✅ Apply filters (Veg / Non-Veg / Halal)
+                      if (selectedFilters.isNotEmpty) {
+                        displayMenus =
+                            displayMenus.where((m) {
+                              final isVeg = m.dietType.toLowerCase() == 'veg';
+                              final isHalal = m.halal.toLowerCase() == 'yes';
+
+                              if (selectedFilters.contains('veg')) return isVeg;
+                              if (selectedFilters.contains('nonveg') &&
+                                  selectedFilters.contains('halal')) {
+                                return !isVeg && isHalal;
+                              }
+                              if (selectedFilters.contains('nonveg')) {
+                                return !isVeg;
+                              }
+                              if (selectedFilters.contains('halal')) {
+                                return isHalal;
+                              }
+                              return true;
+                            }).toList();
+                      }
+
                       if (displayMenus.isEmpty) {
+                        final msg =
+                            selectedFilters.isNotEmpty
+                                ? "No menu items match your selected filters"
+                                : "No fixed price menu available";
+
                         return SliverToBoxAdapter(
                           child: Padding(
                             padding: EdgeInsets.only(top: size.height * 0.2),
                             child: Center(
                               child: Text(
-                                "No fixed price menu available",
+                                msg,
                                 style: Styles.textStyleMedium(context),
                                 textScaler: const TextScaler.linear(1.0),
                               ),
@@ -356,6 +584,7 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                           return RestaurantMenuCard(
                             menu: menu,
                             restaurant: widget.restaurant,
+                            pickupKey: _pickupKey,
                           );
                         }, childCount: displayMenus.length),
                       );
@@ -413,15 +642,24 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                                 );
                                 return;
                               }
-                              final selectedDate =
-                                  menuProvider.selectedPickupDate;
-                              final selectedPoint =
-                                  menuProvider.selectedPickupPoint;
+                              // final
+                              // selectedDate =
+                              //     menuProvider.selectedPickupDate;
+                              // final selectedPoint =
+                              //     menuProvider.selectedPickupPoint;
 
-                              if (selectedDate == null) {
-                                AppDialogue.toast(
-                                  "Please select a pickup date first.",
-                                );
+                              if (selectedPickupDate == null) {
+                                final pickupWidgetState =
+                                    _pickupKey.currentState;
+                                if (pickupWidgetState != null) {
+                                  pickupWidgetState.showCalendar(
+                                    context,
+                                  ); // ✅ call directly
+                                } else {
+                                  AppDialogue.toast(
+                                    "Please select your pickup date.",
+                                  );
+                                }
                                 return;
                               }
 
@@ -519,11 +757,8 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                   onPressed: () {
                     final menuProvider = context.read<MenuProvider>();
                     menuProvider.stopAutoUpdaters();
-                    if (selectedPickupDate == null ||
-                        selectedPickupPoint == null) {
-                      AppDialogue.toast(
-                        "Please select pickup date & point first",
-                      );
+                    if (selectedPickupDate == null) {
+                      AppDialogue.toast("Please select pickup date first");
                       return;
                     }
 
@@ -537,9 +772,7 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                         "pickup_date": DateFormat(
                           'yyyy-MM-dd',
                         ).format(selectedPickupDate),
-                        "pickup_point":
-                            selectedPickupPoint
-                                .pickupLocation, // ✅ only string field
+
                         "restaurant": widget.restaurant,
                         "from_flash": !widget.showPriceTabs,
                       },

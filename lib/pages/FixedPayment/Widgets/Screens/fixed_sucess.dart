@@ -5,7 +5,9 @@ import '../../../../util/color_constant.dart';
 import '../../../../util/styles.dart';
 
 class FixedSuccessScreen extends StatefulWidget {
-  const FixedSuccessScreen({super.key});
+  final bool fromFlashPage; // ✅ add
+
+  const FixedSuccessScreen({super.key, this.fromFlashPage = false});
 
   @override
   State<FixedSuccessScreen> createState() => _FixedSuccessScreenState();
@@ -83,19 +85,30 @@ class _FixedSuccessScreenState extends State<FixedSuccessScreen> {
                       elevation: 1,
                     ),
                     onPressed: () {
+                      final fromFlash = widget.fromFlashPage;
+
+                      // ✅ First go to main app page (home)
                       AppRouteName.appPage.pushAndRemoveUntil(
                         context,
                         (route) => false,
                         args: {"initialTab": 0},
                       );
 
+                      // ✅ After navigation completes, open OrderHistory with correct tab
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         AppRouteName.orderHistoryPage.push(
                           context,
-                          args: {"initialTab": 0, "forceRefresh": true},
+                          args: {
+                            "initialTab":
+                                fromFlash
+                                    ? 2
+                                    : 0, // ✅ flash → tab 2, fixed → tab 0
+                            "forceRefresh": true,
+                          },
                         );
                       });
                     },
+
                     child: Text(
                       "View Order",
                       style: Styles.textStyleMediumBold(

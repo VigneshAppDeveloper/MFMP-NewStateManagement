@@ -29,7 +29,7 @@ class _OrderHistoryState extends State<OrderHistory>
   void initState() {
     super.initState();
     _tabController = TabController(
-      length: 2,
+      length: 3,
       vsync: this,
       initialIndex: widget.initialTab, // 👈 set initial tab
     );
@@ -39,6 +39,7 @@ class _OrderHistoryState extends State<OrderHistory>
       // ✅ If opened after payment, always fetch fresh data
       await provider.getFixedOrders(forceRefresh: widget.forceRefresh);
       await provider.getBiddingOrders(forceRefresh: widget.forceRefresh);
+      await provider.getFlashOrders(forceRefresh: widget.forceRefresh);
     });
   }
 
@@ -47,6 +48,7 @@ class _OrderHistoryState extends State<OrderHistory>
     await Future.wait([
       provider.getFixedOrders(forceRefresh: true),
       provider.getBiddingOrders(forceRefresh: true),
+      provider.getFlashOrders(forceRefresh: true),
     ]);
   }
 
@@ -80,6 +82,7 @@ class _OrderHistoryState extends State<OrderHistory>
                     tabs: const [
                       Tab(text: "Fixed Price"),
                       Tab(text: "Bidding"),
+                      Tab(text: "Flash"),
                     ],
                   ),
                 ),
@@ -98,6 +101,11 @@ class _OrderHistoryState extends State<OrderHistory>
                       onRefresh: _onRefresh,
                       color: AppColor.maincolor,
                       child: const OrderListTab(tabType: "bidding"),
+                    ),
+                     RefreshIndicator(
+                      onRefresh: _onRefresh,
+                      color: AppColor.maincolor,
+                      child: OrderListTab(tabType: "flash"),
                     ),
                   ],
                 ),

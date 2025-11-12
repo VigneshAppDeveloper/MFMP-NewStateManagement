@@ -14,7 +14,6 @@ import 'package:my_food_my_price/util/color_constant.dart';
 import 'package:my_food_my_price/util/styles.dart';
 import 'package:provider/provider.dart';
 
-import '../models/Resturant Model/resturant.dart';
 import '../route_generator.dart';
 import '../widgets/app_shimmer.dart';
 import '../widgets/dilogue/dilogue.dart';
@@ -31,11 +30,8 @@ class _HomePageState extends State<HomePage> {
   late final ScrollController _scrollController;
   late final TextEditingController _searchController;
   bool initializedRestaurant = false;
-  Timer? _debounce;
-
-  // ✅ Local search state (no longer using provider for search)
-  List<Restaurant> filteredRestaurants = [];
-  bool isSearching = false;
+  late VoidCallback _locationListener;
+  late final LocationProvider _locationProvider;
 
   @override
   void initState() {
@@ -43,14 +39,31 @@ class _HomePageState extends State<HomePage> {
     _scrollController = ScrollController();
 
     _searchController = TextEditingController();
+    _scrollController.addListener(_onScroll);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<RestaurantProvider>();
+      final restaurantProvider = context.read<RestaurantProvider>();
+      _locationProvider = context.read<LocationProvider>(); 
+
       if (!initializedRestaurant) {
-        getRestaurantsList();
-        provider.getFoodCategory();
+        getRestaurantsList(); // first load
+        restaurantProvider.getFoodCategory();
         initializedRestaurant = true;
       }
+
+      // 🔹 Listen for location updates globally
+      _locationListener = () async {
+       final newLocation = _locationProvider.currentLocation;
+        if (newLocation != null) {
+          await restaurantProvider.getRestaurants(
+            lat: newLocation.latitude,
+            lng: newLocation.longitude,
+            isFlash: false,
+          );
+        }
+      };
+
+       _locationProvider.addListener(_locationListener);
     });
   }
 
@@ -58,8 +71,25 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _scrollController.dispose();
     _searchController.dispose();
-    _debounce?.cancel();
+    _scrollController.removeListener(_onScroll);
+    _locationProvider.removeListener(_locationListener);
+
     super.dispose();
+  }
+
+  void _onScroll() async {
+    final provider = context.read<RestaurantProvider>();
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      final location = _locationProvider.currentLocation;
+      if (location != null) {
+        await provider.loadNextPageIfNeeded(
+          lat: location.latitude,
+          lng: location.longitude,
+          isFlash: false,
+        );
+      }
+    }
   }
 
   Future<void> getRestaurantsList() async {
@@ -75,148 +105,110 @@ class _HomePageState extends State<HomePage> {
       }
     } catch (e) {
       debugPrint("❌ Error fetching restaurants: $e");
+    } finally {
+      // ✅ Always reset filters and flags after reload
+      setState(() {
+        _searchController.clear();
+      });
     }
   }
 
   // ✅ Local search function
-  void _onSearchChanged(String query) {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () {
-      final provider = context.read<RestaurantProvider>();
-      final all = provider.restaurants;
 
-      if (query.trim().isEmpty) {
-        setState(() {
-          isSearching = false;
-          filteredRestaurants.clear();
-        });
-      } else {
-        final lowerQuery = query.toLowerCase();
-        final results =
-            all
-                .where(
-                  (r) =>
-                      r.name.toLowerCase().contains(lowerQuery) ||
-                      r.address.toLowerCase().contains(lowerQuery),
-                )
-                .toList();
-        setState(() {
-          isSearching = true;
-          filteredRestaurants = results;
-        });
-      }
-    });
-  }
+  // 🔹 Opens bottom sheet with filters
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final provider = context.watch<RestaurantProvider>();
 
-    return PopScope(
-      canPop: !isSearching,
-      onPopInvokedWithResult: (didPop, result) {
-        if (isSearching) {
-          setState(() {
-            isSearching = false;
-            filteredRestaurants.clear();
-            _searchController.clear();
-          });
-          Future.delayed(const Duration(milliseconds: 200), () {
-            FocusScope.of(context).unfocus();
-          });
-        }
-      },
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        body: SafeArea(
-          child: RefreshIndicator(
-            onRefresh: getRestaurantsList,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
-              child: Stack(
-                children: [
-                  // ✅ White overlay only when searching
-                  if (isSearching)
-                    Positioned.fill(
-                      top: size.height * 0.12,
-                      child: Container(color: Colors.white),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: getRestaurantsList,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
+            child: Stack(
+              children: [
+                // ✅ White overlay only when searching
+                CustomScrollView(
+                  controller: _scrollController,
+                  slivers: [
+                    SliverToBoxAdapter(child: HomeAppBar()),
+                    SliverToBoxAdapter(
+                      child: SizedBox(height: size.height * 0.02),
                     ),
 
-                  CustomScrollView(
-                    controller: _scrollController,
-                    slivers: [
-                      SliverToBoxAdapter(child: HomeAppBar()),
-                      SliverToBoxAdapter(
-                        child: SizedBox(height: size.height * 0.02),
+                    // ✅ Floating Search Bar (uses local search)
+                    SliverAppBar(
+                      backgroundColor: Colors.white,
+                      floating: true,
+                      snap: true,
+                      elevation: 0,
+                      toolbarHeight: size.height * 0.075,
+                      automaticallyImplyLeading: false,
+                      flexibleSpace: HomeSearchBar(
+                        controller: _searchController,
+                        enableNavigation:
+                            true, // default, opens RestaurantSearchPage
+                        isFlash: false,
+                        hintText: "Search for restaurants",
+                        onFilterTap: () {
+                          AppRouteName.restaurantSearchPage.push(
+                            context,
+                            args: {'isFlash': false},
+                          );
+                        },
+                        onChanged: (_) {},
                       ),
+                    ),
 
-                      // ✅ Floating Search Bar (uses local search)
-                      SliverAppBar(
-                        backgroundColor: Colors.white,
-                        floating: true,
-                        snap: true,
-                        elevation: 0,
-                        toolbarHeight: size.height * 0.075,
-                        automaticallyImplyLeading: false,
-                        flexibleSpace: HomeSearchBar(
-                          controller: _searchController,
-                          onFilterTap: () {},
-                          onChanged: _onSearchChanged,
-                        ),
-                      ),
+                    // ✅ Only show banners and categories when not searching
+                    SliverToBoxAdapter(child: HomeBanner()),
+                    SliverToBoxAdapter(
+                      child: SizedBox(height: size.height * 0.001),
+                    ),
 
-                      // ✅ Only show banners and categories when not searching
-                      if (!isSearching) ...[
-                        SliverToBoxAdapter(child: HomeBanner()),
-                        SliverToBoxAdapter(
-                          child: SizedBox(height: size.height * 0.001),
-                        ),
+                    Consumer<RestaurantProvider>(
+                      builder: (context, provider, _) {
+                        if (provider.isLoading && provider.categories.isEmpty) {
+                          return SliverToBoxAdapter(
+                            child: AppShimmer(
+                              type: ShimmerType.category,
+                              itemCount: 6,
+                            ),
+                          );
+                        }
 
-                        Consumer<RestaurantProvider>(
-                          builder: (context, provider, _) {
-                            if (provider.isLoading &&
-                                provider.categories.isEmpty) {
-                              return SliverToBoxAdapter(
-                                child: AppShimmer(
-                                  type: ShimmerType.category,
-                                  itemCount: 6,
-                                ),
-                              );
-                            }
+                        if (provider.categories.isEmpty) {
+                          return SliverToBoxAdapter(
+                            child: Text(
+                              "No categories available",
+                              textAlign: TextAlign.center,
+                              style: Styles.textStyleMedium(context),
+                              textScaler: const TextScaler.linear(1.0),
+                            ),
+                          );
+                        }
 
-                            if (provider.categories.isEmpty) {
-                              return SliverToBoxAdapter(
-                                child: Text(
-                                  "No categories available",
-                                  textAlign: TextAlign.center,
-                                  style: Styles.textStyleMedium(context),
-                                  textScaler: const TextScaler.linear(1.0),
-                                ),
-                              );
-                            }
+                        return SliverPersistentHeader(
+                          pinned: true,
+                          delegate: _FoodCategoryHeader(provider.categories),
+                        );
+                      },
+                    ),
 
-                            return SliverPersistentHeader(
-                              pinned: true,
-                              delegate: _FoodCategoryHeader(
-                                provider.categories,
-                              ),
-                            );
-                          },
-                        ),
+                    SliverToBoxAdapter(
+                      child: SizedBox(height: size.height * 0.02),
+                    ),
+                    _buildDivider(size),
 
-                        SliverToBoxAdapter(
-                          child: SizedBox(height: size.height * 0.02),
-                        ),
-                        _buildDivider(size),
-                      ],
-
-                      // ✅ Restaurant List (search or default)
-                      _buildRestaurantList(provider),
-                    ],
-                  ),
-                ],
-              ),
+                    // ✅ Restaurant List (search or default)
+                    _buildRestaurantList(provider),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
@@ -264,41 +256,57 @@ class _HomePageState extends State<HomePage> {
       );
     }
 
-    final list = isSearching ? filteredRestaurants : provider.restaurants;
+    // ✅ Start with either search or all restaurants
+    final list = provider.restaurants;
 
     if (list.isEmpty) {
-      return SliverToBoxAdapter(
+      return const SliverToBoxAdapter(
         child: Padding(
-          padding: const EdgeInsets.all(30),
-          child: Text(
-            "No restaurants found",
-            style: Styles.textStyleMedium(
-              context,
-            ).copyWith(fontWeight: FontWeight.w700),
-            textAlign: TextAlign.center,
-            textScaler: const TextScaler.linear(1.0),
-          ),
+          padding: EdgeInsets.all(30),
+          child: Text("No restaurants found", textAlign: TextAlign.center),
         ),
       );
     }
 
+    // ✅ Normal list rendering
     return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) => Padding(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          child: GestureDetector(
-            onTap: () {
-              FocusScope.of(context).unfocus();
-              AppRouteName.menuPage.push(
-                context,
-                args: {'restaurant': list[index], 'showPriceTabs': true},
-              );
-            },
-            child: RestaurantCard(data: list[index]),
-          ),
-        ),
-        childCount: list.length,
-      ),
+      delegate: SliverChildBuilderDelegate((context, index) {
+        // 👇 bottom loader row
+        if (provider.isPaginating && index == list.length) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: SizedBox(
+                height: 30,
+                width: 30,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3.0,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                ),
+              ),
+            ),
+          );
+        }
+
+        // 👇 valid restaurant rows
+        if (index < list.length) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 20),
+            child: GestureDetector(
+              onTap: () {
+                FocusScope.of(context).unfocus();
+                AppRouteName.menuPage.push(
+                  context,
+                  args: {'restaurant': list[index], 'showPriceTabs': true},
+                );
+              },
+              child: RestaurantCard(data: list[index]),
+            ),
+          );
+        }
+
+        return const SizedBox.shrink(); // fallback safety
+      }, childCount: list.length + (provider.isPaginating ? 1 : 0)),
     );
   }
 }

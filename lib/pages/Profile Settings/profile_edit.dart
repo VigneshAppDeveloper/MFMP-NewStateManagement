@@ -11,7 +11,6 @@ import 'package:provider/provider.dart';
 
 import '../../Providers/login_provider.dart';
 import '../../services/api_service.dart';
-import '../../util/exception.dart';
 import '../../widgets/dilogue/dilogue.dart';
 
 class ProfileEdit extends StatefulWidget {

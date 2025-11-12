@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 import 'package:my_food_my_price/pages/BiddinPayment/helper/payment_helper.dart';
 import 'package:my_food_my_price/route_generator.dart';
 import 'package:my_food_my_price/util/dilogs.dart';
-import 'package:my_food_my_price/util/validator.dart';
 import 'package:provider/provider.dart';
 
 import '../../Gateway/phonepay.dart';
@@ -15,6 +14,7 @@ import '../../util/app_contant.dart';
 import '../../util/styles.dart';
 import '../../widgets/app_bar.dart';
 import '../../widgets/dilogue/dilogue.dart';
+import '../FixedPayment/Widgets/mesage_to_resturant.dart';
 import 'Widgets/menu_card.dart';
 import 'Widgets/pickup_deatils.dart';
 import 'Widgets/price_summary.dart';
@@ -23,14 +23,14 @@ import 'Widgets/price_summary_data.dart';
 class BiddingPaymentPage extends StatefulWidget {
   final List<WinnerModel> winners;
   final String pickupDate;
-  final String pickupPoint;
+  //final String pickupPoint;
   final Restaurant restaurant; // ✅ add this
 
   const BiddingPaymentPage({
     super.key,
     required this.winners,
     required this.pickupDate,
-    required this.pickupPoint,
+    //required this.pickupPoint,
     required this.restaurant, // ✅ add this
   });
 
@@ -45,8 +45,7 @@ class _BiddingPaymentPageState extends State<BiddingPaymentPage> {
   PriceSummaryData? priceData;
   bool restaurantContact = false;
   late String selectedPickupDate;
-  late String selectedPickupPoint;
-
+  final TextEditingController messageController = TextEditingController();
   String _formatDateForApi(String date) {
     try {
       // handles both dd-MM-yyyy and yyyy-MM-dd
@@ -68,7 +67,7 @@ class _BiddingPaymentPageState extends State<BiddingPaymentPage> {
   void initState() {
     super.initState();
     selectedPickupDate = widget.pickupDate;
-    selectedPickupPoint = widget.pickupPoint;
+    // selectedPickupPoint = widget.pickupPoint;
     orderProvider = context.read<BiddingOrderProvider>();
     profile = AppConstants.profile!;
     quantities = List.filled(widget.winners.length, 1);
@@ -82,7 +81,7 @@ class _BiddingPaymentPageState extends State<BiddingPaymentPage> {
     // ✅ Prepare data (winners, user info, pickup)
     debugPrint("🧾 Winners: ${widget.winners.length}");
     debugPrint("👤 User: ${profile.name} (${profile.mobile})");
-    debugPrint("📦 Pickup: ${widget.pickupPoint} on ${widget.pickupDate}");
+    //debugPrint("📦 Pickup: ${widget.pickupPoint} on ${widget.pickupDate}");
   }
 
   @override
@@ -117,19 +116,20 @@ class _BiddingPaymentPageState extends State<BiddingPaymentPage> {
                 ),
 
                 SizedBox(height: size.height * 0.02),
-
+                MessageToRestaurant(controller: messageController),
+                SizedBox(height: size.height * 0.02),
                 // 📍 Pickup Details Section
                 PickupDetailsSection(
                   pickupDate: widget.pickupDate,
-                  pickupPoint: widget.pickupPoint,
+                  //pickupPoint: widget.pickupPoint,
                   franchiseId: widget.winners.first.franchiseId,
                   restaurant: widget.restaurant,
                   isFixedOrder: false,
                   onDateChange:
                       (newDate) => setState(() => selectedPickupDate = newDate),
-                  onPickupPointChange:
-                      (newPoint) =>
-                          setState(() => selectedPickupPoint = newPoint),
+                  // onPickupPointChange:
+                  //     (newPoint) =>
+                  //         setState(() => selectedPickupPoint = newPoint),
                 ),
                 SizedBox(height: size.height * 0.02),
                 Row(
@@ -219,17 +219,12 @@ class _BiddingPaymentPageState extends State<BiddingPaymentPage> {
       return;
     }
 
-    final selectedPickupId =
-        context.read<MenuProvider>().selectedPickupPoint?.pickupId.toString() ??
-        "";
-
-    debugPrint("📦 Sending pickupPointId: $selectedPickupId");
-
     final apiPickupDate = _formatDateForApi(selectedPickupDate);
     final transactionId = "MT${DateTime.now().millisecondsSinceEpoch}";
     final payable = data.payable;
     final gst = data.gst;
     final walletUsed = data.walletUsed;
+    final remainingWalletAmount = data.remainingWallet;
 
     try {
       await AppDialogue.openLoadingDialogAfterClose(
@@ -239,11 +234,11 @@ class _BiddingPaymentPageState extends State<BiddingPaymentPage> {
           return await orderProvider.placeBiddingOrder(
             franchiseId: widget.winners.first.franchiseId,
             userId: profile.id.toString(),
-            menuIds: widget.winners.map((w) => w.menuId).toList(),
-            menuNames: widget.winners.map((w) => w.menuName).toList(),
-            menuQuantities: quantities.map((q) => q.toString()).toList(),
+            menuIds: validWinners.map((w) => w.menuId).toList(),
+            menuNames: validWinners.map((w) => w.menuName).toList(),
+            menuQuantities: validQuantities.map((q) => q.toString()).toList(),
             totalMenuPrices:
-                widget.winners
+                validWinners
                     .asMap()
                     .entries
                     .map(
@@ -254,7 +249,7 @@ class _BiddingPaymentPageState extends State<BiddingPaymentPage> {
                     )
                     .toList(),
             name: profile.name,
-            pickupPoint: selectedPickupId,
+            //pickupPoint: selectedPickupId,
             pickupTime: pickupTime,
             mobile: profile.mobile,
             transactionAmount: payable.toStringAsFixed(2),
@@ -264,6 +259,9 @@ class _BiddingPaymentPageState extends State<BiddingPaymentPage> {
             pickupDate: apiPickupDate,
             contactCustomer: restaurantContact ? 1 : 0,
             timerId: widget.winners.first.timerId ?? "",
+            message: messageController.text.trim().isNotEmpty
+      ? messageController.text.trim()
+      : null, // ✅ added line
           );
         },
         afterComplete: (result) async {
@@ -327,6 +325,7 @@ class _BiddingPaymentPageState extends State<BiddingPaymentPage> {
                       context,
                       transactionId,
                       walletUsed,
+                      remainingWalletAmount,
                     );
                   } else {
                     await AppRouteName.biddingPaymentFailedPage.push(context);
@@ -335,7 +334,12 @@ class _BiddingPaymentPageState extends State<BiddingPaymentPage> {
               );
             } else {
               // ✅ order placed fully with wallet (no online payment)
-              await _verifyPaymentStatus(context, transactionId, walletUsed);
+              await _verifyPaymentStatus(
+                context,
+                transactionId,
+                walletUsed,
+                remainingWalletAmount,
+              );
             }
           } else {
             AppDialogue.toast(result['message'] ?? "Order failed");
@@ -351,6 +355,7 @@ class _BiddingPaymentPageState extends State<BiddingPaymentPage> {
     BuildContext context,
     String merchantTransactionId,
     double walletUsed,
+    double remainingWalletAmount,
   ) async {
     await AppDialogue.openLoadingDialogAfterClose(
       context,
@@ -366,10 +371,25 @@ class _BiddingPaymentPageState extends State<BiddingPaymentPage> {
 
         if (paymentStatus == "success") {
           await PaymentHelpers.clearFailedPaymentDetails();
+
+          // ✅ Show separate loader for wallet update + profile refresh
           if (walletUsed > 0) {
-            await orderProvider.verifyAndUpdateWallet(
-              merchantTransactionId: merchantTransactionId,
-              walletUsed: walletUsed.toStringAsFixed(2),
+            await AppDialogue.openLoadingDialogAfterClose(
+              context,
+              text: "Updating wallet & refreshing profile...",
+              load: () async {
+                await orderProvider.verifyAndUpdateWallet(
+                  merchantTransactionId: merchantTransactionId,
+                  remainingWalletAmount: remainingWalletAmount.toStringAsFixed(
+                    2,
+                  ),
+                  context: context,
+                );
+                return true;
+              },
+              afterComplete: (_) async {
+                debugPrint("✅ Wallet updated and profile refreshed");
+              },
             );
           }
 

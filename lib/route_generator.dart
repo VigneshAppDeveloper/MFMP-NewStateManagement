@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:my_food_my_price/Providers/bidding_provider.dart';
 import 'package:my_food_my_price/Providers/register_provider.dart';
+import 'package:my_food_my_price/components/HomePageDesigns/widgets/restaurant_serch.dart';
 import 'package:my_food_my_price/pages/FixedPayment/Widgets/Screens/fixed_failure.dart';
 import 'package:my_food_my_price/pages/FixedPayment/Widgets/Screens/fixed_sucess.dart';
 import 'package:my_food_my_price/pages/Map/location_search_page.dart';
@@ -20,6 +21,7 @@ import 'package:my_food_my_price/pages/food_category_restuarnt_page.dart';
 import 'package:my_food_my_price/pages/intro_page.dart';
 import 'package:my_food_my_price/pages/login.dart';
 import 'package:my_food_my_price/pages/menu_page.dart';
+import 'package:my_food_my_price/pages/on_borading_restaurants.dart';
 import 'package:my_food_my_price/pages/otp.dart';
 import 'package:my_food_my_price/pages/policy/contact_us.dart';
 import 'package:my_food_my_price/pages/policy/privacy_policy.dart';
@@ -74,6 +76,8 @@ enum AppRouteName {
   termsConditions('/terms_conditions'),
   categoryRestaurantsPage('/category_restaurants_page'),
   timeSlotWinnerPage('/time_slot_winner_page'),
+  restaurantSearchPage('/restaurant_serch'),
+  OnBoradingRestaurants('/on_borading_restaurants'),
   appSettingsPage('/app_settings');
 
   /// args: TaskViewScreenArgs
@@ -177,6 +181,8 @@ class RouteGenerator {
         return MaterialPageRoute(builder: (_) => DeleteAccount());
       case AppRouteName.rewards:
         return MaterialPageRoute(builder: (_) => Rewards());
+          case AppRouteName.OnBoradingRestaurants:
+        return MaterialPageRoute(builder: (_) => OnBoradingRestaurants());
       case AppRouteName.timeSlotWinnerPage:
         final args = settings.arguments as Map<String, dynamic>;
         return MaterialPageRoute(
@@ -185,6 +191,14 @@ class RouteGenerator {
                 franchiseId: args['franchiseId'],
                 timerId: args['timerId'],
               ),
+        );
+      case AppRouteName.restaurantSearchPage:
+        final args = settings.arguments as Map<String, dynamic>?;
+        final bool isFlash = args?['isFlash'] ?? false;
+        debugPrint("🧭 Route args: $args");
+        debugPrint("🧭 isFlash resolved: $isFlash");
+        return MaterialPageRoute(
+          builder: (_) => RestaurantSearchPage(isFlash: isFlash),
         );
 
       case AppRouteName.categoryRestaurantsPage:
@@ -266,7 +280,7 @@ class RouteGenerator {
         if (args is Map<String, dynamic>) {
           final winners = args['winners'] as List<WinnerModel>;
           final pickupDate = args['pickup_date'] as String;
-          final pickupPoint = args['pickup_point'] as String;
+          // final pickupPoint = args['pickup_point'] as String;
           final restaurant = args['restaurant'] as Restaurant; // ✅ add this
 
           return MaterialPageRoute(
@@ -276,7 +290,7 @@ class RouteGenerator {
                   child: BiddingPaymentPage(
                     winners: winners,
                     pickupDate: pickupDate,
-                    pickupPoint: pickupPoint,
+                    // pickupPoint: pickupPoint,
                     restaurant: restaurant, // ✅ pass it here
                   ),
                 ),
@@ -303,7 +317,7 @@ class RouteGenerator {
                   child: FixedPricePaymentPage(
                     menus: args["menus"],
                     pickupDate: args["pickup_date"],
-                    pickupPoint: args["pickup_point"],
+                    // pickupPoint: args["pickup_point"],
                     restaurant: args["restaurant"],
                     fromFlashPage: args["from_flash"] ?? false,
                   ),
@@ -369,7 +383,14 @@ class RouteGenerator {
               ),
         );
       case AppRouteName.fixedPricePaymentSuccessPage:
-        return MaterialPageRoute(builder: (_) => const FixedSuccessScreen());
+        final args =
+            settings.arguments as Map<String, dynamic>?; // ✅ get args safely
+        final fromFlashPage =
+            args?['fromFlashPage'] ?? false; // ✅ default false
+        return MaterialPageRoute(
+          builder: (_) => FixedSuccessScreen(fromFlashPage: fromFlashPage),
+        );
+
       case AppRouteName.fixedPricePaymentFailedPage:
         return MaterialPageRoute(builder: (_) => const FixedFailureScreen());
       case AppRouteName.registerPage:

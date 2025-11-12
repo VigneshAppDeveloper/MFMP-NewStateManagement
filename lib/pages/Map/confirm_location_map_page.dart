@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:my_food_my_price/route_generator.dart';
 import 'package:my_food_my_price/services/location_service.dart';
 import 'package:my_food_my_price/util/color_constant.dart';
 import 'package:my_food_my_price/util/styles.dart';
@@ -131,11 +130,11 @@ class _ConfirmLocationMapPageState extends State<ConfirmLocationMapPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      "Order will be delivered here",
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                    const SizedBox(height: 6),
+                    // const Text(
+                    //   "Order will be delivered here",
+                    //   style: TextStyle(color: Colors.grey),
+                    // ),
+                    // const SizedBox(height: 6),
                     Row(
                       children: [
                         const Icon(

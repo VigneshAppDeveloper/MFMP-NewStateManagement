@@ -2,15 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../Providers/order_history_provider.dart';
+import '../../../models/OrderModels/order_model.dart';
 import '../../../util/styles.dart';
 import '../../../widgets/app_shimmer.dart';
 import '../../../widgets/shimmer_type.dart';
 import 'order_card.dart';
 
-
 class OrderListTab extends StatelessWidget {
   final String tabType;
   const OrderListTab({super.key, required this.tabType});
+
+  List<List<OrderDetailModel>> _groupOrdersByOrderId(
+    List<OrderDetailModel> orders,
+  ) {
+    final Map<String, List<OrderDetailModel>> grouped = {};
+
+    for (final order in orders) {
+      final key = order.orderId ?? order.merchantTransactionId ?? '';
+      if (key.isEmpty) continue;
+      grouped.putIfAbsent(key, () => []).add(order);
+    }
+
+    return grouped.values.toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,14 +32,29 @@ class OrderListTab extends StatelessWidget {
 
     return Consumer<OrderHistoryProvider>(
       builder: (context, provider, _) {
-        final isLoading = tabType == "fixed"
-            ? provider.isFixedLoading
-            : provider.isBiddingLoading;
+        // ✅ Determine which list + loader to use
+        final bool isLoading;
+        final List<OrderDetailModel> orders;
 
-        final orders = tabType == "fixed"
-            ? provider.fixedOrders
-            : provider.biddingOrders;
+        switch (tabType) {
+          case "fixed":
+            isLoading = provider.isFixedLoading;
+            orders = provider.fixedOrders;
+            break;
+          case "bidding":
+            isLoading = provider.isBiddingLoading;
+            orders = provider.biddingOrders;
+            break;
+          case "flash":
+            isLoading = provider.isFlashLoading;
+            orders = provider.flashOrders;
+            break;
+          default:
+            isLoading = false;
+            orders = [];
+        }
 
+        // ✅ Common scroll + empty/loading handling
         return CustomScrollView(
           slivers: [
             if (isLoading)
@@ -47,13 +76,26 @@ class OrderListTab extends StatelessWidget {
               )
             else
               SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final order = orders[index];
-                    return OrderCard(order: order);
-                  },
-                  childCount: orders.length,
-                ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  // ✅ 1. Group orders by order_id
+                  final groupedOrders = _groupOrdersByOrderId(orders);
+                  final group = groupedOrders[index];
+
+                  // ✅ 2. Use first record as base order
+                  final firstOrder = group.first;
+
+                  // ✅ 3. Attach all menus inside this order (so OrderCard can show them)
+                  return OrderCard(
+                    order: firstOrder.copyWith(
+                      groupedMenus:
+                          group
+                              .where((e) => e.menu != null)
+                              .map((e) => e.menu!)
+                              .toList(),
+                    ),
+                    orderType: tabType,
+                  );
+                }, childCount: _groupOrdersByOrderId(orders).length),
               ),
           ],
         );
@@ -61,3 +103,5 @@ class OrderListTab extends StatelessWidget {
     );
   }
 }
+
+
