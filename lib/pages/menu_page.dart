@@ -49,6 +49,8 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
   bool isFiltering = false;
   Set<String> selectedFilters = {};
 
+  bool hasBiddingMenu = false;
+
   final GlobalKey<PickupDatePickupPointState> _pickupKey = GlobalKey();
 
   @override
@@ -68,8 +70,13 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
         forceRefresh: false,
         isFlash: !widget.showPriceTabs,
       );
+      // ✅ Check if any bidding-type menu exists
+      final biddingExists = provider.menus.any(
+        (m) => m.menuType.toLowerCase().trim() == 'bidding',
+      );
 
-      if (widget.showPriceTabs) {
+      setState(() => hasBiddingMenu = biddingExists);
+      if (widget.showPriceTabs && biddingExists) {
         provider.resumeAutoUpdaters(widget.restaurant.franchiseId);
         if (provider.timeSlots.isNotEmpty) {
           await provider.refreshTimeSlot(widget.restaurant.franchiseId);
@@ -300,7 +307,6 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
     final cart = context.watch<CartProvider>();
     final provider = context.watch<MenuProvider>();
     final selectedPickupDate = provider.selectedPickupDate;
-    //final selectedPickupPoint = provider.selectedPickupPoint;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -355,11 +361,28 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                     key: _pickupKey,
                     restaurant: widget.restaurant,
                     fromFlashPage: !widget.showPriceTabs,
+                    onMenuReloaded: (bool hasBidding) {
+                      // ✅ Safely update local flag and rebuild tabs dynamically
+                      if (mounted) {
+                        setState(() {
+                          hasBiddingMenu = hasBidding;
+                        });
+                      }
+
+                      // ✅ Control auto-updaters based on menu type
+                      if (widget.showPriceTabs && hasBidding) {
+                        provider.resumeAutoUpdaters(
+                          widget.restaurant.franchiseId,
+                        );
+                      } else {
+                        provider.stopAutoUpdaters();
+                      }
+                    },
                   ),
                 ),
 
                 /// 💰 Two clickable tabs
-                if (widget.showPriceTabs)
+                if (widget.showPriceTabs && hasBiddingMenu)
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: EdgeInsets.symmetric(
@@ -408,46 +431,48 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                             ),
                           ),
                           const SizedBox(width: 12),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () {
-                                if (selectedTab != "Price Discovery") {
-                                  setState(
-                                    () => selectedTab = "Price Discovery",
-                                  );
-                                  // fetch only if not already loaded
-                                  final provider = context.read<MenuProvider>();
-                                  if (provider.timeSlots.isEmpty) {
-                                    provider.getTimeSlot(
-                                      widget.restaurant.franchiseId,
-                                      forceRefresh: false,
+                          if (hasBiddingMenu)
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  if (selectedTab != "Price Discovery") {
+                                    setState(
+                                      () => selectedTab = "Price Discovery",
                                     );
+                                    // fetch only if not already loaded
+                                    final provider =
+                                        context.read<MenuProvider>();
+                                    if (provider.timeSlots.isEmpty) {
+                                      provider.getTimeSlot(
+                                        widget.restaurant.franchiseId,
+                                        forceRefresh: false,
+                                      );
+                                    }
                                   }
-                                }
-                              },
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  vertical: size.height * 0.015,
-                                ),
-                                decoration: BoxDecoration(
-                                  color:
-                                      selectedTab == "Price Discovery"
-                                          ? Colors.black
-                                          : Colors.grey,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  "Price Discovery",
-                                  style: Styles.textSmall(
-                                    context,
-                                    color: Colors.white,
+                                },
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: size.height * 0.015,
                                   ),
-                                  textScaler: const TextScaler.linear(1.0),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        selectedTab == "Price Discovery"
+                                            ? Colors.black
+                                            : Colors.grey,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    "Price Discovery",
+                                    style: Styles.textSmall(
+                                      context,
+                                      color: Colors.white,
+                                    ),
+                                    textScaler: const TextScaler.linear(1.0),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
                         ],
                       ),
                     ),
@@ -471,7 +496,7 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                       enableNavigation: false,
                       onFilterTap: _openFilterSheet,
                       onChanged: _onSearchChanged, // ✅ connect
-                       hintText: "Search Dishes",
+                      hintText: "Search Dishes",
                     ),
                   ),
                 if (isFiltering)
@@ -642,11 +667,6 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                                 );
                                 return;
                               }
-                              // final
-                              // selectedDate =
-                              //     menuProvider.selectedPickupDate;
-                              // final selectedPoint =
-                              //     menuProvider.selectedPickupPoint;
 
                               if (selectedPickupDate == null) {
                                 final pickupWidgetState =

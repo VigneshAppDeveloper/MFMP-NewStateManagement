@@ -13,10 +13,12 @@ import '../../util/styles.dart';
 class PickupDatePickupPoint extends StatefulWidget {
   final Restaurant restaurant;
   final bool fromFlashPage;
+  final void Function(bool hasBidding)? onMenuReloaded;
   const PickupDatePickupPoint({
     super.key,
     required this.restaurant,
     this.fromFlashPage = false,
+    this.onMenuReloaded,
   });
 
   @override
@@ -89,17 +91,16 @@ class PickupDatePickupPointState extends State<PickupDatePickupPoint> {
             ),
           ),
         ),
-
-       
       ],
     );
   }
 
   void showCalendar(BuildContext context) async {
+    final safeContext = Navigator.of(context, rootNavigator: true).context;
     debugPrint(
       "🗓 Opening calendar for restaurant: ${widget.restaurant.franchiseId}",
     );
-  
+
     final blockedDates = widget.restaurant.blockoutDates;
     final Map<String, String> blockedReasons = {
       for (var b in blockedDates)
@@ -110,7 +111,7 @@ class PickupDatePickupPointState extends State<PickupDatePickupPoint> {
     final DateTime ntpTime = await ntpService.getCurrentIST();
     DateTime firstDate;
     DateTime lastDate;
-  
+
     // ✅ Business rule: if current time >= 2 PM, skip today
     if (widget.fromFlashPage) {
       firstDate = DateTime(ntpTime.year, ntpTime.month, ntpTime.day);
@@ -143,25 +144,25 @@ class PickupDatePickupPointState extends State<PickupDatePickupPoint> {
                 })
                 .map((b) => DateTime.parse(b.date))
                 .toList();
-
+if (!mounted) return;
     debugPrint(
       "📆 Final Blocked Dates: ${blockedDateList.map((e) => e.toIso8601String()).toList()}",
     );
 
-    showDialog(
+  await  showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           contentPadding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
           content: SizedBox(
-            width: MediaQuery.of(context).size.width * 0.9,
-            height: MediaQuery.of(context).size.height * 0.6,
+            width: MediaQuery.of(dialogContext).size.width * 0.9,
+            height: MediaQuery.of(dialogContext).size.height * 0.6,
             child: MediaQuery(
               data: MediaQuery.of(
-                context,
+                dialogContext,
               ).copyWith(textScaler: const TextScaler.linear(1.0)),
               child: CalendarCarousel(
                 onDayPressed: (date, events) async {
@@ -179,24 +180,33 @@ class PickupDatePickupPointState extends State<PickupDatePickupPoint> {
                         d.day == date.day,
                   )) {
                     _showBlockedDateReasonDialog(
-                      context,
+                      dialogContext,
                       formattedDisplay,
                       blockedReasons,
                     );
-                  } else {
-                    setState(() {
-                      _selectedDate = date;
-                    });
-                    context.read<MenuProvider>().setPickupDate(date);
-                    Navigator.of(context).pop();
+                  } 
+                  if (!mounted) return;
+              setState(() => _selectedDate = date);
+                 final menuProvider = safeContext.read<MenuProvider>();
+              menuProvider.setPickupDate(date);
+              Navigator.of(dialogContext).pop();
+
                     final formatted = DateFormat('yyyy-MM-dd').format(date);
-                    await context.read<MenuProvider>().getRestaurantMenu(
-                      widget.restaurant.franchiseId,
-                      forceRefresh: true,
-                      isFlash: widget.fromFlashPage, // false for normal
-                      pickupDate: formatted, // ✅ send selected date
+                    await menuProvider.getRestaurantMenu(
+                widget.restaurant.franchiseId,
+                forceRefresh: true,
+                isFlash: widget.fromFlashPage,
+                pickupDate: formatted,
+              );
+                    
+                    final hasBidding = menuProvider.menus.any(
+                      (m) => m.menuType.toLowerCase().trim() == 'bidding',
                     );
-                  }
+
+                    if (widget.onMenuReloaded != null) {
+                      widget.onMenuReloaded!(hasBidding);
+                    }
+                  
                 },
                 todayTextStyle: Styles.textStyleMediumBold(
                   context,

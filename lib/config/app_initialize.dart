@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -17,6 +18,7 @@ class AppInitialize {
     }
     WidgetsFlutterBinding.ensureInitialized();
     await FirebaseConfig.initialize();
+    await _setupCrashlytics();
     await FirebaseNotification.initialize();
     await PhonePeGateway.init();
 
@@ -43,6 +45,23 @@ class AppInitialize {
 
     // Optionally fetch once at startup for warm cache
     await ntp.getCurrentIST(forceRefresh: true);
+  }
+
+  static Future<void> _setupCrashlytics() async {
+    // ✅ Enable collection (disable automatically if needed for debug)
+    await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(!kDebugMode);
+
+    // ✅ Capture all Flutter framework errors
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+
+    // ✅ Capture all unhandled async / platform errors
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+
+    // ✅ Optional custom log to verify setup
+    FirebaseCrashlytics.instance.log("Crashlytics initialized successfully");
   }
 }
 

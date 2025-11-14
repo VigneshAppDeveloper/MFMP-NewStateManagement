@@ -215,12 +215,15 @@ class FranchiseModel {
   final int id;
   final String franchise;
   final String address;
+   final String googleMapLink;
+    
   final DistrictModel? district;
 
   FranchiseModel({
     required this.id,
     required this.franchise,
     required this.address,
+    required this.googleMapLink,
     this.district,
   });
 
@@ -229,6 +232,7 @@ class FranchiseModel {
       id: json['id'] ?? 0,
       franchise: json['franchise'] ?? '',
       address: json['address'] ?? '',
+        googleMapLink: json['g_link']?.toString() ?? '',
       district:
           json['district'] != null
               ? DistrictModel.fromJson(json['district'])

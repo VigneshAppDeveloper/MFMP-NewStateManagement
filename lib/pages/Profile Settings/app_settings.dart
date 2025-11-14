@@ -151,7 +151,7 @@ class _AppSettingsState extends State<AppSettings> {
                         icon: Icons.support_agent,
                         title: "Onboarding Restaurants",
                         onTap: () {
-                           AppRouteName.OnBoradingRestaurants.push(context);
+                           AppRouteName.onBoradingRestaurants.push(context);
                         },
                       ),
                       DrawerListTile(

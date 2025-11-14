@@ -2,10 +2,12 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:my_food_my_price/enums/enum.dart';
 import 'package:my_food_my_price/models/LoginModels/login_model.dart';
 import 'package:my_food_my_price/models/LoginModels/profile_mode.dart';
 import 'package:my_food_my_price/models/api_validation_model.dart';
+import 'package:my_food_my_price/route_generator.dart';
 import 'package:my_food_my_price/services/api_service.dart';
 import 'package:my_food_my_price/services/device_info.dart';
 import 'package:my_food_my_price/services/location_service.dart';
@@ -20,8 +22,6 @@ import '../widgets/dilogue/dilogue.dart';
 
 class LoginProvider extends ChangeNotifier {
   bool isApiValidationError = false;
-
-  
 
   Future<void> initialFetch() async {
     AppGlobal.deviceInfo = await DeviceInfoServices.getDeviceInfo();
@@ -103,6 +103,7 @@ class LoginProvider extends ChangeNotifier {
     required String mobile,
     required String otp,
     required String tokenFCM,
+    required BuildContext context,
   }) async {
     final resp = await APIService.post(
       UrlPath.loginUrl.otpVerify,
@@ -125,8 +126,16 @@ class LoginProvider extends ChangeNotifier {
         await SecureStorageService.write(AppConstants.token, data.token!);
         await getProfile();
 
-        /// ✅ Optional: Fetch & save location
-        await LocationService.fetchAndSaveLocation();
+        final hasPermission = await Geolocator.checkPermission();
+        if (hasPermission == LocationPermission.deniedForever ||
+            hasPermission == LocationPermission.denied) {
+          // Redirect or show popup before calling API
+          if (context.mounted) {
+            AppRouteName.enableLocationPage.pushReplacement(context);
+          }
+        } else {
+          await LocationService.fetchAndSaveLocation(context: context);
+        }
       }
 
       return resp;
@@ -272,8 +281,7 @@ class LoginProvider extends ChangeNotifier {
 
       if (resp.status) {
         // ✅ Clear all user data from storage
-      await SecureStorageService.clearAllAppData();
-
+        await SecureStorageService.clearAllAppData();
 
         // ✅ Optionally, trigger logout UI state
         notifyListeners();

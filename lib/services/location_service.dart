@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
@@ -12,11 +13,12 @@ import 'dart:async';
 
 
 
+
 class LocationService {
   /// Fetch and save current location
-  static Future<void> fetchAndSaveLocation() async {
+    static Future<void> fetchAndSaveLocation({BuildContext? context}) async {
     try {
-      final hasPermission = await _handlePermission();
+      final hasPermission = await _handlePermission(context);
       if (!hasPermission) return;
 
       final position = await Geolocator.getCurrentPosition(
@@ -93,14 +95,46 @@ class LocationService {
     }
   }
 
-  static Future<bool> _handlePermission() async {
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-    }
-    return permission == LocationPermission.always ||
-        permission == LocationPermission.whileInUse;
+  static Future<bool> _handlePermission(BuildContext? context) async {
+  LocationPermission permission = await Geolocator.checkPermission();
+
+  if (permission == LocationPermission.denied) {
+    permission = await Geolocator.requestPermission();
   }
+
+  if (permission == LocationPermission.deniedForever) {
+    // 🔹 Show bottom sheet or dialog
+    if (context != null && context.mounted) {
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text("Location Access Needed"),
+          content: const Text(
+            "Please enable location permission from Settings to view nearby restaurants.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                await Geolocator.openAppSettings();
+                Navigator.pop(ctx);
+              },
+              child: const Text("Open Settings"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancel"),
+            ),
+          ],
+        ),
+      );
+    }
+    return false;
+  }
+
+  return permission == LocationPermission.always ||
+      permission == LocationPermission.whileInUse;
+}
+
 
   static Future<LocationModel?> getSavedLocation() async {
     final jsonStr = await SecureStorageService.read(AppConstants.location);
@@ -113,8 +147,8 @@ class LocationService {
     }
   }
 
-  static Future<LatLng?> getCurrentLatLng() async {
-    final permission = await _handlePermission();
+  static Future<LatLng?> getCurrentLatLng({BuildContext? context}) async {
+    final permission = await _handlePermission(context);
     if (!permission) return null;
 
     final pos = await Geolocator.getCurrentPosition(

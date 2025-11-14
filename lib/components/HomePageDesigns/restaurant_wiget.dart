@@ -263,7 +263,7 @@ void _showCertificateDialog(
                         height: size.height * 0.028,
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          children:
+                          children: 
                               _foodTypeAssets()
                                   .map(
                                     (path) => Padding(

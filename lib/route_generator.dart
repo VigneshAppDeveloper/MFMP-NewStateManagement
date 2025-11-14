@@ -5,6 +5,7 @@ import 'package:my_food_my_price/Providers/register_provider.dart';
 import 'package:my_food_my_price/components/HomePageDesigns/widgets/restaurant_serch.dart';
 import 'package:my_food_my_price/pages/FixedPayment/Widgets/Screens/fixed_failure.dart';
 import 'package:my_food_my_price/pages/FixedPayment/Widgets/Screens/fixed_sucess.dart';
+import 'package:my_food_my_price/pages/Map/enable_location_message.dart';
 import 'package:my_food_my_price/pages/Map/location_search_page.dart';
 import 'package:my_food_my_price/pages/OrdersHistory/order_history.dart';
 import 'package:my_food_my_price/pages/Profile%20Settings/about_page.dart';
@@ -77,8 +78,9 @@ enum AppRouteName {
   categoryRestaurantsPage('/category_restaurants_page'),
   timeSlotWinnerPage('/time_slot_winner_page'),
   restaurantSearchPage('/restaurant_serch'),
-  OnBoradingRestaurants('/on_borading_restaurants'),
-  appSettingsPage('/app_settings');
+  onBoradingRestaurants('/on_borading_restaurants'),
+  appSettingsPage('/app_settings'),
+  enableLocationPage('/enable_location_message');
 
   /// args: TaskViewScreenArgs
 
@@ -179,9 +181,11 @@ class RouteGenerator {
         return MaterialPageRoute(builder: (_) => SettingsPage());
       case AppRouteName.deleteAccount:
         return MaterialPageRoute(builder: (_) => DeleteAccount());
+         case AppRouteName.enableLocationPage:
+        return MaterialPageRoute(builder: (_) => EnableLocationScreen());
       case AppRouteName.rewards:
         return MaterialPageRoute(builder: (_) => Rewards());
-          case AppRouteName.OnBoradingRestaurants:
+          case AppRouteName.onBoradingRestaurants:
         return MaterialPageRoute(builder: (_) => OnBoradingRestaurants());
       case AppRouteName.timeSlotWinnerPage:
         final args = settings.arguments as Map<String, dynamic>;

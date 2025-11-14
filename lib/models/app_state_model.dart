@@ -1,14 +1,14 @@
 class AppStateModel {
-  final String? token;
+   final String? token;
   final String? isFirstRegister;
   final String? stateId;
   final String? districtId;
 
   AppStateModel({
-    required this.token,
-    required this.isFirstRegister,
-    required this.stateId,
-    required this.districtId,
+    this.token,
+    this.isFirstRegister,
+    this.stateId,
+    this.districtId,
   });
 
   bool get isLoggedIn => token != null && token!.isNotEmpty;

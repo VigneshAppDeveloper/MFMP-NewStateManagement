@@ -53,4 +53,5 @@ class RatingsUrl {
   const RatingsUrl();
   final String getFranchiseRating = 'getFranchiseRatings';
   final String addFranchiseRating = 'addRatings';
+  final String getPolicy = 'dtitMfmpGetPolicy';
 }

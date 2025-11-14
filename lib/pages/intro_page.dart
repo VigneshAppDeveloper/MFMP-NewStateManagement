@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:my_food_my_price/util/color_constant.dart';
-import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 
 import '../route_generator.dart';
 

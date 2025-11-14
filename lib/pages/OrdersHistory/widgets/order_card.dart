@@ -364,14 +364,15 @@ class OrderCard extends StatelessWidget {
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       onPressed: () async {
-                        // final link = pickup?.googleMapLink ?? '';
-                        // if (link.isNotEmpty &&
-                        //     await canLaunchUrl(Uri.parse(link))) {
-                        //   await launchUrl(
-                        //     Uri.parse(link),
-                        //     mode: LaunchMode.externalApplication,
-                        //   );
-                        // }
+                        final link = franchise?.googleMapLink ?? '';
+                        debugPrint("Launching map link: $link");
+                        if (link.isNotEmpty &&
+                            await canLaunchUrl(Uri.parse(link))) {
+                          await launchUrl(
+                            Uri.parse(link),
+                            mode: LaunchMode.externalApplication,
+                          );
+                        }
                       },
                       icon: const Icon(
                         Icons.maps_home_work_sharp,

@@ -137,6 +137,7 @@ class _OtpState extends State<Otp> with CodeAutoFill {
               mobile: mobile.text,
               otp: otp.text,
               tokenFCM: tokenFCM ?? "",
+              context: context
             );
           },
           afterComplete: (resp) async {
@@ -384,6 +385,7 @@ class _OtpState extends State<Otp> with CodeAutoFill {
                                     mobile: mobile.text,
                                     otp: otp.text,
                                     tokenFCM: tokenFCM ?? "",
+                                    context: context
                                   );
                                 },
                                 afterComplete: (resp) async {

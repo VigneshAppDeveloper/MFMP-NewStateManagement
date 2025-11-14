@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:my_food_my_price/util/dilogs.dart';
-
 import '../models/rating_model.dart';
 import '../services/api_service.dart';
 import '../util/url_path.dart';

@@ -81,6 +81,7 @@ dependencies:
   shimmer: ^3.0.0
   flutter_screenutil: ^5.9.3
   flutter_calendar_carousel: ^2.5.4
+  firebase_crashlytics: ^4.3.10
   
 
 dev_dependencies:

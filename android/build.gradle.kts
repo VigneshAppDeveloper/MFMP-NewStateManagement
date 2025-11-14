@@ -1,3 +1,25 @@
+plugins {
+    id("org.jetbrains.kotlin.android") version "2.2.21" apply false
+    id("com.android.application") apply false
+}
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    dependencies {
+        classpath("com.android.tools.build:gradle:8.5.2")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.21") // ✅ important
+        classpath("com.google.gms:google-services:4.4.2")
+        classpath("com.google.firebase:firebase-crashlytics-gradle:3.0.2")
+    }
+}
+
+// ✅ Flutter compatibility flag
+ext["kotlin_version"] = "2.2.21"
+
 allprojects {
     repositories {
         google()
@@ -8,6 +30,7 @@ allprojects {
 
     }
 }
+
 
 val newBuildDir: Directory = rootProject.layout.buildDirectory.dir("../../build").get()
 rootProject.layout.buildDirectory.value(newBuildDir)
@@ -27,3 +50,6 @@ subprojects {
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
+
+
+

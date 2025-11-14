@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:my_food_my_price/models/policy_model.dart';
 
 import '../models/FoodModels/food_model.dart';
 import '../models/Resturant Model/banner_model.dart';
@@ -210,111 +211,6 @@ class RestaurantProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Future<void> getRestaurants({
-  //   required double lat,
-  //   required double lng,
-  //   bool isFlash = false,
-  //   String? search,
-  //   Map<String, dynamic>? filters,
-  //   bool forSearchPage = false,
-  //   int page = 1, // 👈 pagination
-  //   bool append = false, // 👈 merge new data
-  // }) async {
-  //   if (page == 1) {
-  //     _currentPage = 1;
-  //     _lastPage = 1;
-  //     _isPaginating = false;
-  //     _isLoading = true;
-  //   }
-
-  //   notifyListeners();
-
-  //   final url = "${UrlPath.restaurantUrl.getNearbyFranchise}/$lat/$lng";
-  //   final params = <String, String>{'page': page.toString()};
-  //   if (isFlash) params['is_flash'] = '1';
-  //   if (search?.trim().isNotEmpty ?? false) params['search'] = search!.trim();
-  //   if (filters != null) filters.forEach((k, v) => params[k] = v.toString());
-
-  //   debugPrint("🌍 Fetching restaurants => $url | Params: $params");
-
-  //   try {
-  //     final resp = await APIService.get(url, auth: true, params: params);
-
-  //     if (resp.status) {
-  //       final body = resp.fullBody as Map<String, dynamic>;
-  //       final List<dynamic> data = body['data'] ?? [];
-  //       final pagination = body['pagination'] ?? {};
-
-  //       _currentPage = pagination['current_page'] ?? 1;
-  //       _lastPage = pagination['last_page'] ?? 1;
-
-  //       final List<Restaurant> list =
-  //           data.map((e) => Restaurant.fromJson(e)).toList();
-
-  //       // ✅ append or replace
-  //       if (forSearchPage) {
-  //         _searchResults = append ? [..._searchResults, ...list] : list;
-  //       } else if (isFlash) {
-  //         _flashRestaurants = append ? [..._flashRestaurants, ...list] : list;
-  //       } else {
-  //         _restaurants = append ? [..._restaurants, ...list] : list;
-  //       }
-
-  //       error = null;
-  //     } else {
-  //       error = resp.message ?? "Failed to fetch restaurants.";
-  //       if (forSearchPage) {
-  //         _searchResults = [];
-  //       } else if (isFlash) {
-  //         _flashRestaurants = [];
-  //       } else {
-  //         _restaurants = [];
-  //       }
-  //     }
-  //   } catch (e, st) {
-  //     debugPrint("❌ Error fetching restaurants: $e");
-  //     debugPrintStack(stackTrace: st);
-  //     error = e.toString();
-  //     if (forSearchPage)
-  //       _searchResults = [];
-  //     else if (isFlash)
-  //       _flashRestaurants = [];
-  //     else
-  //       _restaurants = [];
-  //   }
-
-  //   _isLoading = false;
-  //   _isPaginating = false;
-  //   notifyListeners();
-  // }
-
-  // // ---------------- LOAD NEXT PAGE ----------------
-  // Future<void> loadNextPageIfNeeded({
-  //   required double lat,
-  //   required double lng,
-  //   bool isFlash = false,
-  //   String? search,
-  //   bool forSearchPage = false, // ✅ added
-  // }) async {
-  //   if (_isPaginating || _currentPage >= _lastPage) {
-  //     debugPrint("⚠️ Pagination halted: page=$_currentPage / last=$_lastPage");
-  //     return;
-  //   }
-
-  //   _isPaginating = true;
-  //   notifyListeners();
-
-  //   await getRestaurants(
-  //     lat: lat,
-  //     lng: lng,
-  //     isFlash: isFlash,
-  //     search: search,
-  //     forSearchPage: forSearchPage, // ✅ now correctly forwarded
-  //     page: _currentPage + 1,
-  //     append: true,
-  //   );
-  // }
-
 
   Future<void> getFoodCategory() async {
     if (_categories.isNotEmpty) return;
@@ -456,4 +352,59 @@ class RestaurantProvider extends ChangeNotifier {
     _isLoading = false;
     notifyListeners();
   }
+
+
+
+
+// -------------------- POLICY --------------------
+List<PolicyModel> _policies = [];
+DateTime? _lastPolicyFetch;
+final Duration _policyCacheDuration = const Duration(days: 1);
+bool _isPolicyLoading = false;
+
+List<PolicyModel> get policies => _policies;
+bool get isPolicyLoading => _isPolicyLoading;
+
+Future<void> getPolicy({bool forceRefresh = false}) async {
+  // ✅ Cache check
+  final now = DateTime.now();
+  if (!forceRefresh &&
+      _policies.isNotEmpty &&
+      _lastPolicyFetch != null &&
+      now.difference(_lastPolicyFetch!) < _policyCacheDuration) {
+    debugPrint("✅ Using cached policies");
+    return;
+  }
+
+  _isPolicyLoading = true;
+  notifyListeners();
+
+  try {
+    final resp = await APIService.get(
+      UrlPath.ratingUrl.getPolicy, // 👉 add correct endpoint constant
+      auth: true,
+    );
+
+    if (resp.status) {
+      final List data = resp.fullBody['data'] ?? [];
+      _policies = data.map((e) => PolicyModel.fromJson(e)).toList();
+      _lastPolicyFetch = DateTime.now();
+    } else {
+      debugPrint("⚠️ Failed to fetch policies: ${resp.message}");
+      _policies = [];
+    }
+  } catch (e, st) {
+    debugPrint("❌ getPolicy error: $e");
+    debugPrintStack(stackTrace: st);
+    _policies = [];
+  }
+
+  _isPolicyLoading = false;
+  notifyListeners();
+}
+
+
+
+
+
 }

@@ -10,8 +10,8 @@ class LocationProvider extends ChangeNotifier {
 
   LocationModel? get currentLocation => _sessionLocation ?? _gpsLocation;
 
-  Future<void> loadGpsLocation() async {
-    await LocationService.fetchAndSaveLocation();
+  Future<void> loadGpsLocation({BuildContext? context}) async {
+    await LocationService.fetchAndSaveLocation(context: context);
     _gpsLocation = await LocationService.getSavedLocation();
     notifyListeners();
   }
