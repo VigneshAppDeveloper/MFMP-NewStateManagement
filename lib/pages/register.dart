@@ -9,7 +9,6 @@ import 'package:my_food_my_price/route_generator.dart';
 import 'package:my_food_my_price/services/secure_storage.dart';
 import 'package:my_food_my_price/util/app_contant.dart';
 import 'package:my_food_my_price/util/color_constant.dart';
-import 'package:my_food_my_price/util/constant_image.dart';
 import 'package:my_food_my_price/util/exception.dart';
 import 'package:my_food_my_price/util/styles.dart';
 import 'package:my_food_my_price/util/validator.dart';
@@ -162,7 +161,9 @@ class _RegisterState extends State<Register> {
                                 decoration: TextDecoration.underline,
                               ),
                               recognizer:
-                                  TapGestureRecognizer()..onTap = () {},
+                                  TapGestureRecognizer()..onTap = () {
+                                    AppRouteName.termsConditions.push(context);
+                                  },
                             ),
                           ],
                         ),

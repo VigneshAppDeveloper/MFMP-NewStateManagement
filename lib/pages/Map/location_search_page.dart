@@ -64,38 +64,48 @@ class _LocationSearchPageState extends State<LocationSearchPage> {
     await prefs.setStringList('recent_searches', recentSearches);
   }
 
-  Future<void> _selectPlace(String description, [String? placeId]) async {
-    _saveRecentSearch(description);
+ Future<void> _selectPlace(String description, [String? placeId]) async {
+  if (!mounted) return;
+  _saveRecentSearch(description);
 
-    // Get location details from placeId
-    if (placeId == null) return;
-    final detailUrl =
-        'https://maps.googleapis.com/maps/api/place/details/json?place_id=$placeId&key=${AppConstants.googleApiKey}';
+  if (placeId == null) return;
 
+  final detailUrl =
+      'https://maps.googleapis.com/maps/api/place/details/json?place_id=$placeId&key=${AppConstants.googleApiKey}';
+
+  try {
     final response = await http.get(Uri.parse(detailUrl));
-    if (response.statusCode == 200) {
-      final jsonData = json.decode(response.body);
-      final location = jsonData['result']['geometry']['location'];
-      final lat = location['lat'];
-      final lng = location['lng'];
+    if (response.statusCode != 200) return;
 
-      if (context.mounted) {
-        final confirmedLatLng = await Navigator.push<LatLng>(
-          context,
-          MaterialPageRoute(
-            builder: (_) => ConfirmLocationMapPage(latLng: LatLng(lat, lng)),
-          ),
-        );
+    final jsonData = json.decode(response.body);
+    final location = jsonData['result']?['geometry']?['location'];
+    if (location == null) return;
 
-        if (confirmedLatLng != null && mounted) {
-          Navigator.pop(
-            context,
-            confirmedLatLng,
-          ); // 👈 send LatLng back to HomePage
-        }
-      }
+    final lat = location['lat'];
+    final lng = location['lng'];
+
+    // ✅ Add this here before navigation
+    if (!mounted) return;
+    await Future.delayed(const Duration(milliseconds: 100));
+    if (!mounted) return;
+
+    final confirmedLatLng = await Navigator.push<LatLng>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ConfirmLocationMapPage(latLng: LatLng(lat, lng)),
+      ),
+    );
+
+    if (!mounted) return;
+    if (confirmedLatLng != null) {
+      Navigator.pop(context, confirmedLatLng);
     }
+  } catch (e) {
+    debugPrint('❌ Error fetching place details: $e');
   }
+}
+
+
 
   @override
   void dispose() {

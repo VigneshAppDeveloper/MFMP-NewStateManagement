@@ -14,7 +14,6 @@ class HomeSearchBar extends StatefulWidget {
     this.enableNavigation = true,
     this.isFlash = false, // default: used on Home/Flash page
     this.hintText = "Search for Biryani",
-    
   });
 
   final TextEditingController controller;
@@ -60,47 +59,51 @@ class _HomeSearchBarState extends State<HomeSearchBar> {
       data: MediaQuery.of(
         context,
       ).copyWith(textScaler: const TextScaler.linear(1.0)),
-      child: TextField(
-        controller: widget.controller,
-        focusNode: _focusNode,
-        textInputAction: TextInputAction.search,
-        cursorColor: Colors.grey,
-        style: Styles.textSmall(context),
-        readOnly: readOnly,
-        onChanged: readOnly ? null : widget.onChanged,
-        onSubmitted: (_) => FocusScope.of(context).unfocus(),
-        decoration: InputDecoration(
-          hintText:  widget.hintText,
-          hintStyle: Styles.textSmall(context),
-          filled: true,
-          fillColor: Colors.grey.shade100,
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(
-            vertical: 14,
-            horizontal: 16,
-          ),
-          suffixIcon:
-              showClearIcon && widget.controller.text.isNotEmpty
-                  ? IconButton(
-                    icon: const Icon(Icons.close, size: 18, color: Colors.grey),
-                    onPressed: () {
-                      widget.controller.clear();
-                      FocusScope.of(context).unfocus();
-                      widget.onChanged("");
-                    },
-                  )
-                  : const Icon(Icons.search, size: 20, color: Colors.black),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade100, width: 1),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade100, width: 1),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade100, width: 1),
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.05,
+        width: double.infinity,
+        child: TextField(
+          controller: widget.controller,
+          focusNode: _focusNode,
+          textInputAction: TextInputAction.search,
+          cursorColor: Colors.grey,
+          style: Styles.textSmall(context),
+          readOnly: readOnly,
+          onChanged: readOnly ? null : widget.onChanged,
+          onSubmitted: (_) => FocusScope.of(context).unfocus(),
+          decoration: InputDecoration(
+            hintText: widget.hintText,
+            hintStyle: Styles.textSmall(context),
+            filled: true,
+            fillColor: Colors.grey.shade100,
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 14,
+              horizontal: 16,
+            ),
+            suffixIcon:
+                showClearIcon && widget.controller.text.isNotEmpty
+                    ? IconButton(
+                      icon: const Icon(Icons.close, size: 15, color: Colors.grey),
+                      onPressed: () {
+                        widget.controller.clear();
+                        FocusScope.of(context).unfocus();
+                        widget.onChanged("");
+                      },
+                    )
+                    : const Icon(Icons.search, size: 20, color: Colors.black),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade100, width: 1),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade100, width: 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade100, width: 1),
+            ),
           ),
         ),
       ),
@@ -111,21 +114,21 @@ class _HomeSearchBarState extends State<HomeSearchBar> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: MediaQuery.of(context).size.height * 0.05,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade100,
-          borderRadius: BorderRadius.circular(12),
-        ),
+        // height: MediaQuery.of(context).size.height * 0.05,
+        // padding: const EdgeInsets.symmetric(horizontal: 14),
+        // decoration: BoxDecoration(
+        //   color: Colors.grey.shade100,
+        //   borderRadius: BorderRadius.circular(12),
+        // ),
         child: Row(
           children: [
-            const Icon(Icons.filter_alt_outlined, size: 20),
+            const Icon(Icons.filter_alt_outlined, size: 25),
             const SizedBox(width: 6),
-            Text(
-              "Filter",
-              style: Styles.textSmall(context),
-              textScaler: const TextScaler.linear(1.0),
-            ),
+            // Text(
+            //   "Filter",
+            //   style: Styles.textSmall(context),
+            //   textScaler: const TextScaler.linear(1.0),
+            // ),
           ],
         ),
       ),
@@ -160,7 +163,7 @@ class _HomeSearchBarState extends State<HomeSearchBar> {
                     showClearIcon: true,
                   ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 5),
         _buildFilterButton(context, widget.onFilterTap),
       ],
     );

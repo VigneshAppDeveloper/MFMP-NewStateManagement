@@ -74,8 +74,9 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
       final biddingExists = provider.menus.any(
         (m) => m.menuType.toLowerCase().trim() == 'bidding',
       );
-
+      if (!mounted) return;
       setState(() => hasBiddingMenu = biddingExists);
+      if (!mounted) return;
       if (widget.showPriceTabs && biddingExists) {
         provider.resumeAutoUpdaters(widget.restaurant.franchiseId);
         if (provider.timeSlots.isNotEmpty) {
@@ -188,14 +189,14 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                     runSpacing: 8,
                     children: [
                       _buildFilterChipModal(
-                        "Veg",
-                        "veg",
+                        "Vegetarian",
+                        "Vegetarian",
                         tempFilters,
                         setModalState,
                       ),
                       _buildFilterChipModal(
-                        "Non-Veg",
-                        "nonveg",
+                        "Non-Vegetarian",
+                        "Non-Vegetarian",
                         tempFilters,
                         setModalState,
                       ),
@@ -274,15 +275,15 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
       onSelected: (_) {
         setModalState(() {
           // 🟢 Veg = single select, others combine
-          if (value == 'veg') {
+          if (value == 'Vegetarian') {
             tempFilters
               ..clear()
-              ..add('veg');
+              ..add('Vegetarian');
           } else {
             if (tempFilters.contains(value)) {
               tempFilters.remove(value);
             } else {
-              tempFilters.remove('veg');
+              tempFilters.remove('Vegetarian');
               tempFilters.add(value);
             }
           }
@@ -416,7 +417,7 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                                       selectedTab == "Fixed Discount Price"
                                           ? Colors.black
                                           : Colors.grey,
-                                  borderRadius: BorderRadius.circular(8),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
                                 alignment: Alignment.center,
                                 child: Text(
@@ -459,7 +460,7 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                                         selectedTab == "Price Discovery"
                                             ? Colors.black
                                             : Colors.grey,
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
                                   alignment: Alignment.center,
                                   child: Text(
@@ -478,7 +479,12 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                     ),
                   ),
 
-                SliverToBoxAdapter(child: SizedBox(height: size.height * 0.02)),
+                if (selectedTab == "Fixed Discount Price" &&
+                    (provider.isFlashMode ||
+                        provider.selectedPickupDate != null))
+                  SliverToBoxAdapter(
+                    child: SizedBox(height: size.height * 0.02),
+                  ),
 
                 /// 🔍 Search bar
                 if (selectedTab == "Fixed Discount Price" &&
@@ -535,7 +541,7 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                       ),
                     ),
                   ),
-                SliverToBoxAdapter(child: SizedBox(height: size.height * 0.02)),
+                SliverToBoxAdapter(child: SizedBox(height: size.height * 0.00)),
 
                 /// 🍱 Menu List or TimeSlot List
                 Consumer<MenuProvider>(
@@ -565,20 +571,37 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                       if (selectedFilters.isNotEmpty) {
                         displayMenus =
                             displayMenus.where((m) {
-                              final isVeg = m.dietType.toLowerCase() == 'veg';
-                              final isHalal = m.halal.toLowerCase() == 'yes';
+                              final diet =
+                                  (m.dietType ?? "").toLowerCase().trim();
+                              final halal = (m.halal ?? "").trim();
 
-                              if (selectedFilters.contains('veg')) return isVeg;
-                              if (selectedFilters.contains('nonveg') &&
-                                  selectedFilters.contains('halal')) {
-                                return !isVeg && isHalal;
+                              final isVeg = diet == "vegetarian";
+                              final isNonVeg = diet == "non-vegetarian";
+                              final isHalal = halal == "1";
+
+                              // User selected "Vegetarian"
+                              if (selectedFilters.contains("Vegetarian")) {
+                                return isVeg;
                               }
-                              if (selectedFilters.contains('nonveg')) {
-                                return !isVeg;
+
+                              // User selected "Non-Vegetarian"
+                              if (selectedFilters.contains("Non-Vegetarian") &&
+                                  !selectedFilters.contains("halal")) {
+                                return isNonVeg;
                               }
-                              if (selectedFilters.contains('halal')) {
-                                return isHalal;
+
+                              // User selected "Halal" only → should show only NON-VEG + HALAL
+                              if (selectedFilters.contains("halal") &&
+                                  !selectedFilters.contains("Non-Vegetarian")) {
+                                return isHalal && isNonVeg;
                               }
+
+                              // User selected both NON-VEG + HALAL
+                              if (selectedFilters.contains("Non-Vegetarian") &&
+                                  selectedFilters.contains("halal")) {
+                                return isNonVeg && isHalal;
+                              }
+
                               return true;
                             }).toList();
                       }

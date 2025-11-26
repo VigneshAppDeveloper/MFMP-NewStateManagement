@@ -17,7 +17,6 @@ class RestaurantCard extends StatefulWidget {
   State<RestaurantCard> createState() => _RestaurantCardState();
 }
 
-
 class _RestaurantCardState extends State<RestaurantCard> {
   List<String> _foodTypeAssets() {
     final icons = <String>[];
@@ -33,7 +32,7 @@ class _RestaurantCardState extends State<RestaurantCard> {
     return icons;
   }
 
-Timer? _timer;
+  Timer? _timer;
   Duration _remaining = Duration.zero;
   bool _expired = false;
 
@@ -66,65 +65,69 @@ Timer? _timer;
   }
 
   String _twoDigits(int n) => n.toString().padLeft(2, '0');
-  
-void _showCertificateDialog(
-  BuildContext context,
-  String title,
-  String imageUrl,
-) {
-  showDialog(
-    context: context,
-    barrierDismissible: true,
-    builder: (_) {
-      final size = MediaQuery.of(context).size;
-      return Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(16),
-        child: Stack(
-          alignment: Alignment.topRight,
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.all(10),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: InteractiveViewer(
-                  minScale: 0.8,
-                  maxScale: 4.0,
-                  child: CachedNetworkImage(
-                    imageUrl: imageUrl,
-                    width: size.width * 0.9,
-                    fit: BoxFit.contain,
-                    placeholder:
-                        (_, __) =>
-                            const Center(child: CircularProgressIndicator()),
-                    errorWidget:
-                        (_, __, ___) => const Icon(
-                          Icons.broken_image,
-                          size: 60,
-                          color: Colors.grey,
-                        ),
+
+  void _showCertificateDialog(
+    BuildContext context,
+    String title,
+    String imageUrl,
+  ) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) {
+        final size = MediaQuery.of(context).size;
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(16),
+          child: Stack(
+            alignment: Alignment.topRight,
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.all(10),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: InteractiveViewer(
+                    minScale: 0.8,
+                    maxScale: 4.0,
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      width: size.width * 0.9,
+                      fit: BoxFit.contain,
+                      placeholder:
+                          (_, __) =>
+                              const Center(child: CircularProgressIndicator()),
+                      errorWidget:
+                          (_, __, ___) => const Icon(
+                            Icons.broken_image,
+                            size: 60,
+                            color: Colors.grey,
+                          ),
+                    ),
                   ),
                 ),
               ),
-            ),
-            Positioned(
-              top: 6,
-              right: 6,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.black87, size: 22),
-                onPressed: () => Navigator.of(context).pop(),
+              Positioned(
+                top: 6,
+                right: 6,
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.close,
+                    color: Colors.black87,
+                    size: 22,
+                  ),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
               ),
-            ),
-          ],
-        ),
-      );
-    },
-  );
-}
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -154,7 +157,8 @@ void _showCertificateDialog(
                   height: imageSide,
                   width: imageSide,
                   fit: BoxFit.cover,
-                  placeholder: (_, __) => const Center(child: FullScreenLoader()),
+                  placeholder:
+                      (_, __) => const Center(child: FullScreenLoader()),
                   errorWidget:
                       (_, __, ___) => Image.asset(
                         "assets/icons/product-1.jpg",
@@ -168,7 +172,10 @@ void _showCertificateDialog(
                   left: 6,
                   right: 6,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 4,
+                      horizontal: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColor.maincolor,
                       borderRadius: BorderRadius.circular(6),
@@ -232,8 +239,8 @@ void _showCertificateDialog(
                             child: Tooltip(
                               message: "FSSAI Certificate",
                               child: Image.asset(
-                                "assets/figmaIcons/fssi.jpeg",
-                                height: 20,
+                                "assets/figmaIcons/fssai.png",
+                                height: 15,
                               ),
                             ),
                           ),
@@ -254,7 +261,10 @@ void _showCertificateDialog(
                       SizedBox(width: size.width * 0.01),
                       Text(
                         "${data.franchiseRating} Ratings",
-                        style: Styles.textSmall(context, color: Colors.black87),
+                        style: Styles.textSmall(
+                          context,
+                          color: Colors.black87,
+                        ).copyWith(fontWeight: FontWeight.w600),
                         textScaler: const TextScaler.linear(1.0),
                       ),
                       //  const Spacer(),
@@ -263,7 +273,7 @@ void _showCertificateDialog(
                         height: size.height * 0.028,
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          children: 
+                          children:
                               _foodTypeAssets()
                                   .map(
                                     (path) => Padding(
@@ -287,7 +297,9 @@ void _showCertificateDialog(
                     context,
                     Icons.location_on_outlined,
                     "${(data.distanceKm ?? 0).toStringAsFixed(2)} km • ${data.address}",
+                    fontWeight: FontWeight.w600,
                   ),
+
                   SizedBox(height: size.height * 0.004),
 
                   // 🍽 Description
@@ -296,6 +308,7 @@ void _showCertificateDialog(
                     Icons.ramen_dining_outlined,
                     data.description.titleCase,
                     maxLines: 1,
+                    // fontWeight: FontWeight.w400,   // or null → default
                   ),
                 ],
               ),
@@ -312,6 +325,7 @@ void _showCertificateDialog(
     String text, {
     Color leadingColor = Colors.black54,
     int maxLines = 2,
+    FontWeight? fontWeight, // NEW optional argument
   }) {
     final size = MediaQuery.of(context).size;
 
@@ -320,10 +334,13 @@ void _showCertificateDialog(
       children: [
         Icon(icon, size: size.width * 0.045, color: leadingColor),
         SizedBox(width: size.width * 0.02),
+
         Expanded(
           child: ExpandableText(
             text.titleCase,
-            style: Styles.textSmall(context, color: Colors.black87),
+            style: Styles.textSmall(context, color: Colors.black87).copyWith(
+              fontWeight: fontWeight, // apply only when provided
+            ),
             textScaler: const TextScaler.linear(1.0),
           ),
         ),

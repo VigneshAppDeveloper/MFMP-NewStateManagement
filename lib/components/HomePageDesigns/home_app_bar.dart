@@ -123,9 +123,13 @@ class HomeAppBar extends StatelessWidget {
                 AppRouteName.appSettingsPage.push(context);
               },
               child: const CircleAvatar(
-                radius: 19,
+                radius: 15,
                 backgroundColor: Colors.black,
-                child: Icon(Icons.person_outline, color: Colors.white),
+                child: Icon(
+                  Icons.person_outline,
+                  color: Colors.white,
+                  size: 18,
+                ),
               ),
             ),
           ],

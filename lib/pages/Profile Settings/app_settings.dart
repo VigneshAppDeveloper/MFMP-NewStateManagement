@@ -130,7 +130,6 @@ class _AppSettingsState extends State<AppSettings> {
                       ),
                     ),
                   ),
-
                   HeadingSection(
                     title: "My Orders",
                     children: [

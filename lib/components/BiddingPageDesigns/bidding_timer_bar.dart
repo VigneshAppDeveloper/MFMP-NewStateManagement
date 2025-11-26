@@ -68,14 +68,16 @@ class BiddingTimerBar extends StatelessWidget {
           style: Styles.textStyleMediumBold(context),
           textScaler: const TextScaler.linear(1.0),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 5),
         Text(
           "Top 5% Bidders will win",
           style: Styles.textStyleMediumBold(context, color: Colors.green),
           textScaler: const TextScaler.linear(1.0),
         ),
-        const SizedBox(height: 15),
+        //const SizedBox(height: 15),
       ],
     );
   }
 }
+
+

@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -53,6 +56,7 @@ class _OtpState extends State<Otp> with CodeAutoFill {
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await getdata();
+      await Future.delayed(const Duration(milliseconds: 500));
       await getToken();
       getAppSignature();
       codeUpdated();
@@ -60,7 +64,24 @@ class _OtpState extends State<Otp> with CodeAutoFill {
   }
 
   void listenOtp() async {
-    await SmsAutoFill().listenForCode();
+    try {
+      if (Platform.isAndroid) {
+        final deviceInfo = DeviceInfoPlugin();
+        final androidInfo = await deviceInfo.androidInfo;
+        final brand = androidInfo.brand?.toLowerCase();
+
+        // ✅ Disable for buggy ROMs
+        if (brand?.contains("samsung") == true ||
+            brand?.contains("realme") == true) {
+          debugPrint("⚠️ SMS auto-retrieval disabled for $brand");
+          return;
+        }
+      }
+
+      await SmsAutoFill().listenForCode();
+    } catch (e, st) {
+      debugPrint("⚠️ SmsAutoFill listen failed: $e");
+    }
   }
 
   @override
@@ -111,11 +132,31 @@ class _OtpState extends State<Otp> with CodeAutoFill {
     }
   }
 
-  getToken() async {
-    tokenFCM = (await FirebaseMessaging.instance.getToken())!;
-    if (tokenFCM != null) {
-      if (kDebugMode) print("Device token Login : $tokenFCM");
-      tokenFCM = tokenFCM;
+  Future<void> getToken() async {
+    try {
+      final messaging = FirebaseMessaging.instance;
+      final token = await messaging.getToken().timeout(
+        const Duration(seconds: 10),
+      );
+
+      if (!mounted) return;
+      if (token != null && token.isNotEmpty) {
+        tokenFCM = token;
+        if (kDebugMode) debugPrint("✅ FCM Token fetched: $tokenFCM");
+      } else {
+        if (kDebugMode) debugPrint("⚠️ FCM token is null or empty");
+        tokenFCM = "";
+      }
+    } on TimeoutException {
+      if (kDebugMode) debugPrint("⚠️ FCM token request timed out");
+      tokenFCM = "";
+    } on FirebaseException catch (e) {
+      if (kDebugMode)
+        debugPrint("⚠️ Firebase token error: ${e.code} - ${e.message}");
+      tokenFCM = "";
+    } catch (e) {
+      if (kDebugMode) debugPrint("❌ Unexpected FCM token error: $e");
+      tokenFCM = "";
     }
   }
 
@@ -137,7 +178,7 @@ class _OtpState extends State<Otp> with CodeAutoFill {
               mobile: mobile.text,
               otp: otp.text,
               tokenFCM: tokenFCM ?? "",
-              context: context
+              context: context,
             );
           },
           afterComplete: (resp) async {
@@ -172,9 +213,9 @@ class _OtpState extends State<Otp> with CodeAutoFill {
   @override
   void dispose() {
     // TODO: implement dispose
-    super.dispose();
     _timer.cancel();
     cancel();
+    super.dispose();
   }
 
   @override
@@ -385,7 +426,7 @@ class _OtpState extends State<Otp> with CodeAutoFill {
                                     mobile: mobile.text,
                                     otp: otp.text,
                                     tokenFCM: tokenFCM ?? "",
-                                    context: context
+                                    context: context,
                                   );
                                 },
                                 afterComplete: (resp) async {

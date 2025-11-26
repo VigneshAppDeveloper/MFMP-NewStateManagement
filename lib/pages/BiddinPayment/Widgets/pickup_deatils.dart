@@ -104,7 +104,8 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
 
     final Map<String, String> blockedReasons = {
       for (var b in blockedDates)
-        DateFormat('dd-MM-yyyy').format(DateTime.parse(b.date)): b.reason,
+        if (DateTime.tryParse(b.date) != null)
+          DateFormat('dd-MM-yyyy').format(DateTime.parse(b.date)): b.reason,
     };
 
     // ✅ Get accurate current IST time using global NtpService
@@ -353,22 +354,22 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
             SizedBox(height: size.height * 0.008),
             _pickupPointDropdown(context),
             Divider(height: size.height * 0.02, thickness: 0.6),
-          if (!widget.fromFlashPage) ...[
-            Text(
-              "Pickup Date",
-              style: Styles.textStyleMediumBold(context),
-              textScaler: const TextScaler.linear(1.0),
-            ),
-            SizedBox(height: size.height * 0.008),
-            _dateContainer(
-              context,
-              icon: Icons.calendar_today,
-              date: DateFormat('dd-MM-yyyy').format(selectedDate),
-              onTap: () => _showCalendar(context),
-            ),
-          
-            Divider(height: size.height * 0.04, thickness: 0.6),
-          ],
+            if (!widget.fromFlashPage) ...[
+              Text(
+                "Pickup Date",
+                style: Styles.textStyleMediumBold(context),
+                textScaler: const TextScaler.linear(1.0),
+              ),
+              SizedBox(height: size.height * 0.008),
+              _dateContainer(
+                context,
+                icon: Icons.calendar_today,
+                date: DateFormat('dd-MM-yyyy').format(selectedDate),
+                onTap: () => _showCalendar(context),
+              ),
+
+              Divider(height: size.height * 0.04, thickness: 0.6),
+            ],
 
             if (!widget.fromFlashPage) ...[
               Text(

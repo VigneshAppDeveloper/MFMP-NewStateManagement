@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:my_food_my_price/route_generator.dart';
+import 'package:my_food_my_price/util/color_constant.dart';
 import 'package:my_food_my_price/util/styles.dart';
 import 'package:provider/provider.dart';
 
@@ -12,7 +14,6 @@ import '../components/HomePageDesigns/food_category_header.dart';
 import '../components/HomePageDesigns/restaurant_wiget.dart';
 import '../models/FoodModels/food_model.dart';
 
-import '../util/color_constant.dart';
 import '../widgets/app_shimmer.dart';
 import '../widgets/dilogue/dilogue.dart';
 import '../widgets/shimmer_type.dart';
@@ -33,7 +34,7 @@ class _FlashSalePageState extends State<FlashSalePage> {
   Duration _remaining = const Duration(hours: 1);
   Timer? _countdownTimer;
   late VoidCallback _locationListener;
-  late final LocationProvider _locationProvider;  
+  late final LocationProvider _locationProvider;
   @override
   void initState() {
     super.initState();
@@ -55,7 +56,7 @@ class _FlashSalePageState extends State<FlashSalePage> {
 
       // 🔹 Auto-refresh on location change
       _locationListener = () async {
-         final newLocation = _locationProvider.currentLocation;
+        final newLocation = _locationProvider.currentLocation;
         if (newLocation != null) {
           await restaurantProvider.getRestaurants(
             lat: newLocation.latitude,
@@ -73,7 +74,7 @@ class _FlashSalePageState extends State<FlashSalePage> {
     final provider = context.read<RestaurantProvider>();
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-       final location = _locationProvider.currentLocation;
+      final location = _locationProvider.currentLocation;
       if (location != null) {
         await provider.loadNextPageIfNeeded(
           lat: location.latitude,
@@ -138,6 +139,7 @@ class _FlashSalePageState extends State<FlashSalePage> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: RefreshIndicator(
+           color: AppColor.maincolor,
         onRefresh: getRestaurantsList,
         child: Stack(
           children: [
@@ -171,7 +173,7 @@ class _FlashSalePageState extends State<FlashSalePage> {
                     if (provider.categories.isEmpty) {
                       return SliverToBoxAdapter(
                         child: Text(
-                          "No categories available",
+                          "",
                           textAlign: TextAlign.center,
                           style: Styles.textStyleMedium(context),
                           textScaler: const TextScaler.linear(1.0),
@@ -197,27 +199,19 @@ class _FlashSalePageState extends State<FlashSalePage> {
   }
 
   Widget _buildDivider(Size size) => SliverToBoxAdapter(
-    child: Row(
-      children: [
-        const Expanded(child: Divider(color: Colors.grey, thickness: .5)),
-        Container(
-          height: size.height * 0.055,
-          padding: EdgeInsets.symmetric(horizontal: size.width * 0.06),
-          decoration: BoxDecoration(
-            color: AppColor.blackColor,
-            borderRadius: BorderRadius.circular(25),
-            border: Border.all(color: Colors.white, width: 0.5),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            'Choose your Favourite Restaurant',
-            style: Styles.textSmall(context, color: Colors.white),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        children: [
+          Text(
+            "Choose your Favourite Restaurant",
             textScaler: const TextScaler.linear(1.0),
-            textAlign: TextAlign.center,
+            style: Styles.textStyleMedium(context),
           ),
-        ),
-        const Expanded(child: Divider(color: Colors.grey, thickness: .5)),
-      ],
+          SizedBox(width: 5),
+          Expanded(child: Divider()),
+        ],
+      ),
     ),
   );
 
@@ -286,9 +280,9 @@ class _FoodCategoryHeader extends SliverPersistentHeaderDelegate {
   _FoodCategoryHeader(this.categories);
 
   // heights
-  double get _headerHeight => 48.0; // title row height
-  double get _spacing => 8.0; // gap below title
-  double get _listHeight => 120.0; // horizontal list height
+  double get _headerHeight => 40.0; // title row height
+  double get _spacing => 5.0; // gap below title
+  double get _listHeight => 100.0; // horizontal list height
   double get _totalHeight => _headerHeight + _spacing + _listHeight;
 
   @override
@@ -339,6 +333,8 @@ class _FoodCategoryHeader extends SliverPersistentHeaderDelegate {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
+                          height: size.height * 0.07,
+                          width: size.height * 0.07,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: Colors.grey.shade100,
@@ -347,13 +343,36 @@ class _FoodCategoryHeader extends SliverPersistentHeaderDelegate {
                               width: 1,
                             ),
                           ),
-                          padding: const EdgeInsets.all(10),
-                          child: Image.network(
-                            c.image,
-                            height: size.height * 0.06,
-                            width: size.height * 0.06,
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => Icon(Icons.fastfood),
+                          padding: const EdgeInsets.all(4),
+                          child: ClipOval(
+                            child: CachedNetworkImage(
+                              imageUrl: c.image,
+                              fit: BoxFit.cover,
+                              width: size.height * 0.07,
+                              height: size.height * 0.07,
+                              placeholder:
+                                  (context, url) => Container(
+                                    color: Colors.grey.shade200,
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.fastfood,
+                                        size: 20,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                              errorWidget:
+                                  (context, url, error) => Container(
+                                    color: Colors.grey.shade200,
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.fastfood,
+                                        size: 20,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 6),

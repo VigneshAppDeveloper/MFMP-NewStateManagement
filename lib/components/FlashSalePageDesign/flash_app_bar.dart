@@ -38,8 +38,8 @@ class FlashBanner extends StatelessWidget {
           fit: BoxFit.cover,
         ),
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(50),
-          bottomRight: Radius.circular(50),
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
         ),
       ),
       child: SafeArea(
@@ -49,16 +49,19 @@ class FlashBanner extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const FlashTopRow(),
-            SizedBox(height: size.height * 0.012),
+            SizedBox(height: size.height * 0.018),
 
             // ✅ unified search bar design
-            HomeSearchBar(
-              controller: searchController,
-              enableNavigation: true, // tap → RestaurantSearchPage
-              isFlash: true,
-               hintText: "Search for flash restaurants",
-             onFilterTap: onFilterTap,
-              onChanged: (_) {}, // no local logic
+            Padding(
+              padding: const EdgeInsets.fromLTRB(30,0,0,0),
+              child: HomeSearchBar(
+                controller: searchController,
+                enableNavigation: true, // tap → RestaurantSearchPage
+                isFlash: true,
+                 hintText: "Search for flash restaurants",
+               onFilterTap: onFilterTap,
+                onChanged: (_) {}, // no local logic
+              ),
             ),
 
             SizedBox(height: size.height * 0.02),

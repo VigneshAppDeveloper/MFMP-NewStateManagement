@@ -114,13 +114,14 @@ class AppPagesState extends State<AppPages> {
                   label: 'Home',
                   index: 0,
                 ),
+                SizedBox(width: 28),
                 Expanded(
                   child: Stack(
                     alignment: Alignment.center,
                     clipBehavior: Clip.none,
                     children: [
                       Positioned(
-                        top: -22,
+                        top: -23,
                         child: GestureDetector(
                           onTap: () {
                             final newIndex = _currentIndex == 1 ? 0 : 1;
@@ -153,12 +154,12 @@ class AppPagesState extends State<AppPages> {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                _currentIndex == 1 ? "List View" : "Map View",
+                                _currentIndex == 1 ? "List View" : "Explore Map",
                                 style: TextStyle(
                                   color: _currentIndex == 1
                                       ? AppColor.maincolor
                                       : Colors.black,
-                                  fontSize: 12,
+                                  fontSize: 14.5,
                                 ),
                                 textAlign: TextAlign.center,
                                 textScaler: const TextScaler.linear(1.0),
@@ -172,6 +173,7 @@ class AppPagesState extends State<AppPages> {
                     ],
                   ),
                 ),
+                 SizedBox(width: 28),
                 _buildNavItem(
                   assetPath: "assets/figmaIcons/offerbottom.png",
                   label: 'Flash Offer',
@@ -215,7 +217,7 @@ class AppPagesState extends State<AppPages> {
                 label,
                 style: TextStyle(
                   color: isSelected ? AppColor.maincolor : Colors.black,
-                  fontSize: 12,
+                  fontSize: 14.5,
                 ),
                 textScaler: const TextScaler.linear(1.0),
               ),

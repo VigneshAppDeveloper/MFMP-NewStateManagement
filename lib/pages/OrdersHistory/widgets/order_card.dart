@@ -581,12 +581,12 @@ class OrderCard extends StatelessWidget {
                       SizedBox(height: size.height * 0.008),
                       if ((order.flashContact?.isNotEmpty ?? false)) ...[
                         Text(
-                          "Name: ${order.flashContact!.first.name} * (Res Contact person name).",
+                          "Name: ${order.flashContact!.first.name} ",
                           style: Styles.textSmall(context),
                           textScaler: const TextScaler.linear(1.0),
                         ),
                         Text(
-                          "Phone: ${order.flashContact!.first.contact} * (Res Contact person number).",
+                          "Phone: ${order.flashContact!.first.contact} ",
                           style: Styles.textSmall(context),
                           textScaler: const TextScaler.linear(1.0),
                         ),

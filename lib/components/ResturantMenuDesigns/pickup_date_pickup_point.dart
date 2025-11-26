@@ -62,7 +62,7 @@ class PickupDatePickupPointState extends State<PickupDatePickupPoint> {
               ),
               decoration: BoxDecoration(
                 color: const Color(0xFFF5F5F5),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
                 children: [
@@ -77,7 +77,7 @@ class PickupDatePickupPointState extends State<PickupDatePickupPoint> {
                     ),
                   ),
                   Icon(
-                    Icons.calendar_today,
+                    Icons.calendar_month_rounded,
                     size: 18,
                     color:
                         widget.fromFlashPage
@@ -104,7 +104,8 @@ class PickupDatePickupPointState extends State<PickupDatePickupPoint> {
     final blockedDates = widget.restaurant.blockoutDates;
     final Map<String, String> blockedReasons = {
       for (var b in blockedDates)
-        DateFormat('dd-MM-yyyy').format(DateTime.parse(b.date)): b.reason,
+        if (DateTime.tryParse(b.date) != null)
+          DateFormat('dd-MM-yyyy').format(DateTime.parse(b.date)): b.reason,
     };
 
     final ntpService = NtpService();
@@ -144,12 +145,12 @@ class PickupDatePickupPointState extends State<PickupDatePickupPoint> {
                 })
                 .map((b) => DateTime.parse(b.date))
                 .toList();
-if (!mounted) return;
+    if (!mounted) return;
     debugPrint(
       "📆 Final Blocked Dates: ${blockedDateList.map((e) => e.toIso8601String()).toList()}",
     );
 
-  await  showDialog(
+    await showDialog(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
@@ -171,43 +172,59 @@ if (!mounted) return;
                     'dd-MM-yyyy',
                   ).format(date);
 
+                  // 🚫 1. Ignore dates before or after allowed range
                   if (date.isBefore(firstDate) || date.isAfter(lastDate)) {
                     return;
-                  } else if (blockedDateList.any(
+                  }
+
+                  // 🚫 2. Handle BLOCKED date (Show dialog + STOP, no API call)
+                  final bool isBlocked = blockedDateList.any(
                     (d) =>
                         d.year == date.year &&
                         d.month == date.month &&
                         d.day == date.day,
-                  )) {
+                  );
+
+                  if (isBlocked) {
                     _showBlockedDateReasonDialog(
                       dialogContext,
                       formattedDisplay,
                       blockedReasons,
                     );
-                  } 
+                    return; // ❗ MUST STOP HERE
+                  }
+
+                  // ✅ 3. Safe set selected date
                   if (!mounted) return;
-              setState(() => _selectedDate = date);
-                 final menuProvider = safeContext.read<MenuProvider>();
-              menuProvider.setPickupDate(date);
-              Navigator.of(dialogContext).pop();
+                  setState(() => _selectedDate = date);
 
-                    final formatted = DateFormat('yyyy-MM-dd').format(date);
-                    await menuProvider.getRestaurantMenu(
-                widget.restaurant.franchiseId,
-                forceRefresh: true,
-                isFlash: widget.fromFlashPage,
-                pickupDate: formatted,
-              );
-                    
-                    final hasBidding = menuProvider.menus.any(
-                      (m) => m.menuType.toLowerCase().trim() == 'bidding',
-                    );
+                  final menuProvider = safeContext.read<MenuProvider>();
+                  menuProvider.setPickupDate(date);
 
-                    if (widget.onMenuReloaded != null) {
-                      widget.onMenuReloaded!(hasBidding);
-                    }
-                  
+                  // Close calendar popup
+                  Navigator.of(dialogContext).pop();
+
+                  // Format pickup date for API
+                  final formatted = DateFormat('yyyy-MM-dd').format(date);
+
+                  // 🔥 4. Fetch menu for selected date
+                  await menuProvider.getRestaurantMenu(
+                    widget.restaurant.franchiseId,
+                    forceRefresh: true,
+                    isFlash: widget.fromFlashPage,
+                    pickupDate: formatted,
+                  );
+
+                  // 🔄 5. Check if bidding exists and notify parent
+                  final hasBidding = menuProvider.menus.any(
+                    (m) => m.menuType.toLowerCase().trim() == 'bidding',
+                  );
+
+                  if (widget.onMenuReloaded != null) {
+                    widget.onMenuReloaded!(hasBidding);
+                  }
                 },
+
                 todayTextStyle: Styles.textStyleMediumBold(
                   context,
                   color: Colors.white,

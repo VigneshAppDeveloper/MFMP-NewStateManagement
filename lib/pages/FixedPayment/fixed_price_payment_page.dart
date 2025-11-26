@@ -365,6 +365,7 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
                       remainingWalletAmount,
                     );
                   } else {
+                    debugPrint("❌ Payment failed or cancelled");
                     await AppRouteName.fixedPricePaymentFailedPage.push(
                       context,
                     );

@@ -162,8 +162,8 @@ class _BiddingPaymentPageState extends State<BiddingPaymentPage> {
         builder: (context) {
           final data = priceData;
           final payable = data?.payable ?? 0.0;
-          final gst = data?.gst ?? 0.0;
-          final walletUsed = data?.walletUsed ?? 0.0;
+          // final gst = data?.gst ?? 0.0;
+          // final walletUsed = data?.walletUsed ?? 0.0;
 
           return SizedBox(
             width: MediaQuery.of(context).size.width * 0.9,
@@ -259,9 +259,10 @@ class _BiddingPaymentPageState extends State<BiddingPaymentPage> {
             pickupDate: apiPickupDate,
             contactCustomer: restaurantContact ? 1 : 0,
             timerId: widget.winners.first.timerId ?? "",
-            message: messageController.text.trim().isNotEmpty
-      ? messageController.text.trim()
-      : null, // ✅ added line
+            message:
+                messageController.text.trim().isNotEmpty
+                    ? messageController.text.trim()
+                    : null, // ✅ added line
           );
         },
         afterComplete: (result) async {
@@ -328,7 +329,15 @@ class _BiddingPaymentPageState extends State<BiddingPaymentPage> {
                       remainingWalletAmount,
                     );
                   } else {
-                    await AppRouteName.biddingPaymentFailedPage.push(context);
+                    debugPrint("❌ Payment failed or cancelled");
+                    await AppRouteName.biddingPaymentFailedPage.push(
+                      context,
+                      args: {
+                        "winners": widget.winners,
+                        "franchiseId": widget.winners.first.franchiseId,
+                        "timerId": widget.winners.first.timerId ?? "",
+                      },
+                    );
                   }
                 },
               );

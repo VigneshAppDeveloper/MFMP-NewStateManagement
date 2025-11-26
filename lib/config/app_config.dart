@@ -7,11 +7,11 @@ class AppConfig {
   String get baseUrl {
     switch (F.appFlavor) {
       case Flavor.prod:
-        return 'https://mfmpdev.tsitcloud.com/tsit_biriyani_palayam-dev/public/api/';
+        return 'https://myfoodmyprice.com/Applications/public/api/';
       case Flavor.dev:
-        return 'https://mfmpdev.tsitcloud.com/tsit_biriyani_palayam-dev/public/api/';
+        return 'https://myfoodmyprice.com/Applications/public/api/';
       case Flavor.demo:
-        return 'https://tabsquareinfotech.com/App/Clients/biriyani_palayam/public/api/';
+        return 'https://mfmpdev.tsitcloud.com/tsit_biriyani_palayam-dev/public/api/';
       default:
         return 'https://myfoodmyprice.com/Applications/public/api/';
     }
@@ -21,6 +21,7 @@ class AppConfig {
    String get storageBaseUrl {
     switch (F.appFlavor) {
       case Flavor.prod:
+        return 'https://myfoodmyprice.com/Applications/storage/app/';
       case Flavor.dev:
         return 'https://mfmpdev.tsitcloud.com/tsit_biriyani_palayam-dev/storage/app/';
       case Flavor.demo:

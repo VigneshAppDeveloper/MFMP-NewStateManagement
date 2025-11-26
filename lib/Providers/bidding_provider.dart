@@ -48,6 +48,13 @@ class BiddingProvider extends ChangeNotifier {
   Duration? _ntpOffset;
   // 🆕 Cache NTP offset for accuracy
   bool _disposed = false;
+
+  bool _freezeUpdates = false;
+
+  void freezeUpdates(bool value) {
+    _freezeUpdates = value;
+  }
+
   @override
   void dispose() {
     _disposed = true;
@@ -118,6 +125,7 @@ class BiddingProvider extends ChangeNotifier {
     String timerId, {
     bool silent = false,
   }) async {
+    if (_freezeUpdates) return; 
     if (_isPolling) return;
     _isPolling = true;
     if (!silent) _isLoading = true;
@@ -213,6 +221,7 @@ class BiddingProvider extends ChangeNotifier {
     int failures = 0;
 
     _pollTimer = Timer.periodic(Duration(seconds: interval), (timer) async {
+      if (_freezeUpdates) return;  
       if (_biddingEnded) {
         timer.cancel();
         await _fetchWinnersAfterEnd(timerId);
@@ -266,12 +275,12 @@ class BiddingProvider extends ChangeNotifier {
 
   // ---------- STOP ----------
   void stopAll() {
-  _pollTimer?.cancel();
-  _pollTimer = null;
-  _countdownTimer?.cancel();
-  _countdownTimer = null;
-  debugPrint("🛑 Stopped all bidding timers");
-}
+    _pollTimer?.cancel();
+    _pollTimer = null;
+    _countdownTimer?.cancel();
+    _countdownTimer = null;
+    debugPrint("🛑 Stopped all bidding timers");
+  }
 
   void clearData() {
     stopAll();

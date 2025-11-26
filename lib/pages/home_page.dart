@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:my_food_my_price/Providers/location_provider.dart';
@@ -43,7 +44,7 @@ class _HomePageState extends State<HomePage> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final restaurantProvider = context.read<RestaurantProvider>();
-      _locationProvider = context.read<LocationProvider>(); 
+      _locationProvider = context.read<LocationProvider>();
 
       if (!initializedRestaurant) {
         getRestaurantsList(); // first load
@@ -53,7 +54,7 @@ class _HomePageState extends State<HomePage> {
 
       // 🔹 Listen for location updates globally
       _locationListener = () async {
-       final newLocation = _locationProvider.currentLocation;
+        final newLocation = _locationProvider.currentLocation;
         if (newLocation != null) {
           await restaurantProvider.getRestaurants(
             lat: newLocation.latitude,
@@ -63,7 +64,7 @@ class _HomePageState extends State<HomePage> {
         }
       };
 
-       _locationProvider.addListener(_locationListener);
+      _locationProvider.addListener(_locationListener);
     });
   }
 
@@ -126,6 +127,7 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: Colors.white,
       body: SafeArea(
         child: RefreshIndicator(
+           color: AppColor.maincolor,
           onRefresh: getRestaurantsList,
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
@@ -146,14 +148,14 @@ class _HomePageState extends State<HomePage> {
                       floating: true,
                       snap: true,
                       elevation: 0,
-                      toolbarHeight: size.height * 0.075,
+                      toolbarHeight: size.height * 0.065,
                       automaticallyImplyLeading: false,
                       flexibleSpace: HomeSearchBar(
                         controller: _searchController,
                         enableNavigation:
                             true, // default, opens RestaurantSearchPage
                         isFlash: false,
-                        hintText: "Search for restaurants",
+                        hintText: "Search for restaurantss",
                         onFilterTap: () {
                           AppRouteName.restaurantSearchPage.push(
                             context,
@@ -163,7 +165,6 @@ class _HomePageState extends State<HomePage> {
                         onChanged: (_) {},
                       ),
                     ),
-
                     // ✅ Only show banners and categories when not searching
                     SliverToBoxAdapter(child: HomeBanner()),
                     SliverToBoxAdapter(
@@ -184,7 +185,7 @@ class _HomePageState extends State<HomePage> {
                         if (provider.categories.isEmpty) {
                           return SliverToBoxAdapter(
                             child: Text(
-                              "No categories available",
+                              "",
                               textAlign: TextAlign.center,
                               style: Styles.textStyleMedium(context),
                               textScaler: const TextScaler.linear(1.0),
@@ -199,11 +200,13 @@ class _HomePageState extends State<HomePage> {
                       },
                     ),
 
+                    // SliverToBoxAdapter(
+                    //   child: SizedBox(height: size.height * 0.02),
+                    // ),
+                    _buildDivider(size),
                     SliverToBoxAdapter(
                       child: SizedBox(height: size.height * 0.02),
                     ),
-                    _buildDivider(size),
-
                     // ✅ Restaurant List (search or default)
                     _buildRestaurantList(provider),
                   ],
@@ -223,24 +226,14 @@ class _HomePageState extends State<HomePage> {
   Widget _buildDivider(Size size) => SliverToBoxAdapter(
     child: Row(
       children: [
-        const Expanded(child: Divider(color: Colors.grey, thickness: .5)),
-        Container(
-          height: size.height * 0.055,
-          padding: EdgeInsets.symmetric(horizontal: size.width * 0.06),
-          decoration: BoxDecoration(
-            color: AppColor.blackColor,
-            borderRadius: BorderRadius.circular(25),
-            border: Border.all(color: Colors.white, width: 0.5),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            'Choose your Favourite Restaurant',
-            style: Styles.textSmall(context, color: Colors.white),
-            textScaler: const TextScaler.linear(1.0),
-            textAlign: TextAlign.center,
-          ),
+        Text(
+          "Choose your Favourite Restaurant",
+
+          textScaler: const TextScaler.linear(1.0),
+          style: Styles.textStyleMedium(context),
         ),
-        const Expanded(child: Divider(color: Colors.grey, thickness: .5)),
+        SizedBox(width: 5),
+        Expanded(child: Divider()),
       ],
     ),
   );
@@ -291,7 +284,7 @@ class _HomePageState extends State<HomePage> {
         // 👇 valid restaurant rows
         if (index < list.length) {
           return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 20),
+            padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 0),
             child: GestureDetector(
               onTap: () {
                 FocusScope.of(context).unfocus();
@@ -316,9 +309,9 @@ class _FoodCategoryHeader extends SliverPersistentHeaderDelegate {
   _FoodCategoryHeader(this.categories);
 
   // heights
-  double get _headerHeight => 48.0; // title row height
-  double get _spacing => 8.0; // gap below title
-  double get _listHeight => 120.0; // horizontal list height
+  double get _headerHeight => 40.0; // title row height
+  double get _spacing => 5.0; // gap below title
+  double get _listHeight => 110.0; // horizontal list height
   double get _totalHeight => _headerHeight + _spacing + _listHeight;
 
   @override
@@ -338,7 +331,7 @@ class _FoodCategoryHeader extends SliverPersistentHeaderDelegate {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             SizedBox(height: _headerHeight, child: const FoodCategoryHeader()),
-            SizedBox(height: _spacing),
+            // SizedBox(height: _spacing),
             SizedBox(
               height: _listHeight,
               child: ListView.separated(
@@ -368,6 +361,8 @@ class _FoodCategoryHeader extends SliverPersistentHeaderDelegate {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
+                          height: size.height * 0.07,
+                          width: size.height * 0.07,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: Colors.grey.shade100,
@@ -376,13 +371,36 @@ class _FoodCategoryHeader extends SliverPersistentHeaderDelegate {
                               width: 1,
                             ),
                           ),
-                          padding: const EdgeInsets.all(10),
-                          child: Image.network(
-                            c.image,
-                            height: size.height * 0.06,
-                            width: size.height * 0.06,
-                            fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => Icon(Icons.fastfood),
+                          padding: const EdgeInsets.all(4),
+                          child: ClipOval(
+                            child: CachedNetworkImage(
+                              imageUrl: c.image,
+                              fit: BoxFit.cover,
+                              width: size.height * 0.07,
+                              height: size.height * 0.07,
+                              placeholder:
+                                  (context, url) => Container(
+                                    color: Colors.grey.shade200,
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.fastfood,
+                                        size: 20,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                              errorWidget:
+                                  (context, url, error) => Container(
+                                    color: Colors.grey.shade200,
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.fastfood,
+                                        size: 20,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 6),

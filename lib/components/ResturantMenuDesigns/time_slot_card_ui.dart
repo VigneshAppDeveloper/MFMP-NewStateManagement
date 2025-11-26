@@ -39,14 +39,14 @@ class TimeSlotCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: EdgeInsets.only(bottom: size.height * 0.012),
+        margin: EdgeInsets.only(bottom: size.height * 0.009),
         padding: EdgeInsets.symmetric(
           horizontal: size.width * 0.04,
-          vertical: size.height * 0.015,
+          vertical: size.height * 0.012,
         ),
         decoration: BoxDecoration(
           color: _backgroundColor(),
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.15),
@@ -103,7 +103,7 @@ class TimeSlotCard extends StatelessWidget {
                           style: Styles.textStyleMediumBold(
                             context,
                             color: Colors.white,
-                          ),
+                          ).copyWith(fontSize: 16,fontWeight: FontWeight.bold),
                           textScaler: const TextScaler.linear(1.0),
                           overflow: TextOverflow.ellipsis,
                         ),

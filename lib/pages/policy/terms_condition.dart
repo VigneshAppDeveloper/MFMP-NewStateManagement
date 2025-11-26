@@ -1,10 +1,12 @@
 import 'dart:convert';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:my_food_my_price/util/styles.dart';
 import 'package:my_food_my_price/widgets/app_bar.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../Providers/restaurant_provider.dart';
 import '../../models/policy_model.dart';
@@ -63,11 +65,8 @@ class _TermsConditionState extends State<TermsCondition> {
                       return Scrollbar(
                         child: SingleChildScrollView(
                           padding: const EdgeInsets.only(bottom: 30),
-                          child: Text(
-                            snapshot.data!,
-                            style: Styles.textSmall(context),
-                            textScaler: const TextScaler.linear(1.0),
-                          ),
+                          child: _buildClickableText(snapshot.data!, context),
+
                         ),
                       );
                     },
@@ -76,6 +75,71 @@ class _TermsConditionState extends State<TermsCondition> {
       ),
     );
   }
+
+
+  Widget _buildClickableText(String text, BuildContext context) {
+  final urlRegex = RegExp(
+    r'(https?:\/\/[^\s]+)',
+    caseSensitive: false,
+  );
+
+  final spans = <TextSpan>[];
+  final matches = urlRegex.allMatches(text);
+
+  int lastIndex = 0;
+
+  for (final match in matches) {
+    // Add normal text before URL
+    if (match.start > lastIndex) {
+      spans.add(
+        TextSpan(
+          text: text.substring(lastIndex, match.start),
+          style: Styles.textSmall(context),
+        ),
+      );
+    }
+
+    final url = text.substring(match.start, match.end);
+
+    // Add clickable URL
+    spans.add(
+      TextSpan(
+        text: url,
+        style: Styles.textSmall(
+          context,
+          color: Colors.blue,
+        ).copyWith(
+          decoration: TextDecoration.underline,
+        ),
+        recognizer: TapGestureRecognizer()
+          ..onTap = () async {
+            final uri = Uri.tryParse(url);
+            if (uri != null && await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            }
+          },
+      ),
+    );
+
+    lastIndex = match.end;
+  }
+
+  // Add last remaining normal text
+  if (lastIndex < text.length) {
+    spans.add(
+      TextSpan(
+        text: text.substring(lastIndex),
+        style: Styles.textSmall(context),
+      ),
+    );
+  }
+
+  return RichText(
+    text: TextSpan(children: spans),
+    textScaler: const TextScaler.linear(1.0),
+  );
+}
+
 
   Future<String> _loadPolicyFile(String url) async {
     try {

@@ -54,7 +54,7 @@ Future<BitmapDescriptor> createCustomMarker(
       style: TextStyle(
         color: textColor,
         fontSize: 13,
-        fontWeight: FontWeight.w600,
+        fontWeight: FontWeight.bold,
       ),
     ),
     textAlign: TextAlign.center,

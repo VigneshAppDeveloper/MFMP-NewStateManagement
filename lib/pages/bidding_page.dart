@@ -64,19 +64,25 @@ class _BiddingPageState extends State<BiddingPage> with WidgetsBindingObserver {
       // 3️⃣ Attach callback (triggered when bidding ends)
       provider.onBiddingEnd = () async {
         provider.stopAll();
+        provider.freezeUpdates(true); // <-- stop polling from changing list
 
         final profile = AppConstants.profile!;
         final userId = profile.id.toString();
 
         // fetch winners
         List<WinnerModel> allWinners = [];
-        for (final bid in provider.biddings) {
+
+        final safeList = List<BiddingModel>.from(provider.biddings);
+
+        for (final bid in safeList) {
           final menuWinners = await provider.getWinner(
             widget.timerId,
             bid.menuId,
           );
           allWinners.addAll(menuWinners);
         }
+
+        provider.freezeUpdates(false);
 
         if (!mounted) return;
         final userWins = allWinners.where((w) => w.userId == userId).toList();
@@ -214,9 +220,11 @@ class _BiddingPageState extends State<BiddingPage> with WidgetsBindingObserver {
                 SliverToBoxAdapter(
                   child: SizedBox(height: size.height * 0.015),
                 ),
-                SliverToBoxAdapter(
-                  child: BiddingTimerBar(), // pinned countdown
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _BiddingTimerHeader(child: const BiddingTimerBar()),
                 ),
+
                 SliverToBoxAdapter(
                   child: SizedBox(height: size.height * 0.015),
                 ),
@@ -298,3 +306,28 @@ class _BiddingPageState extends State<BiddingPage> with WidgetsBindingObserver {
     );
   }
 }
+
+class _BiddingTimerHeader extends SliverPersistentHeaderDelegate {
+  final Widget child;
+
+  _BiddingTimerHeader({required this.child});
+
+  // Let height adapt based on child constraints
+  @override
+  double get minExtent => 180;  // safe responsive height
+  @override
+  double get maxExtent => 180;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      color: Colors.white,
+      alignment: Alignment.topCenter,
+      child: child,
+    );
+  }
+
+  @override
+  bool shouldRebuild(_BiddingTimerHeader oldDelegate) => false;
+}
+

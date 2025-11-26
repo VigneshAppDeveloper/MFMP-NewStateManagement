@@ -3,7 +3,6 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:my_food_my_price/pages/Map/pickup_points_page.dart';
 import 'package:my_food_my_price/route_generator.dart';
 import 'package:my_food_my_price/util/map_makers_util.dart';
 import 'package:my_food_my_price/util/styles.dart';
@@ -39,8 +38,11 @@ class _MapPageState extends State<MapPage> {
   }
 
   Future<void> _loadInitialLocation() async {
-    // 🔑 Use session location first (user-chosen)
-    final sessionLocation = context.read<LocationProvider>().currentLocation;
+    selectedRestaurant = null; // 🔥 FIX 3
+    final locProvider = context.read<LocationProvider>();
+    final restProvider = context.read<RestaurantProvider>();
+
+    final sessionLocation = locProvider.currentLocation;
     if (sessionLocation != null) {
       setState(() {
         userLatLng = LatLng(
@@ -48,10 +50,24 @@ class _MapPageState extends State<MapPage> {
           sessionLocation.longitude,
         );
       });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await restProvider.loadAllRestaurants(
+          lat: sessionLocation.latitude,
+          lng: sessionLocation.longitude,
+        );
+      });
     } else {
-      // fallback to GPS if no session location saved
       final gpsLoc = await LocationService.getCurrentLatLng();
-      if (mounted) setState(() => userLatLng = gpsLoc);
+      if (mounted && gpsLoc != null) {
+        setState(() => userLatLng = gpsLoc);
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          await restProvider.loadAllRestaurants(
+            lat: gpsLoc.latitude,
+            lng: gpsLoc.longitude,
+          );
+        });
+      }
     }
   }
 
@@ -68,8 +84,9 @@ class _MapPageState extends State<MapPage> {
   }
 
   Future<void> _updateMarkers(List<Restaurant> restaurants) async {
-    final Set<Marker> updatedMarkers = {};
+    if (restaurants.isEmpty) return;
 
+    final Set<Marker> updatedMarkers = {};
     for (var r in restaurants) {
       final markerIcon = await getCachedMarkerIcon(
         r.name,
@@ -137,15 +154,24 @@ class _MapPageState extends State<MapPage> {
       builder: (context, locationProvider, restaurantProvider, _) {
         final sessionLoc = locationProvider.currentLocation;
         if (sessionLoc != null) {
+          if (userLatLng == null ||
+              userLatLng!.latitude != sessionLoc.latitude ||
+              userLatLng!.longitude != sessionLoc.longitude) {
+            selectedRestaurant = null;
+            _markers.clear();
+            _lastCameraPosition = null;
+          }
+
           userLatLng = LatLng(sessionLoc.latitude, sessionLoc.longitude);
         }
 
-        if (userLatLng != null && restaurantProvider.restaurants.isNotEmpty) {
-          _updateMarkers(restaurantProvider.restaurants);
-
-          // ✅ Only fit to session location on first load
+        final mapRestaurants = restaurantProvider.mapRestaurants;
+        if (userLatLng != null && mapRestaurants.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _updateMarkers(mapRestaurants);
+          });
           if (_lastCameraPosition == null) {
-            _fitCamera(userLatLng!, restaurantProvider.restaurants);
+            _fitCamera(userLatLng!, mapRestaurants);
           }
         }
 
@@ -173,12 +199,12 @@ class _MapPageState extends State<MapPage> {
                 child: GestureDetector(
                   onTap: () {
                     AppRouteName.menuPage.push(
-                            context,
-                            args: {
-                              'restaurant': selectedRestaurant!,
-                              'showPriceTabs': true,
-                            },
-                          );
+                      context,
+                      args: {
+                        'restaurant': selectedRestaurant!,
+                        'showPriceTabs': true,
+                      },
+                    );
                   },
                   child: RestaurantCard(
                     data: selectedRestaurant!,
@@ -186,25 +212,26 @@ class _MapPageState extends State<MapPage> {
                 ),
               ),
 
-            if (userLatLng == null || restaurantProvider.isLoading)
+            if (userLatLng == null || restaurantProvider.isMapLoading)
               const FullScreenLoader(
                 size: 35,
                 strokeWidth: 3,
                 backgroundColor: Color(0x80000000),
               ),
 
-            if (restaurantProvider.restaurants.isEmpty &&
+            if (restaurantProvider.mapRestaurants.isEmpty &&
                 !restaurantProvider.isLoading)
               Center(
                 child: Text(
-                  "No Restaurants Found Nearby",
+                  "",
                   style: Styles.textStyleMedium(
                     context,
                   ).copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
 
-            if (userLatLng != null && restaurantProvider.restaurants.isNotEmpty)
+            if (userLatLng != null &&
+                restaurantProvider.mapRestaurants.isNotEmpty)
               Positioned(
                 bottom: MediaQuery.of(context).size.height * 0.1,
                 right: MediaQuery.of(context).size.width * 0.04,
@@ -220,5 +247,4 @@ class _MapPageState extends State<MapPage> {
       },
     );
   }
-
 }

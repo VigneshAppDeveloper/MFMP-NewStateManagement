@@ -8,23 +8,22 @@ class FoodCategoryHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(
-          child: Text(
-            "What's your favorite?",
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textScaler: const TextScaler.linear(1.0),
-            style: Styles.textStyleMedium(context),
-          ),
-        ),
-        Expanded(child: Divider()),
         Text(
-          "All",
+          "What's your favorite?",
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textScaler: const TextScaler.linear(1.0),
-          style: Styles.textSmall(context),
+          style: Styles.textStyleMedium(context),
         ),
+        SizedBox(width: 5),
+        Expanded(child: Divider()),
+        // Text(
+        //   "All",
+        //   maxLines: 1,
+        //   overflow: TextOverflow.ellipsis,
+        //   textScaler: const TextScaler.linear(1.0),
+        //   style: Styles.textSmall(context),
+        // ),
       ],
     );
   }
