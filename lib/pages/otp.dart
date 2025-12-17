@@ -21,7 +21,6 @@ import 'package:my_food_my_price/util/styles.dart';
 import 'package:my_food_my_price/widgets/dilogue/dilogue.dart';
 import 'package:pin_code_text_field/pin_code_text_field.dart';
 import 'package:provider/provider.dart';
-import 'package:sms_autofill/sms_autofill.dart';
 
 class Otp extends StatefulWidget {
   const Otp({super.key});
@@ -30,7 +29,7 @@ class Otp extends StatefulWidget {
   State<Otp> createState() => _OtpState();
 }
 
-class _OtpState extends State<Otp> with CodeAutoFill {
+class _OtpState extends State<Otp>  {
   MediaQueryData get dimensions => MediaQuery.of(context);
   Size get size => dimensions.size;
   double get height => size.height;
@@ -52,53 +51,53 @@ class _OtpState extends State<Otp> with CodeAutoFill {
   void initState() {
     super.initState();
     startTimer();
-    listenOtp();
+    // listenOtp();
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await getdata();
       await Future.delayed(const Duration(milliseconds: 500));
       await getToken();
-      getAppSignature();
-      codeUpdated();
+      // getAppSignature();
+      // codeUpdated();
     });
   }
 
-  void listenOtp() async {
-    try {
-      if (Platform.isAndroid) {
-        final deviceInfo = DeviceInfoPlugin();
-        final androidInfo = await deviceInfo.androidInfo;
-        final brand = androidInfo.brand?.toLowerCase();
+  // void listenOtp() async {
+  //   try {
+  //     if (Platform.isAndroid) {
+  //       final deviceInfo = DeviceInfoPlugin();
+  //       final androidInfo = await deviceInfo.androidInfo;
+  //       final brand = androidInfo.brand?.toLowerCase();
 
-        // ✅ Disable for buggy ROMs
-        if (brand?.contains("samsung") == true ||
-            brand?.contains("realme") == true) {
-          debugPrint("⚠️ SMS auto-retrieval disabled for $brand");
-          return;
-        }
-      }
+  //       // ✅ Disable for buggy ROMs
+  //       if (brand?.contains("samsung") == true ||
+  //           brand?.contains("realme") == true) {
+  //         debugPrint("⚠️ SMS auto-retrieval disabled for $brand");
+  //         return;
+  //       }
+  //     }
 
-      await SmsAutoFill().listenForCode();
-    } catch (e, st) {
-      debugPrint("⚠️ SmsAutoFill listen failed: $e");
-    }
-  }
+  //     await SmsAutoFill().listenForCode();
+  //   } catch (e, st) {
+  //     debugPrint("⚠️ SmsAutoFill listen failed: $e");
+  //   }
+  // }
 
-  @override
-  void codeUpdated() async {
-    final codeStream = SmsAutoFill().code;
-    final receivedCode = await codeStream.first;
+  // @override
+  // void codeUpdated() async {
+  //   final codeStream = SmsAutoFill().code;
+  //   final receivedCode = await codeStream.first;
 
-    //print("Auto-filled OTP: $receivedCode");
+  //   //print("Auto-filled OTP: $receivedCode");
 
-    if (!mounted) return;
-    if (receivedCode.isNotEmpty) {
-      setState(() {
-        otp.text = receivedCode;
-      });
-      _verifyOtpAutomatically(); // ✅ Submit after autofill
-    }
-  }
+  //   if (!mounted) return;
+  //   if (receivedCode.isNotEmpty) {
+  //     setState(() {
+  //       otp.text = receivedCode;
+  //     });
+  //     _verifyOtpAutomatically(); // ✅ Submit after autofill
+  //   }
+  // }
 
   String maskMobileNumber(String number) {
     if (number.length >= 10) {
@@ -160,61 +159,61 @@ class _OtpState extends State<Otp> with CodeAutoFill {
     }
   }
 
-  void getAppSignature() async {
-    String signature = await SmsAutoFill().getAppSignature;
-    if (kDebugMode) print("App Signature: $signature");
-  }
+  // void getAppSignature() async {
+  //   String signature = await SmsAutoFill().getAppSignature;
+  //   if (kDebugMode) print("App Signature: $signature");
+  // }
 
-  void _verifyOtpAutomatically() async {
-    FocusScope.of(context).unfocus();
+  // void _verifyOtpAutomatically() async {
+  //   FocusScope.of(context).unfocus();
 
-    if (otp.text.length == 4) {
-      try {
-        await AppDialogue.openLoadingDialogAfterClose(
-          context,
-          text: "Verify...",
-          load: () async {
-            return await loginProvider.verifyOtp(
-              mobile: mobile.text,
-              otp: otp.text,
-              tokenFCM: tokenFCM ?? "",
-              context: context,
-            );
-          },
-          afterComplete: (resp) async {
-            if (!mounted) return;
+  //   if (otp.text.length == 4) {
+  //     try {
+  //       await AppDialogue.openLoadingDialogAfterClose(
+  //         context,
+  //         text: "Verify...",
+  //         load: () async {
+  //           return await loginProvider.verifyOtp(
+  //             mobile: mobile.text,
+  //             otp: otp.text,
+  //             tokenFCM: tokenFCM ?? "",
+  //             context: context,
+  //           );
+  //         },
+  //         afterComplete: (resp) async {
+  //           if (!mounted) return;
 
-            if (resp.status) {
-              LoginModel baseModel = LoginModel.fromMap(resp.fullBody);
+  //           if (resp.status) {
+  //             LoginModel baseModel = LoginModel.fromMap(resp.fullBody);
 
-              if (baseModel.message == "OTP verified successfully") {
-                if (!mounted) return;
-                await AppRouteName.appPage.pushAndRemoveUntil(
-                  context,
-                  (route) => false,
-                );
-              } else if (baseModel.message == "Not registered") {
-                if (!mounted) return;
-                await AppRouteName.introPage.push(context);
-              } else {
-                if (!mounted) return;
-                AppDialogue.toast("Unexpected response: ${baseModel.message}");
-              }
-            }
-          },
-        );
-      } on Exception catch (e) {
-        if (!mounted) return;
-        ExceptionHandler.showMessage(context, e);
-      }
-    }
-  }
+  //             if (baseModel.message == "OTP verified successfully") {
+  //               if (!mounted) return;
+  //               await AppRouteName.appPage.pushAndRemoveUntil(
+  //                 context,
+  //                 (route) => false,
+  //               );
+  //             } else if (baseModel.message == "Not registered") {
+  //               if (!mounted) return;
+  //               await AppRouteName.introPage.push(context);
+  //             } else {
+  //               if (!mounted) return;
+  //               AppDialogue.toast("Unexpected response: ${baseModel.message}");
+  //             }
+  //           }
+  //         },
+  //       );
+  //     } on Exception catch (e) {
+  //       if (!mounted) return;
+  //       ExceptionHandler.showMessage(context, e);
+  //     }
+  //   }
+  // }
 
   @override
   void dispose() {
     // TODO: implement dispose
     _timer.cancel();
-    cancel();
+    //cancel();
     super.dispose();
   }
 

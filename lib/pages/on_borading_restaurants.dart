@@ -106,19 +106,19 @@ class _OnBoradingRestaurantsState extends State<OnBoradingRestaurants> {
               /// ✅ Get Started Button
               SizedBox(
                 width: double.infinity,
-                height: size.height * 0.055,
+                //height: size.height * 0.055,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    elevation: 2,
+                    elevation: 0,
                   ),
                   onPressed: () {
                     UrlLauncherHelper.launchInBrowser(
                       context,
-                      'https://franchise.myfoodmyprice.com',
+                      'https://myfoodmyprice.com/',
                     );
                   },
                   child: const Text(

@@ -80,7 +80,7 @@ class _FixedPricePaymentPageState extends State<FixedPricePaymentPage> {
     fromFlashPage = widget.fromFlashPage;
     if (!widget.fromFlashPage) {
       Future.microtask(() async {
-        await orderProvider.getPickupTime(
+         await orderProvider.getPickupTime(
           franchiseId: widget.restaurant.franchiseId,
           pickupDate: widget.pickupDate,
         );

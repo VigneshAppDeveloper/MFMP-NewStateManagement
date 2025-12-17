@@ -18,8 +18,8 @@ if (localPropertiesFile.exists()) {
     localProperties.load(localPropertiesFile.inputStream())
 }
 
-val flutterVersionCode = localProperties.getProperty("flutter.versionCode") ?: "1"
-val flutterVersionName = localProperties.getProperty("flutter.versionName") ?: "1.0.0"
+val flutterVersionCode = localProperties.getProperty("flutter.versionCode") ?: "31"
+val flutterVersionName = localProperties.getProperty("flutter.versionName") ?: "12.0.8"
 
 
 val keystoreProperties = Properties()
@@ -44,6 +44,8 @@ android {
             dimension = "flavor-type"
             applicationId = "com.biryanipalayam.myfoodmyprice"
             resValue("string", "app_name", "MFMP")
+            versionCode = flutterVersionCode.toInt()
+            versionName = flutterVersionName
         }
         create("demo") {
             dimension = "flavor-type"
@@ -51,6 +53,14 @@ android {
             resValue("string", "app_name", "MFMP Demo")
         }
     }
+
+     android.variantFilter {
+        val flavorName = flavors.firstOrNull()?.name
+        if (flavorName == "dev" || flavorName == "demo") {
+            ignore = true   // <--- Kotlin DSL property
+        }
+    }
+
     namespace = "com.biryanipalayam.myfoodmyprice"
     compileSdk = 35
     ndkVersion = "27.0.12077973"
@@ -88,7 +98,7 @@ android {
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // Signing with the debug keys for now, so flutter run --release works.
             signingConfig = signingConfigs.getByName("release")
         }
     }

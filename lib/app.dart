@@ -38,33 +38,47 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> checkNotificationPermission() async {
-    bool isAllowed = await AwesomeNotifications().isNotificationAllowed();
+  // 1️⃣ Check OS notification permission
+  final isAllowed = await AwesomeNotifications().isNotificationAllowed();
+  if (isAllowed) return; // nothing to do
 
-    if (!mounted) return; // ✅ check if widget is still active
+  // 2️⃣ Get a context that is inside the Navigator tree
+  final navState = AppConstants.navigatorKey.currentState;
+  final navContext = navState?.overlay?.context;
 
-    if (!isAllowed) {
-      showDialog(
-        context: context,
-        builder:
-            (context) => AlertDialog(
-              title: const Text('Enable Notifications'),
-              content: const Text(
-                'Notifications are essential for the full functionality of our app. Please enable them to continue.',
-              ),
-              actions: [
-                TextButton(
-                  child: const Text('Allow Notifications'),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    AwesomeNotifications()
-                        .requestPermissionToSendNotifications();
-                  },
-                ),
-              ],
-            ),
-      );
-    }
+  // If navigator not ready yet, do not crash – just skip
+  if (navContext == null) {
+    debugPrint('⚠️ Navigator context not ready, skipping notification dialog');
+    return;
   }
+
+  if (!mounted) return;
+
+  // 3️⃣ Show dialog with navigator context (NOT MyApp's context)
+  showDialog(
+    context: navContext,
+    barrierDismissible: false,
+    builder: (dialogContext) {
+      return AlertDialog(
+        title: const Text('Enable Notifications'),
+        content: const Text(
+          'Notifications are essential for the full functionality of our app. '
+          'Please enable them to continue.',
+        ),
+        actions: [
+          TextButton(
+            child: const Text('Allow Notifications'),
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              AwesomeNotifications().requestPermissionToSendNotifications();
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {

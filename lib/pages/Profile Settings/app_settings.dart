@@ -144,7 +144,7 @@ class _AppSettingsState extends State<AppSettings> {
                   ),
                   const SizedBox(height: 10),
                   HeadingSection(
-                    title: "Enquirys & Supports",
+                    title: "Enquiries & Support",
                     children: [
                        DrawerListTile(
                         icon: Icons.support_agent,

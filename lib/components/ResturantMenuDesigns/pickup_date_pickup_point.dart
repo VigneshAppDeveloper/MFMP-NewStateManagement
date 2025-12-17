@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_calendar_carousel/flutter_calendar_carousel.dart';
 import 'package:intl/intl.dart';
+import 'package:my_food_my_price/Providers/cart_provider.dart';
 import 'package:my_food_my_price/util/color_constant.dart';
 import 'package:provider/provider.dart';
 
@@ -199,13 +200,28 @@ class PickupDatePickupPointState extends State<PickupDatePickupPoint> {
                   setState(() => _selectedDate = date);
 
                   final menuProvider = safeContext.read<MenuProvider>();
-                  menuProvider.setPickupDate(date);
 
-                  // Close calendar popup
+                  // CLOSE dialog first (important)
                   Navigator.of(dialogContext).pop();
 
-                  // Format pickup date for API
+                  // Delay notifyListeners AFTER build phase completes
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    menuProvider.setPickupDate(date);
+                  });
                   final formatted = DateFormat('yyyy-MM-dd').format(date);
+                  final cartProvider = safeContext.read<CartProvider>();
+                  cartProvider.clearCart();
+
+                  // 🔴 FIX: Clear previous date cache
+                  menuProvider.clearMenu(
+                    "${widget.restaurant.franchiseId}_default",
+                  );
+                  menuProvider.clearMenu(
+                    "${widget.restaurant.franchiseId}_$formatted",
+                  );
+                  // Close calendar popup
+
+                  // Format pickup date for API
 
                   // 🔥 4. Fetch menu for selected date
                   await menuProvider.getRestaurantMenu(

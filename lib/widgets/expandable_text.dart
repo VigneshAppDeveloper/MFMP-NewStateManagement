@@ -62,10 +62,11 @@ void didChangeDependencies() {
           GestureDetector(
             onTap: () => setState(() => isExpanded = !isExpanded),
             child: Text(
-              isExpanded ? "Read less" : "Read more",
+              isExpanded ? "Read less" : "Read more...",
               style: widget.style?.copyWith(
                  color: const Color(0xFFFF5E00),// highlight color for action
                 fontWeight: FontWeight.bold,
+                fontSize: 15,
               ),
               textScaler: widget.textScaler,
             ),

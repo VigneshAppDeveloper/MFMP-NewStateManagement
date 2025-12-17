@@ -62,6 +62,9 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
 
     provider = context.read<MenuProvider>();
     provider.setActive(true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) provider.setPickupDate(null);
+    });
 
     Future.microtask(() async {
       // Fetch only if no cached menu or expired
@@ -69,6 +72,7 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
         widget.restaurant.franchiseId,
         forceRefresh: false,
         isFlash: !widget.showPriceTabs,
+        pickupDate: null,
       );
       // ✅ Check if any bidding-type menu exists
       final biddingExists = provider.menus.any(
@@ -110,7 +114,7 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     provider.setActive(false);
     provider.stopAutoUpdaters();
-    provider.clearPickupSelections(); // 👈 safe — no context used
+    //provider.clearPickupSelections(); // 👈 safe — no context used
     _cartProvider.clearCart();
     searchController.dispose();
     _debounce?.cancel();
@@ -122,7 +126,13 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
 
     _debounce = Timer(const Duration(milliseconds: 300), () {
       final provider = context.read<MenuProvider>();
-      final all = provider.menus;
+      final all =
+          provider.menus.where((m) {
+            final type = m.menuType.toLowerCase().trim();
+            return type == "fixed price" ||
+                type == "fixed discount" ||
+                type == "fixed discount price";
+          }).toList();
       final q = query.trim().toLowerCase();
 
       if (q.isEmpty) {
@@ -800,10 +810,20 @@ class _MenuPageState extends State<MenuPage> with WidgetsBindingObserver {
                   onPressed: () {
                     final menuProvider = context.read<MenuProvider>();
                     menuProvider.stopAutoUpdaters();
-                    if (selectedPickupDate == null) {
-                      AppDialogue.toast("Please select pickup date first");
-                      return;
-                    }
+                  if (selectedPickupDate == null) {
+                                final pickupWidgetState =
+                                    _pickupKey.currentState;
+                                if (pickupWidgetState != null) {
+                                  pickupWidgetState.showCalendar(
+                                    context,
+                                  ); // ✅ call directly
+                                } else {
+                                  AppDialogue.toast(
+                                    "Please select your pickup date.",
+                                  );
+                                }
+                                return;
+                              }
 
                     AppRouteName.fixedPricePayment.push(
                       context,

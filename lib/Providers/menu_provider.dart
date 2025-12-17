@@ -84,17 +84,14 @@ class MenuProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // void setPickupPoint(PickpointModel point) {
-  //   _selectedPickupPoint = point;
-  //   debugPrint("📍 Pickup point set: ${point.pickupLocation}");
-  //   debugPrint("📅 Current selected date: $_selectedPickupDate");
-  //   notifyListeners();
-  // }
+  String _getCacheKey(String franchiseId, bool isFlash, String? date) {
+    if (isFlash) return "${franchiseId}_flash";
+    if (date == null) return "${franchiseId}_default";
+    return "${franchiseId}_$date";
+  }
 
   void clearPickupSelections() {
     _selectedPickupDate = null;
-    //_selectedPickupPoint = null;
-    // notifyListeners();
   }
 
   /// ✅ Fetch menu for a restaurant
@@ -107,31 +104,30 @@ class MenuProvider extends ChangeNotifier {
     _isFlashMode = isFlash;
     if (isFlash) stopAutoUpdaters();
 
-    final cacheKey = isFlash ? "${franchiseId}_flash" : franchiseId;
+    final cacheKey = _getCacheKey(franchiseId, isFlash, pickupDate);
+
     final now = DateTime.now();
     final lastFetch = _lastFetchedTime[cacheKey];
 
     // ✅ If switching restaurants, just load cached immediately if present
     if (_currentFranchiseId != franchiseId) {
-      _currentFranchiseId = franchiseId;
-      if (_cachedMenus.containsKey(cacheKey)) {
-        debugPrint(
-          "📦 Switched restaurant → using cached menu for $franchiseId",
-        );
-        _menus = List<RestaurantMenuModel>.from(_cachedMenus[cacheKey]!);
-        notifyListeners();
-        // If cache older than 10 min, silently refresh in background
-        if (lastFetch == null ||
-            now.difference(lastFetch).inMinutes >= 5 ||
-            forceRefresh) {
-          unawaited(_backgroundMenuRefresh(franchiseId, isFlash: isFlash));
-        }
-        return;
-      } else {
-        _menus = [];
-        notifyListeners();
-      }
+  _currentFranchiseId = franchiseId;
+
+  if (_cachedMenus.containsKey(cacheKey)) {
+    _menus = List.from(_cachedMenus[cacheKey]!);
+    notifyListeners();
+
+    // Check expiry only
+    if (lastFetch == null || now.difference(lastFetch).inMinutes >= 5 || forceRefresh) {
+      unawaited(_backgroundMenuRefresh(franchiseId, isFlash: isFlash, pickupDate: pickupDate));
     }
+    return;
+  } else {
+    _menus = [];
+    notifyListeners();
+  }
+}
+
 
     // ✅ Use cache if still valid
     if (!forceRefresh &&
@@ -178,11 +174,10 @@ class MenuProvider extends ChangeNotifier {
         final List<dynamic> data = resp.data ?? [];
         _menus = data.map((e) => RestaurantMenuModel.fromJson(e)).toList();
 
-        _cachedMenus[isFlash
-            ? "${franchiseId}_flash"
-            : franchiseId] = List<RestaurantMenuModel>.from(_menus);
-        _lastFetchedTime[isFlash ? "${franchiseId}_flash" : franchiseId] =
-            DateTime.now();
+        final cacheKey = _getCacheKey(franchiseId, isFlash, pickupDate);
+
+        _cachedMenus[cacheKey] = List<RestaurantMenuModel>.from(_menus);
+        _lastFetchedTime[cacheKey] = DateTime.now();
 
         error = null;
         debugPrint(
@@ -203,26 +198,29 @@ class MenuProvider extends ChangeNotifier {
   }
 
   Future<void> _backgroundMenuRefresh(
-    String franchiseId, {
-    bool isFlash = false,
-  }) async {
-    try {
-      debugPrint("🔄 Background refresh started for $franchiseId");
-      await _fetchAndCacheMenu(franchiseId, isFlash: isFlash);
-    } catch (_) {
-      debugPrint("⚠️ Background refresh failed for $franchiseId");
-    }
+  String franchiseId, {
+  bool isFlash = false,
+  String? pickupDate,
+}) async {
+  try {
+    debugPrint("🔄 Background refresh started for $franchiseId (date=$pickupDate)");
+    await _fetchAndCacheMenu(
+      franchiseId,
+      isFlash: isFlash,
+      pickupDate: pickupDate,
+    );
+  } catch (_) {
+    debugPrint("⚠️ Background refresh failed for $franchiseId");
   }
+}
+
 
   /// ✅ Clear specific restaurant menu cache
-  void clearMenu(String franchiseId) {
-    _cachedMenus.remove(franchiseId);
-    _lastFetchedTime.remove(franchiseId);
-    if (_menus.isNotEmpty && _menus.first.franchiseId == franchiseId) {
-      _menus = [];
-    }
-    debugPrint("🧹 Cleared menu cache for $franchiseId");
-  }
+  void clearMenu(String key) {
+  _cachedMenus.remove(key);
+  _lastFetchedTime.remove(key);
+}
+
 
   /// ✅ Clear all cached menus
   void clearAllMenus() {

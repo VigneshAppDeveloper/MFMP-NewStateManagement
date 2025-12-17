@@ -12,6 +12,7 @@ class RestaurantProvider extends ChangeNotifier {
   List<Restaurant> _restaurants = []; // normal restaurants
   List<Restaurant> _flashRestaurants = []; // flash-only restaurants
   List<Restaurant> _mapRestaurants = [];
+
   List<Restaurant> get mapRestaurants => _mapRestaurants;
   bool _isMapLoading = false;
   bool get isMapLoading => _isMapLoading;
@@ -46,10 +47,6 @@ class RestaurantProvider extends ChangeNotifier {
   String _scrollingText = '';
   String get scrollingText => _scrollingText;
 
-  final Map<int, List<Restaurant>> _categoryCache = {};
-  final Map<int, DateTime> _categoryCacheTime = {};
-  final Duration _cacheDuration = const Duration(minutes: 10);
-
   List<Restaurant> _searchResults = [];
   List<Restaurant> get searchResults => _searchResults;
 
@@ -57,6 +54,12 @@ class RestaurantProvider extends ChangeNotifier {
   bool _isPaginatingFlash = false;
 
   bool get isPaginating => _isPaginatingNormal || _isPaginatingFlash;
+  bool get isPaginatingSearch => _isPaginatingSearch;
+
+  // ------- SEARCH PAGINATION -------
+  int _currentPageSearch = 1;
+  int _lastPageSearch = 1;
+  bool _isPaginatingSearch = false;
 
   // -------------------- PAGINATION --------------------
   int _currentPageNormal = 1;
@@ -64,6 +67,19 @@ class RestaurantProvider extends ChangeNotifier {
 
   int _currentPageFlash = 1;
   int _lastPageFlash = 1;
+
+  // CATEGORY function params  and  PAGINATION
+  List<Restaurant> _categoryRestaurants = [];
+  List<Restaurant> get categoryRestaurants => _categoryRestaurants;
+  int _currentPageCategory = 1;
+  int _lastPageCategory = 1;
+  bool _isPaginatingCategory = false;
+  bool get isPaginatingCategory => _isPaginatingCategory;
+  final Map<int, List<Restaurant>> _categoryCache = {};
+  final Map<int, int> _categoryPageCache = {};
+  final Map<int, int> _categoryLastPageCache = {};
+  final Map<int, DateTime> _categoryCacheTime = {};
+  final Duration _cacheDuration = const Duration(minutes: 10);
 
   DateTime? _lastLoadedTimeMap;
   bool get isMapCacheValid =>
@@ -131,6 +147,9 @@ class RestaurantProvider extends ChangeNotifier {
 
         // Replace or append depending on context
         if (forSearchPage) {
+          _currentPageSearch = pagination["current_page"] ?? 1;
+          _lastPageSearch = pagination["last_page"] ?? 1;
+
           _searchResults = append ? [..._searchResults, ...list] : list;
         } else if (isFlash) {
           _flashRestaurants = append ? [..._flashRestaurants, ...list] : list;
@@ -175,14 +194,37 @@ class RestaurantProvider extends ChangeNotifier {
     bool isFlash = false,
     String? search,
     bool forSearchPage = false,
+    Map<String, dynamic>? filters,
   }) async {
-    if (isFlash) {
-      if (_isPaginatingFlash || _currentPageFlash >= _lastPageFlash) {
-        debugPrint(
-          "⚠️ Flash pagination halted: page=$_currentPageFlash / last=$_lastPageFlash",
-        );
+    // ---- SEARCH PAGE PAGINATION ----
+    if (forSearchPage) {
+      if (_isPaginatingSearch || _currentPageSearch >= _lastPageSearch) {
+        debugPrint("⛔ Search pagination halted");
         return;
       }
+
+      _isPaginatingSearch = true;
+      notifyListeners();
+
+      await getRestaurants(
+        lat: lat,
+        lng: lng,
+        search: search,
+        filters: filters,
+        forSearchPage: true,
+        page: _currentPageSearch + 1,
+        append: true,
+      );
+
+      _isPaginatingSearch = false;
+      notifyListeners();
+      return;
+    }
+
+    // ---- Flash / Normal pagination ----
+    if (isFlash) {
+      if (_isPaginatingFlash || _currentPageFlash >= _lastPageFlash) return;
+
       _isPaginatingFlash = true;
       notifyListeners();
 
@@ -191,19 +233,15 @@ class RestaurantProvider extends ChangeNotifier {
         lng: lng,
         isFlash: true,
         search: search,
-        forSearchPage: forSearchPage,
+        forSearchPage: false,
         page: _currentPageFlash + 1,
         append: true,
       );
 
       _isPaginatingFlash = false;
     } else {
-      if (_isPaginatingNormal || _currentPageNormal >= _lastPageNormal) {
-        // debugPrint(
-        //   "⚠️ Normal pagination halted: page=$_currentPageNormal / last=$_lastPageNormal",
-        // );
-        return;
-      }
+      if (_isPaginatingNormal || _currentPageNormal >= _lastPageNormal) return;
+
       _isPaginatingNormal = true;
       notifyListeners();
 
@@ -212,7 +250,7 @@ class RestaurantProvider extends ChangeNotifier {
         lng: lng,
         isFlash: false,
         search: search,
-        forSearchPage: forSearchPage,
+        forSearchPage: false,
         page: _currentPageNormal + 1,
         append: true,
       );
@@ -304,66 +342,131 @@ class RestaurantProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> getRestaurantsByCategory({
-    required double lat,
-    required double lng,
-    required int menuTypeId,
-    bool forceRefresh = false,
-  }) async {
-    final now = DateTime.now();
+ Future<void> getRestaurantsByCategory({
+  required double lat,
+  required double lng,
+  required int menuTypeId,
+  bool forceRefresh = false,
+  int page = 1,
+  bool append = false,
+}) async {
+  final now = DateTime.now();
 
-    // ✅ Check cache validity
-    if (!forceRefresh &&
-        _categoryCache.containsKey(menuTypeId) &&
-        _categoryCacheTime.containsKey(menuTypeId) &&
-        now.difference(_categoryCacheTime[menuTypeId]!) < _cacheDuration) {
-      _restaurants = _categoryCache[menuTypeId]!;
-      debugPrint(
-        "⚡ Loaded category $menuTypeId from cache (${_restaurants.length} items)",
-      );
-      notifyListeners();
-      return;
-    }
-
-    _isLoading = true;
-    notifyListeners();
-
-    final url = "${UrlPath.restaurantUrl.getNearbyFranchise}/$lat/$lng";
-    debugPrint("🚀 Fetching Restaurants by Category: menuTypeId=$menuTypeId");
-
-    try {
-      final resp = await APIService.get(
-        url,
-        auth: true,
-        params: {'menuTypeId': menuTypeId.toString()},
-      );
-
-      if (resp.status) {
-        final List<dynamic> data = resp.data ?? [];
-        final restaurants = data.map((e) => Restaurant.fromJson(e)).toList();
-
-        _restaurants = restaurants;
-        _categoryCache[menuTypeId] = restaurants;
-        _categoryCacheTime[menuTypeId] = now;
-        error = null;
-
-        debugPrint(
-          "✅ Cached ${restaurants.length} restaurants for category $menuTypeId",
-        );
-      } else {
-        error = resp.message ?? "Failed to fetch restaurants.";
-        _restaurants = [];
-      }
-    } catch (e) {
-      error = e.toString();
-      _restaurants = [];
-      debugPrint("❌ Error fetching category restaurants: $e");
-    }
-
-    _isLoading = false;
-    notifyListeners();
+  // Reset pagination when loading FIRST PAGE
+  if (page == 1 && !append) {
+    _currentPageCategory = 1;
+    _lastPageCategory = 1;
+    _isPaginatingCategory = false;
+    _categoryRestaurants = [];
   }
 
+  // 1️⃣ Return from CACHE only on FIRST PAGE (page=1)
+  if (!forceRefresh &&
+      page == 1 &&
+      _categoryCache.containsKey(menuTypeId) &&
+      _categoryCacheTime.containsKey(menuTypeId) &&
+      now.difference(_categoryCacheTime[menuTypeId]!) < _cacheDuration) {
+    
+    // Restore cached restaurants
+    _categoryRestaurants = _categoryCache[menuTypeId]!;
+
+    // Restore pagination values (THIS WAS THE BUG!)
+    _currentPageCategory = _categoryPageCache[menuTypeId] ?? 1;
+    _lastPageCategory = _categoryLastPageCache[menuTypeId] ?? 1;
+
+    debugPrint("⚡ Category $menuTypeId loaded from CACHE");
+    notifyListeners();
+    return;
+  }
+
+  // Show loader only for first page
+  _isLoading = (page == 1);
+  notifyListeners();
+
+  final url = "${UrlPath.restaurantUrl.getNearbyFranchise}/$lat/$lng";
+
+  try {
+    final resp = await APIService.get(
+      url,
+      auth: true,
+      params: {
+        "menuTypeId": menuTypeId.toString(),
+        "page": page.toString(),
+      },
+    );
+
+    if (resp.status) {
+      final body = resp.fullBody as Map<String, dynamic>;
+      final List<dynamic> data = body["data"] ?? [];
+
+      // Update pagination
+      final pagination = body["pagination"] ?? {};
+      _currentPageCategory = pagination["current_page"] ?? 1;
+      _lastPageCategory = pagination["last_page"] ?? 1;
+
+      final List<Restaurant> restaurants =
+          data.map((e) => Restaurant.fromJson(e)).toList();
+
+      if (append) {
+        _categoryRestaurants = [..._categoryRestaurants, ...restaurants];
+      } else {
+        _categoryRestaurants = restaurants;
+      }
+
+      // Save CACHE ONLY FOR FIRST PAGE
+      if (page == 1) {
+        _categoryCache[menuTypeId] = _categoryRestaurants;
+        _categoryPageCache[menuTypeId] = _currentPageCategory;
+        _categoryLastPageCache[menuTypeId] = _lastPageCategory;
+        _categoryCacheTime[menuTypeId] = now;
+      }
+
+      error = null;
+    } else {
+      error = resp.message;
+      if (!append) _categoryRestaurants = [];
+    }
+  } catch (e, st) {
+    error = e.toString();
+    debugPrint("❌ Category API Error: $e");
+    debugPrintStack(stackTrace: st);
+    if (!append) _categoryRestaurants = [];
+  }
+
+  _isLoading = false;
+  _isPaginatingCategory = false;
+  notifyListeners();
+}
+
+// =====================================================================
+// PAGINATION LOADER
+// =====================================================================
+
+Future<void> loadNextCategoryPage({
+  required double lat,
+  required double lng,
+  required int menuTypeId,
+}) async {
+  // Stop if already loading
+  if (_isPaginatingCategory) return;
+
+  // Stop if no more pages
+  if (_currentPageCategory >= _lastPageCategory) return;
+
+  _isPaginatingCategory = true;
+  notifyListeners();
+
+  await getRestaurantsByCategory(
+    lat: lat,
+    lng: lng,
+    menuTypeId: menuTypeId,
+    page: _currentPageCategory + 1,
+    append: true,
+  );
+
+  _isPaginatingCategory = false;
+  notifyListeners();
+}
   // -------------------- POLICY --------------------
   List<PolicyModel> _policies = [];
   DateTime? _lastPolicyFetch;
@@ -388,7 +491,10 @@ class RestaurantProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final resp = await APIService.get(UrlPath.ratingUrl.getPolicy, auth: false);
+      final resp = await APIService.get(
+        UrlPath.ratingUrl.getPolicy,
+        auth: false,
+      );
 
       if (resp.status) {
         final List data = resp.fullBody['data'] ?? [];
@@ -455,5 +561,13 @@ class RestaurantProvider extends ChangeNotifier {
       _isMapLoading = false;
       notifyListeners();
     }
+  }
+
+  void resetSearchPagination() {
+    _searchResults = [];
+    _currentPageSearch = 1;
+    _lastPageSearch = 1;
+    _isPaginatingSearch = false;
+    notifyListeners();
   }
 }

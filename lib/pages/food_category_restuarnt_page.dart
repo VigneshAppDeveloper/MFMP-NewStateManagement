@@ -31,12 +31,15 @@ class CategoryRestaurantsPage extends StatefulWidget {
 
 class _CategoryRestaurantsPageState extends State<CategoryRestaurantsPage> {
   late final RestaurantProvider provider;
+  late ScrollController _scrollController;
 
   @override
   void initState() {
     super.initState();
     provider = context.read<RestaurantProvider>();
+    _scrollController = ScrollController();
 
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await provider.getRestaurantsByCategory(
         lat: widget.lat,
@@ -44,6 +47,23 @@ class _CategoryRestaurantsPageState extends State<CategoryRestaurantsPage> {
         menuTypeId: widget.category.id,
       );
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent * 0.8) {
+      provider.loadNextCategoryPage(
+        lat: widget.lat,
+        lng: widget.lng,
+        menuTypeId: widget.category.id,
+      );
+    }
   }
 
   @override
@@ -68,7 +88,7 @@ class _CategoryRestaurantsPageState extends State<CategoryRestaurantsPage> {
                 ? const Center(
                   child: const AppShimmer(type: ShimmerType.restaurant),
                 )
-                : provider.restaurants.isEmpty
+                : provider.categoryRestaurants.isEmpty
                 ? Center(
                   child: Text(
                     "No restaurants found for ${widget.category.name}",
@@ -76,15 +96,44 @@ class _CategoryRestaurantsPageState extends State<CategoryRestaurantsPage> {
                   ),
                 )
                 : ListView.builder(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: size.width * 0.04,
-                    vertical: size.height * 0.015,
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+
+                  padding: EdgeInsets.fromLTRB(
+                    size.width * 0.04,
+                    size.height * 0.015,
+                    size.width * 0.04,
+                    MediaQuery.of(context).padding.bottom +
+                        20, // prevent overlay bottom
                   ),
-                  itemCount: provider.restaurants.length,
+
+                  itemCount:
+                      provider.categoryRestaurants.length +
+                      (provider.isPaginatingCategory ? 1 : 0),
+
                   itemBuilder: (context, index) {
-                    final restaurant = provider.restaurants[index];
+                    if (index == provider.categoryRestaurants.length) {
+                      return const Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Center(
+                          child: SizedBox(
+                            height: 30,
+                            width: 30,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3.0,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.black,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+
+                    final restaurant = provider.categoryRestaurants[index];
+
                     return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      padding: const EdgeInsets.symmetric(vertical: 5),
                       child: GestureDetector(
                         onTap: () {
                           AppRouteName.menuPage.push(

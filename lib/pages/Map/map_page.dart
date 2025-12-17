@@ -3,6 +3,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:my_food_my_price/pages/Map/route_observer.dart';
+import 'package:my_food_my_price/pages/app_pages.dart';
 import 'package:my_food_my_price/route_generator.dart';
 import 'package:my_food_my_price/util/map_makers_util.dart';
 import 'package:my_food_my_price/util/styles.dart';
@@ -34,8 +36,26 @@ class _MapPageState extends State<MapPage> {
   @override
   void initState() {
     super.initState();
+
     _loadInitialLocation();
   }
+
+ @override
+void didChangeDependencies() {
+  super.didChangeDependencies();
+
+  final appState = context.findAncestorStateOfType<AppPagesState>();
+
+  if (appState != null && appState.currentTabIndex == 1) {
+    selectedRestaurant = null;
+    _markers.clear();
+    markerIconCache.clear();
+    _lastCameraPosition = null;
+
+    setState(() {});
+  }
+}
+
 
   Future<void> _loadInitialLocation() async {
     selectedRestaurant = null; // 🔥 FIX 3
@@ -99,9 +119,13 @@ class _MapPageState extends State<MapPage> {
           position: LatLng(r.franchiseLatitude, r.franchiseLongitude),
           icon: markerIcon,
           onTap: () {
-            if (selectedRestaurant?.franchiseId != r.franchiseId) {
-              setState(() => selectedRestaurant = r);
-            }
+            setState(() {
+              if (selectedRestaurant?.franchiseId == r.franchiseId) {
+                selectedRestaurant = null; // UNSELECT
+              } else {
+                selectedRestaurant = r; // SELECT
+              }
+            });
           },
         ),
       );
@@ -171,7 +195,9 @@ class _MapPageState extends State<MapPage> {
             _updateMarkers(mapRestaurants);
           });
           if (_lastCameraPosition == null) {
-            _fitCamera(userLatLng!, mapRestaurants);
+            _mapController?.animateCamera(
+              CameraUpdate.newLatLngZoom(userLatLng!, 15),
+            );
           }
         }
 
@@ -219,17 +245,16 @@ class _MapPageState extends State<MapPage> {
                 backgroundColor: Color(0x80000000),
               ),
 
-            if (restaurantProvider.mapRestaurants.isEmpty &&
-                !restaurantProvider.isLoading)
-              Center(
-                child: Text(
-                  "",
-                  style: Styles.textStyleMedium(
-                    context,
-                  ).copyWith(fontWeight: FontWeight.w700),
-                ),
-              ),
-
+            // if (restaurantProvider.mapRestaurants.isEmpty &&
+            //     !restaurantProvider.isLoading)
+            // Center(
+            //   child: Text(
+            //     "",
+            //     style: Styles.textStyleMedium(
+            //       context,
+            //     ).copyWith(fontWeight: FontWeight.w700),
+            //   ),
+            // ),
             if (userLatLng != null &&
                 restaurantProvider.mapRestaurants.isNotEmpty)
               Positioned(

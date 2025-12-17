@@ -28,8 +28,17 @@ class _RestaurantSearchPageState extends State<RestaurantSearchPage> {
   late final ScrollController _scrollController;
   Timer? _debounce;
   late RestaurantProvider provider;
- String _currentQuery = '';
+  String _currentQuery = '';
   //final provider = context.read<RestaurantProvider>();
+
+  Map<String, dynamic> _buildFilterParams() {
+    final filters = <String, dynamic>{};
+    if (selectedFilters.contains('veg')) filters['pure_veg'] = 1;
+    if (selectedFilters.contains('nonveg')) filters['pure_veg'] = 0;
+    if (selectedFilters.contains('halal')) filters['halal'] = 1;
+    if (selectedFilters.contains('halal_living')) filters['halal_living'] = 1;
+    return filters;
+  }
 
   @override
   void initState() {
@@ -54,25 +63,35 @@ class _RestaurantSearchPageState extends State<RestaurantSearchPage> {
     provider.clearSearchResults(); // ✅ safe now
     super.dispose();
   }
-void _onScroll() async {
-    if (_scrollController.position.pixels >=
-        _scrollController.position.maxScrollExtent - 200) {
+
+  void _onScroll() async {
+    final position = _scrollController.position;
+
+    // ❗ DO NOT trigger if list is not scrollable
+    if (position.maxScrollExtent < 200) {
+      return;
+    }
+
+    // 🚀 Trigger when user reaches 200px from bottom
+    if (position.pixels >= position.maxScrollExtent - 200) {
       final location = context.read<LocationProvider>().currentLocation;
-      if (location != null && _currentQuery.isNotEmpty) {
-        await provider.loadNextPageIfNeeded(
-          lat: location.latitude,
-          lng: location.longitude,
-          isFlash: widget.isFlash,
-          forSearchPage: true,
-          search: _currentQuery,
-        );
-      }
+      if (location == null) return;
+
+      await provider.loadNextPageIfNeeded(
+        lat: location.latitude,
+        lng: location.longitude,
+        isFlash: widget.isFlash,
+        forSearchPage: true,
+        search: _currentQuery,
+        filters: _buildFilterParams(),
+      );
     }
   }
+
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 400), () {
-       _currentQuery = query;
+      _currentQuery = query;
       _onSearchSubmit(query);
     });
   }
@@ -93,6 +112,7 @@ void _onScroll() async {
   void _onFilterApply() async {
     final location = context.read<LocationProvider>().currentLocation;
     if (location == null) return;
+    provider.resetSearchPagination();
 
     final Map<String, dynamic> filterParams = {};
 
@@ -124,51 +144,64 @@ void _onScroll() async {
           padding: EdgeInsets.symmetric(horizontal: size.width * 0.03),
           child: Column(
             children: [
+              const SizedBox(height: 10),
               HomeSearchBar(
                 controller: _searchController,
                 enableNavigation: false, // 👈 disables re-navigation
                 onFilterTap: () => _openFilterSheet(context),
                 onChanged: _onSearchChanged,
+                hintText: "Search for restaurants",
               ),
               const SizedBox(height: 10),
 
               Expanded(
-                child: provider.isLoading 
-                    ? const AppShimmer(type: ShimmerType.restaurant)
-                    : provider.searchResults.isEmpty
+                child:
+                    provider.isLoading
+                        ? const AppShimmer(type: ShimmerType.restaurant)
+                        : provider.searchResults.isEmpty
                         ? const Center(child: Text("No restaurants found"))
                         : ListView.builder(
-                            controller: _scrollController,
-                            itemCount: provider.searchResults.length +
-                                (provider.isPaginating ? 1 : 0),
-                            itemBuilder: (context, index) {
-                              if (provider.isPaginating &&
-                                  index == provider.searchResults.length) {
-                                return const Padding(
-                                  padding: EdgeInsets.symmetric(vertical: 24),
-                                  child:
-                                      Center(child: CircularProgressIndicator()),
-                                );
-                              }
-
-                              final restaurant =
-                                  provider.searchResults[index];
-                              return Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 12),
-                                child: GestureDetector(
-                                  onTap: () => AppRouteName.menuPage.push(
-                                    context,
-                                    args: {
-                                      'restaurant': restaurant,
-                                      'showPriceTabs': true,
-                                    },
+                          controller: _scrollController,
+                          itemCount:
+                              provider.searchResults.length +
+                              (provider.isPaginatingSearch ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (provider.isPaginatingSearch &&
+                                index == provider.searchResults.length) {
+                              return const Padding(
+                                padding: EdgeInsets.only(top: 20, bottom: 50),
+                                child: Center(
+                                  child: SizedBox(
+                                    height: 30,
+                                    width: 30,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 3.0,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.black,
+                                      ),
+                                    ),
                                   ),
-                                  child: RestaurantCard(data: restaurant),
                                 ),
                               );
-                            },
-                          ),
+                            }
+
+                            final restaurant = provider.searchResults[index];
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              child: GestureDetector(
+                                onTap:
+                                    () => AppRouteName.menuPage.push(
+                                      context,
+                                      args: {
+                                        'restaurant': restaurant,
+                                        'showPriceTabs': true,
+                                      },
+                                    ),
+                                child: RestaurantCard(data: restaurant),
+                              ),
+                            );
+                          },
+                        ),
               ),
             ],
           ),

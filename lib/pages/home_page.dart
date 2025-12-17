@@ -155,7 +155,7 @@ class _HomePageState extends State<HomePage> {
                         enableNavigation:
                             true, // default, opens RestaurantSearchPage
                         isFlash: false,
-                        hintText: "Search for restaurantss",
+                        hintText: "Search for restaurants",
                         onFilterTap: () {
                           AppRouteName.restaurantSearchPage.push(
                             context,

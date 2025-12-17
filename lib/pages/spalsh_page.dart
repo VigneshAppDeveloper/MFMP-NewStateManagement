@@ -15,6 +15,7 @@ import 'package:my_food_my_price/services/secure_storage.dart';
 import 'package:my_food_my_price/util/constant_image.dart';
 import 'package:my_food_my_price/util/styles.dart';
 import 'package:new_version_plus/new_version_plus.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
 import '../Providers/location_provider.dart';
@@ -31,6 +32,14 @@ class _SplashState extends State<Splash> {
     androidId: 'com.biryanipalayam.myfoodmyprice',
     iOSId: '6744266788',
   );
+
+  bool _isValidVersion(String v) {
+    if (v.trim().isEmpty) return false;
+    if (v == "0.0.0") return false;
+    if (!RegExp(r'^\d+(\.\d+){1,3}$').hasMatch(v)) return false;
+    return true;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -38,21 +47,76 @@ class _SplashState extends State<Splash> {
     getconnectStatus();
   }
 
-  void _checkVersion() async {
+  Future<void> _checkVersion() async {
+
+    String localName = "0.0.0";
+    int localCode = 0;
+
+    try {
+      final pkg = await PackageInfo.fromPlatform();
+      localName = pkg.version;
+      localCode = int.tryParse(pkg.buildNumber) ?? 0;
+    } catch (e, s) {
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        s,
+        reason: "PackageInfo failed",
+      );
+    }
+
+    bool playStoreValid = false;
+    String? storeVersion;
+
     try {
       final status = await newVersion.getVersionStatus();
-      if (status != null && status.canUpdate) {
-        _showForceUpdateDialog(status.appStoreLink);
-      } else {
-        _proceedToNextScreen();
+
+      debugPrint("LOCAL VERSION : $localName");
+      debugPrint("STORE VERSION : ${status?.storeVersion}");
+      debugPrint("CAN UPDATE    : ${status?.canUpdate}");
+
+      storeVersion = status?.storeVersion;
+
+      // Validate Play Store data
+      if (status != null &&
+          storeVersion != null &&
+          storeVersion != "0.0.0" &&
+          _isValidVersion(storeVersion) &&
+          _isValidVersion(localName)) {
+        playStoreValid = true;
+
+        if (status.canUpdate) {
+          _showForceUpdateDialog(status.appStoreLink);
+          return;
+        }
       }
     } catch (e, s) {
       FirebaseCrashlytics.instance.recordError(
         e,
         s,
-        reason: "Version check failed",
+        reason: "PlayStore version check failed",
       );
     }
+
+    // If Play Store failed → fallback to API
+    if (!playStoreValid) {
+      final provider = context.read<LoginProvider>();
+      bool apiResult = await provider.checkVersion(
+        versionName: localName,
+        versionCode: localCode,
+      );
+debugPrint("API VERSION CHECK RESULT: $apiResult");
+      // apiResult = true → version OK
+      // apiResult = false → mismatch → Force update
+      if (!apiResult) {
+        _showForceUpdateDialog(
+          "https://play.google.com/store/apps/details?id=com.biryanipalayam.myfoodmyprice",
+        );
+        return;
+      }
+    }
+
+    // Both checks passed → Continue
+    _proceedToNextScreen();
   }
 
   Future _getData() async {
@@ -162,8 +226,10 @@ class _SplashState extends State<Splash> {
     if (connectivityResult == ConnectivityResult.none) {
       _showalert();
     } else {
-      await _getData();
-      _checkVersion();
+     await _checkVersion();
+
+  // 2️⃣ ONLY AFTER VERSION PASSED → PROCESS LOCATION / PROFILE
+  await _getData();
     }
   }
 

@@ -258,19 +258,20 @@ class _RestaurantMenuCardState extends State<RestaurantMenuCard> {
                       Row(
                         children: [
                           Text(
-                            "₹${basePrice.toStringAsFixed(1)}",
+                            "Original Price",
                             style: Styles.textSmall(context).copyWith(
                               color: Colors.black54,
-                              decoration: TextDecoration.lineThrough,
+                             
                             ),
                             textScaler: const TextScaler.linear(1.0),
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            "Original Price",
+                            "₹${basePrice.toStringAsFixed(1)}",
                             style: Styles.textExtraSmall(
                               context,
-                            ).copyWith(color: Colors.black54),
+                              
+                            ).copyWith(color: Colors.black54, decoration: TextDecoration.lineThrough,),
                             textScaler: const TextScaler.linear(1.0),
                           ),
                         ],
@@ -390,21 +391,21 @@ class _RestaurantMenuCardState extends State<RestaurantMenuCard> {
                                       AppDialogue.toast("Offer has ended");
                                       return;
                                     }
-                                    if (!isFlashPage &&
-                                        provider.selectedPickupDate == null) {
-                                      final pickupWidgetState =
-                                          widget.pickupKey?.currentState;
-                                      if (pickupWidgetState != null) {
-                                        pickupWidgetState.showCalendar(
-                                          context,
-                                        ); // ✅ open calendar directly
-                                      } else {
-                                        AppDialogue.toast(
-                                          "Please select your pickup date.",
-                                        );
-                                      }
-                                      return;
-                                    }
+                                    // if (!isFlashPage &&
+                                    //     provider.selectedPickupDate == null) {
+                                    //   final pickupWidgetState =
+                                    //       widget.pickupKey?.currentState;
+                                    //   if (pickupWidgetState != null) {
+                                    //     pickupWidgetState.showCalendar(
+                                    //       context,
+                                    //     ); // ✅ open calendar directly
+                                    //   } else {
+                                    //     AppDialogue.toast(
+                                    //       "Please select your pickup date.",
+                                    //     );
+                                    //   }
+                                    //   return;
+                                    // }
                                     if (maxStock <= 0) {
                                       AppDialogue.toast("Out of stock");
                                       return;

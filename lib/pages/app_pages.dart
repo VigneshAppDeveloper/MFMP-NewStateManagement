@@ -18,6 +18,7 @@ class AppPagesState extends State<AppPages> {
   late int _currentIndex;
   DateTime? lastBackPressTime;
   final List<Widget> _pages = [];
+  int get currentTabIndex => _currentIndex;
 
   @override
   void initState() {
@@ -33,28 +34,34 @@ class AppPagesState extends State<AppPages> {
   void _applyStatusBarStyle(int index) {
     switch (index) {
       case 0: // Home
-        SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-          statusBarColor: Colors.white,
-          statusBarIconBrightness: Brightness.dark,
-          systemNavigationBarColor: Colors.white,
-          systemNavigationBarIconBrightness: Brightness.dark,
-        ));
+        SystemChrome.setSystemUIOverlayStyle(
+          const SystemUiOverlayStyle(
+            statusBarColor: Colors.white,
+            statusBarIconBrightness: Brightness.dark,
+            systemNavigationBarColor: Colors.white,
+            systemNavigationBarIconBrightness: Brightness.dark,
+          ),
+        );
         break;
 
       case 1: // Map
-        SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-          statusBarColor: Colors.white,
-          statusBarIconBrightness: Brightness.dark,
-          systemNavigationBarColor: Colors.white,
-          systemNavigationBarIconBrightness: Brightness.dark,
-        ));
+        SystemChrome.setSystemUIOverlayStyle(
+          const SystemUiOverlayStyle(
+            statusBarColor: Colors.white,
+            statusBarIconBrightness: Brightness.dark,
+            systemNavigationBarColor: Colors.white,
+            systemNavigationBarIconBrightness: Brightness.dark,
+          ),
+        );
         break;
 
       case 2: // Flash Sale
-        SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: Brightness.light,
-        ));
+        SystemChrome.setSystemUIOverlayStyle(
+          const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.light,
+          ),
+        );
         break;
     }
   }
@@ -88,10 +95,7 @@ class AppPagesState extends State<AppPages> {
         }
       },
       child: Scaffold(
-        body: IndexedStack(
-          index: _currentIndex,
-          children: _pages,
-        ),
+        body: IndexedStack(index: _currentIndex, children: _pages),
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
             color: Colors.white,
@@ -154,11 +158,14 @@ class AppPagesState extends State<AppPages> {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                _currentIndex == 1 ? "List View" : "Explore Map",
+                                _currentIndex == 1
+                                    ? "List View"
+                                    : "Explore Map",
                                 style: TextStyle(
-                                  color: _currentIndex == 1
-                                      ? AppColor.maincolor
-                                      : Colors.black,
+                                  color:
+                                      _currentIndex == 1
+                                          ? AppColor.maincolor
+                                          : Colors.black,
                                   fontSize: 14.5,
                                 ),
                                 textAlign: TextAlign.center,
@@ -173,7 +180,7 @@ class AppPagesState extends State<AppPages> {
                     ],
                   ),
                 ),
-                 SizedBox(width: 28),
+                SizedBox(width: 28),
                 _buildNavItem(
                   assetPath: "assets/figmaIcons/offerbottom.png",
                   label: 'Flash Offer',

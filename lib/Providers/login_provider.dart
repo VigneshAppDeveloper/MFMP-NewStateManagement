@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:my_food_my_price/enums/enum.dart';
@@ -26,6 +27,49 @@ class LoginProvider extends ChangeNotifier {
   Future<void> initialFetch() async {
     AppGlobal.deviceInfo = await DeviceInfoServices.getDeviceInfo();
   }
+
+ Future<bool> checkVersion({
+  required String versionName,
+  required int versionCode,
+}) async {
+  final url = "${UrlPath.loginUrl.checkVersion}/$versionName/$versionCode";
+
+  try {
+    final resp = await APIService.get(url, auth: false);
+
+    // Read raw body
+    final body = resp.fullBody is Map<String, dynamic>
+        ? resp.fullBody as Map<String, dynamic>
+        : <String, dynamic>{};
+
+    final success = body['success'];
+    final message = body['message']?.toString() ?? '';
+
+    debugPrint("🔍 checkVersion() => success=$success | message=$message");
+
+    // CASE 1 → backend says "Match Version Not Found" (mismatch)
+    if (success == true && message.contains("Match Version Not Found")) {
+      debugPrint("❌ Version mismatch from API → FORCE UPDATE");
+      return false; // force update
+    }
+
+    // CASE 2 → backend says "Match Version Found" (match)
+    if (success == false && message.contains("Match Version Found")) {
+      debugPrint("✅ Version match from API → OK");
+      return true; // version ok
+    }
+
+    // Any unexpected format → don't block user
+    debugPrint("⚠️ Unexpected checkVersion response, allowing user to proceed");
+    return true;
+  } catch (e, s) {
+    debugPrint("❌ checkVersion API failed: $e");
+    FirebaseCrashlytics.instance.recordError(e, s, reason: "checkVersion failed");
+    // Fail-open: do NOT block user if API itself is broken
+    return true;
+  }
+}
+
 
   Future<APIResp> sendOTP({required String mobile}) async {
     debugPrint("🚀 Sending OTP to: $mobile"); // 👈

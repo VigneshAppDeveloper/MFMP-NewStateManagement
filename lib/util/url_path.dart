@@ -16,6 +16,8 @@ class LoginUrl {
   final String userWalletUpdate = "user_wallet_update";
   final String updateProfile = "userProfileUpdate";
   final String deleteAccount = "Tsit_BPM_Delete_Account";
+    final String checkVersion = "check_version";
+
 }
 
 class RestaurantUrl {

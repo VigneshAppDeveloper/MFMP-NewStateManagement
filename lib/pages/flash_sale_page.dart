@@ -121,7 +121,7 @@ class _FlashSalePageState extends State<FlashSalePage> {
         );
         final provider = context.read<RestaurantProvider>();
         debugPrint(
-          "✅ Restaurants fetched: ${provider.restaurants.length} items",
+          "✅ Restaurants fetched: ${provider.flashRestaurants.length} items",
         );
       } else {
         debugPrint("⚠️ No location found in LocationProvider");
