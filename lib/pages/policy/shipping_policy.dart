@@ -17,7 +17,10 @@ class _ShippingPolicyState extends State<ShippingPolicy> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar:const CommonAppBar(title: "Shipping & Delivery Policy", showBack: true),
+      appBar: const CommonAppBar(
+        title: "Shipping & Delivery Policy",
+        showBack: true,
+      ),
 
       body: SafeArea(
         child: Padding(
@@ -44,13 +47,13 @@ class _ShippingPolicyState extends State<ShippingPolicy> {
                       Expanded(
                         child: GestureDetector(
                           onTap:
-                              () => 
+                              () =>
                               UrlLauncherHelper.launchInBrowser(
                                 context,
-                                'https://www.biryanipalayam.com/copy-of-cancellation-refund-policy-1',
+                                'https://myfoodmyprice.com/shipping-delivery-policy',
                               ),
                           child: Text(
-                            'www.biryanipalayam.com',
+                            'https://myfoodmyprice.com/shipping-delivery-policy',
                             style: Styles.textStyleMediumBold(
                               context,
                               color: Colors.blueAccent,
@@ -65,7 +68,7 @@ class _ShippingPolicyState extends State<ShippingPolicy> {
 
                   // Last updated
                   Text(
-                    'Last updated: May 17, 2024',
+                    'Last updated: November 13, 2025',
                     style: Styles.textSmall(context),
                     textScaler: const TextScaler.linear(1.0),
                   ),
@@ -73,25 +76,93 @@ class _ShippingPolicyState extends State<ShippingPolicy> {
 
                   // Policy Content
                   _policyText(
-                    "Orders done through the MyFoodMyPrice app are for Pickup only. Customers will choose their desired pickup point from the options provided. Biryanipalayam will bring your orders to your desired pickup point and keep it ready for pickup at your selected pickup time.",
+                    "Orders placed through the MyFoodMyPrice (MFMP) app are generally pickup-only.",
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Pickup Policy :',
+                        style: Styles.textStyleMediumBold(
+                          context,
+                        ).copyWith(fontWeight: FontWeight.bold),
+                        textScaler: const TextScaler.linear(1.0),
+                      ),
+                    ],
+                  ),
+                   const SizedBox(height: 5),
+                   _policyText(
+                    ". Customers can select their preferred pickup point from the options provided in the MFMP app.",
                   ),
                   _policyText(
-                    "No home deliveries will be done for orders through the MyFoodMyPrice app.",
+                    ". Orders will be prepared and kept ready for pickup at the selected pickup location and time.",
+                  ),
+                     Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Deliver Policy :',
+                        style: Styles.textStyleMediumBold(
+                          context,
+                        ).copyWith(fontWeight: FontWeight.bold),
+                        textScaler: const TextScaler.linear(1.0),
+                      ),
+                    ],
+                  ),
+                   const SizedBox(height: 5),
+                    _policyText(
+                    ". Home delivery is not the default option on MFMP.",
                   ),
                   _policyText(
-                    "Biryanipalayam is not to be held liable for delays due to reasons beyond its control, like unexpected traffic blockades, or extreme inclement weather. While we strive to deliver your orders at your desired time, please allow a leeway of approximately 30 minutes from the specified delivery time for unexpected delays.",
+                    ". Delivery can be arranged upon request, subject to availability, at an additional nominal cost.",
                   ),
                   _policyText(
-                    "Delivery of all orders will be to the pickup point address provided by the customer. Status of the deliveries can be checked on the MyFoodMyPrice App.",
+                    ". Delivery availability and charges will be communicated at the time of order or coordination.",
                   ),
+                    Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Delays & Exceptions :',
+                        style: Styles.textStyleMediumBold(
+                          context,
+                        ).copyWith(fontWeight: FontWeight.bold),
+                        textScaler: const TextScaler.linear(1.0),
+                      ),
+                    ],
+                  ),
+                   const SizedBox(height: 5),
+                   _policyText(
+                    ". MyFoodMyPrice shall not be held liable for delays caused due to factors beyond its control, including traffic congestion, road closures, or adverse weather conditions.",
+                  ),
+                  _policyText(
+                    ". While we strive to ensure timely readiness of orders, customers are requested to allow a leeway of up to 30 minutes from the selected pickup or delivery time in case of unforeseen delays.",
+                  ),
+                   Row(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Order Status :',
+                        style: Styles.textStyleMediumBold(
+                          context,
+                        ).copyWith(fontWeight: FontWeight.bold),
+                        textScaler: const TextScaler.linear(1.0),
+                      ),
+                    ],
+                  ),
+                   const SizedBox(height: 5),
+                  _policyText(
+                    ". Order status and pickup details can be tracked through the MyFoodMyPrice app.",
+                  ),
+                 
                   _policyTextWithLink(
                     prefix:
-                        "For any issues in utilizing our services you may contact our helpdesk on or ",
-                    linkText: "support@biryanipalayam.com",
+                        "For any issues related to orders or services, customers may contact us at: ",
+                    linkText: "Info@myfoodmyprice.com",
                     onTap:
                         () => UrlLauncherHelper.launchInBrowser(
                           context,
-                          "mailto:support@biryanipalayam.com",
+                          "Info@myfoodmyprice.com",
                         ),
                   ),
                 ],

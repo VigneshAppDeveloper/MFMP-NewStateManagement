@@ -158,13 +158,17 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
                   ).copyWith(textScaler: const TextScaler.linear(1.0)),
                   child: CalendarCarousel(
                     onDayPressed: (date, events) async {
-                      String formattedDisplay = DateFormat(
+                      final formattedDisplay = DateFormat(
                         'dd-MM-yyyy',
                       ).format(date);
 
+                      // ❌ Invalid date
                       if (date.isBefore(firstDate) || date.isAfter(lastDate)) {
                         return;
-                      } else if (blockedDateList.any(
+                      }
+
+                      // 🚫 Blocked date
+                      if (blockedDateList.any(
                         (d) =>
                             d.year == date.year &&
                             d.month == date.month &&
@@ -175,42 +179,46 @@ class _PickupDetailsSectionState extends State<PickupDetailsSection> {
                           formattedDisplay,
                           blockedReasons,
                         );
+                        return;
+                      }
+
+                      // ✅ Update local state BEFORE async
+                      setState(() {
+                        selectedDate = date;
+                        selectedPickupTime = null;
+                      });
+
+                      final formatted = DateFormat('dd-MM-yyyy').format(date);
+                      widget.onDateChange?.call(formatted);
+
+                      // ✅ Close dialog immediately (SAFE)
+                      Navigator.of(innerContext).pop();
+
+                      // ❗ STOP if widget is already disposed
+                      if (!mounted) return;
+
+                      // ✅ Clear provider state
+                      if (widget.isFixedOrder) {
+                        context.read<FixedOrderProvider>().selectedPickupTime =
+                            null;
                       } else {
-                        setState(() {
-                          selectedDate = date;
-                          selectedPickupTime = null; // ✅ clear previous time
-                        });
+                        context
+                            .read<BiddingOrderProvider>()
+                            .selectedPickupTime = null;
+                      }
 
-                        // Optional: also clear from provider so UI stays in sync
-                        if (widget.isFixedOrder) {
-                          parentContext
-                              .read<FixedOrderProvider>()
-                              .selectedPickupTime = null;
-                        } else {
-                          parentContext
-                              .read<BiddingOrderProvider>()
-                              .selectedPickupTime = null;
-                        }
-
-                        final formatted = DateFormat(
-                          'dd-MM-yyyy',
-                        ).format(selectedDate);
-                        widget.onDateChange?.call(formatted);
-
-                        // ✅ use parentContext here — it has BiddingOrderProvider
-                        if (widget.isFixedOrder) {
-                          await parentContext
-                              .read<FixedOrderProvider>()
-                              .reloadPickupTime(widget.franchiseId, formatted);
-                        } else {
-                          await parentContext
-                              .read<BiddingOrderProvider>()
-                              .reloadPickupTime(widget.franchiseId, formatted);
-                        }
-
-                        Navigator.of(innerContext).pop();
+                      // ✅ Async work AFTER dialog is closed
+                      if (widget.isFixedOrder) {
+                        await context
+                            .read<FixedOrderProvider>()
+                            .reloadPickupTime(widget.franchiseId, formatted);
+                      } else {
+                        await context
+                            .read<BiddingOrderProvider>()
+                            .reloadPickupTime(widget.franchiseId, formatted);
                       }
                     },
+
                     todayTextStyle: Styles.textStyleMediumBold(
                       context,
                       color: Colors.white,
