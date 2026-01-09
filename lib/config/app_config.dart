@@ -7,7 +7,7 @@ class AppConfig {
   String get baseUrl {
     switch (F.appFlavor) {
       case Flavor.prod:
-        return 'https://myfoodmyprice.com/Applications/public/api/';
+        return 'https://tsitapp.in/user/ftp/srivignesh/MFMP/public/api/';
       case Flavor.dev:
         return 'https://myfoodmyprice.com/Applications/public/api/';
       case Flavor.demo:

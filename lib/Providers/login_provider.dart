@@ -154,7 +154,7 @@ class LoginProvider extends ChangeNotifier {
       data: {
         "mobile": mobile.replaceAll(RegExp(r'[^0-9]'), ''),
         "otp": otp,
-        "device_token": tokenFCM,
+        "device_token": "tokenFCM",
       },
       shownoInternet: false,
       auth: false,

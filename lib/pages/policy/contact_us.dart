@@ -31,57 +31,87 @@ class _ContactUsState extends State<ContactUs> {
                 children: [
                   const SizedBox(height: 20),
                   // Link Row
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Link:',
-                        style: Styles.textStyleMediumBold(context),
-                        textScaler: const TextScaler.linear(1.0),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap:
-                              () => UrlLauncherHelper.launchInBrowser(
-                                context,
-                                'https://www.biryanipalayam.com/copy-of-cancellation-refund-policy',
-                              ),
-                          child: Text(
-                            'www.biryanipalayam.com',
-                            style: Styles.textStyleMediumBold(
-                              context,
-                              color: Colors.blueAccent,
-                            ),
-                            textScaler: const TextScaler.linear(1.0),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
+                  // Row(
+                  //   crossAxisAlignment: CrossAxisAlignment.start,
+                  //   children: [
+                  //     Text(
+                  //       'Link:',
+                  //       style: Styles.textStyleMediumBold(context),
+                  //       textScaler: const TextScaler.linear(1.0),
+                  //     ),
+                  //     const SizedBox(width: 10),
+                  //     Expanded(
+                  //       child: GestureDetector(
+                  //         onTap:
+                  //             () => UrlLauncherHelper.launchInBrowser(
+                  //               context,
+                  //               'https://www.biryanipalayam.com/copy-of-cancellation-refund-policy',
+                  //             ),
+                  //         child: Text(
+                  //           'www.biryanipalayam.com',
+                  //           style: Styles.textStyleMediumBold(
+                  //             context,
+                  //             color: Colors.blueAccent,
+                  //           ),
+                  //           textScaler: const TextScaler.linear(1.0),
+                  //         ),
+                  //       ),
+                  //     ),
+                  //   ],
+                  // ),
+                  // const SizedBox(height: 20),
 
                   Text(
-                    'Last updated on Mar 21st 2024',
+                    'Last updated on Nov 13st 2025',
                     style: Styles.textSmall(context),
                     textScaler: const TextScaler.linear(1.0),
                   ),
                   const SizedBox(height: 30),
 
                   contactDetail(
-                    'Merchant Legal entity name:',
-                    'Biryanipalayam',
+                    '',
+                    'MyFoodMyPrice',
                   ),
+                  // contactDetail(
+                  //   'Registered Address:',
+                  //   '1, THAYUMANASUNDARAM STREET, KOLLAMPALAYAM\nErode, TAMIL NADU 638002',
+                  // ),
                   contactDetail(
-                    'Registered Address:',
-                    '1, THAYUMANASUNDARAM STREET, KOLLAMPALAYAM\nErode, TAMIL NADU 638002',
+                    'Contact Address:',
+                    '3rd Floor, Hamid Complex, No. 190 - 192, Opp. Ibis Hotel, Anna Salai, Thousand Lights, Chennai, Tamil Nadu 600006',
                   ),
-                  contactDetail(
-                    'Operational Address:',
-                    '1, THAYUMANASUNDARAM STREET, KOLLAMPALAYAM\nErode, TAMIL NADU 638002',
-                  ),
-                  contactDetail('Telephone No:', '9994210404'),
+                  contactDetail('Phone No:', '9994210404'),
                   contactDetail('E-Mail ID:', 'info@biryanipalayam.com'),
+                   Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Website: ",
+                          style: Styles.textStyleMediumBold(
+                            context,
+                            color: AppColor.blackColor,
+                          ),
+                          textScaler: const TextScaler.linear(1.0),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => UrlLauncherHelper.launchInBrowser(
+                              context,
+                              'https://myfoodmyprice.com/',
+                            ),
+                            child: Text(
+                              'https://myfoodmyprice.com/',
+                              style: Styles.textStyleMediumBold(
+                                context,
+                                color: Colors.blueAccent,
+                              ),
+                              textScaler: const TextScaler.linear(1.0),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),
